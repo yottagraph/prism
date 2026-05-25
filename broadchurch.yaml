@@ -1,0 +1,37 @@
+# Broadchurch project configuration
+# Auto-generated during tenant provisioning.
+
+gcp:
+  project: broadchurch
+  region: us-central1
+  staging_bucket: broadchurch-agent-staging
+  github_deploy_sa: github-deploy@broadchurch.iam.gserviceaccount.com
+
+tenant:
+  project_name: "prism"
+  display_name: "Prism"
+  org_id: "org_PU6Brs3nIWjGSipP"
+  service_account: "tenant-pu6brs3niwjgsipp@broadchurch.iam.gserviceaccount.com"
+
+gateway:
+  url: "https://broadchurch-portal-194773164895.us-central1.run.app"
+  qs_api_key: "907feee9589275987c676f1c62137fcccd06453fba943aac819669bb8cb533ee"
+
+query_server:
+  url: "https://query.pip.prod.g.lovelace.ai"
+  audience: ""
+
+auth:
+  client_id: "zsLteLI2xy4LQmLsYB8RHguNiuiWrPeh"
+  audience: ""
+
+aether:
+  data_mode: "api-mcp"
+
+agents: {}
+
+# Compute jobs (Cloud Run Jobs) registered with the Portal.
+jobs: {}
+
+# Cloud Workflows registered with the Portal.
+workflows: {}
