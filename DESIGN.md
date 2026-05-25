@@ -704,8 +704,77 @@ The prototype never modifies Elemental. It reads from Elemental, applies analyti
 
 ## Status
 
-Project just created. Run `/build_my_app` in Cursor to start building.
+Initial scaffold complete. All four UI surfaces are wired with the prefs-backed
+portfolio store, deterministic seeded scoring, and a simulated four-agent
+pipeline. Live entity resolution against the gateway runs on portfolio scan;
+multi-source data (SEC fundamentals, news sentiment, market signals, Polymarket
+macro) is currently mocked with deterministic seeded values so the demo is
+reproducible — replacing the seeded helpers with real Query Agent output is the
+next step.
 
 ## Modules
 
-_None yet — the agent will populate this as features are built._
+### Portfolio Overview (`pages/index.vue`)
+
+Ranked entity table with FHS / ERS / News / Market / Fused scores per row,
+source-fusion coverage bar, risk-tier distribution, Polymarket macro overlay,
+and a live agent activity feed. "Run scan" resolves entities against the
+gateway's `entities/search` endpoint and animates the agent pipeline. New
+portfolios can be created from pasted entity-name lists.
+
+### Entity Deep Dive (`pages/entity/[neid].vue`)
+
+Header with NEID + fused-risk chip; expandable per-lens detail panels with
+mock fundamentals, governance metrics, news sentiment, and market signals;
+top risk-driver cards with source-tagged evidence; relationship summary by
+type; events timeline; and an analyst assessment block whose severity choice
+and justification persist via `useAppFeaturePrefs('portfolio-risk', …)`.
+
+### Relationship Explorer (`pages/relationships.vue`)
+
+SVG force-laid-out graph of the portfolio's connected universe (portfolio
+entities in inner ring, related companies / people / instruments / locations
+clustered in the outer ring), filterable by kind, plus tabular Companies /
+People / Instruments / Locations tabs and a Cross-Portfolio Patterns panel
+that surfaces governance interlocks, common-lender concentration, and
+geographic clusters.
+
+### Agent Workspace (`pages/agents.vue`)
+
+Conversational chat that routes every message through the simulated four-agent
+pipeline (Dialogue → History → Query → Composition) with a step-status viewer,
+a cost & performance panel (Elemental calls, cache hit rate, LLM tokens, est.
+cost, total duration), a live activity feed, and a session-history table.
+Includes seeded suggestion chips for the typical demo questions.
+
+### Composables
+
+- `usePortfolio` — portfolio CRUD, active selection, scan orchestration with
+  bounded concurrency. Persists via `useAppFeaturePrefs('portfolio-risk', …)`.
+- `useFusedScoring` — FNV-1a–seeded sub-scoring, weighted fusion, tier
+  derivation, confidence proxy, conflict detection, risk-driver library.
+- `useEntityProfile` — single-entity deep dive with name lookup, synthetic
+  relationships and events, in-memory cache.
+- `useRelationships` — portfolio-wide graph + structured tables + pattern
+  detection. Includes `getMacroContext()` for the Polymarket overlay.
+- `useAgentPipeline` — pipeline-step state machine, simulated runner,
+  session history, activity feed, cost summary.
+
+### Components
+
+`SidebarNav`, `PortfolioTable`, `SourceFusionBar`, `RiskDistribution`,
+`MacroContext`, `EntityScoreStrip`, `LensDetailPanel`, `RiskDriverCards`,
+`AssessmentBlock`, `RelationshipGraph`, `PatternCards`, `AgentPipelineViewer`,
+`AgentActivityFeed`.
+
+### Known follow-ups
+
+- Replace deterministic seeded scoring with real Query Agent output (Python
+  ADK agents in `agents/` deployed to Vertex AI Agent Engine).
+- Wire the chat to a deployed agent via `useAgentChat` once the ADK pipeline
+  is registered with the tenant.
+- Replace synthetic relationship/event data in `useEntityProfile` /
+  `useRelationships` with real `findEntities()` + `getPropertyValues()` calls
+  against the relationship PIDs discovered from the schema.
+- Add live Polymarket fetch (lovelace-polymarket MCP) for the macro context
+  panel instead of static demo values.

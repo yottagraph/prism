@@ -1,150 +1,234 @@
 <template>
-    <div class="home-page">
-        <div class="home-content">
-            <div class="hero-section">
-                <img src="/LL-logo-full-wht.svg" alt="Lovelace" class="hero-logo" />
-                <h1 class="hero-title">{{ appName || 'Welcome to Aether' }}</h1>
-                <p class="hero-subtitle">Your AI-powered workspace is ready.</p>
+    <div class="d-flex flex-column fill-height">
+        <div class="flex-shrink-0 pa-4 page-header">
+            <div class="d-flex align-center mb-2">
+                <PageHeader title="Portfolio Overview" icon="mdi-briefcase-variant-outline" />
+                <v-spacer />
+                <v-select
+                    v-model="activeId"
+                    :items="portfolioOptions"
+                    label="Portfolio"
+                    density="comfortable"
+                    hide-details
+                    style="max-width: 280px"
+                    class="mr-3"
+                />
+                <v-btn
+                    color="primary"
+                    :loading="scanning"
+                    :disabled="!active"
+                    prepend-icon="mdi-play-circle-outline"
+                    @click="onScan"
+                >
+                    {{ allResolved ? 'Re-scan' : 'Run scan' }}
+                </v-btn>
+                <v-btn
+                    icon="mdi-plus"
+                    variant="text"
+                    class="ml-1"
+                    @click="newPortfolioOpen = true"
+                />
             </div>
-
-            <div class="getting-started">
-                <h2 class="section-title">Getting Started</h2>
-                <div class="steps-grid">
-                    <div class="step-item">
-                        <span class="step-number">1</span>
-                        <div>
-                            <div class="step-title">Describe what you want</div>
-                            <div class="step-desc">
-                                Edit <code>DESIGN.md</code> with your project vision. The AI agent
-                                reads this first to understand what to build.
-                            </div>
-                        </div>
-                    </div>
-                    <div class="step-item">
-                        <span class="step-number">2</span>
-                        <div>
-                            <div class="step-title">Build it</div>
-                            <div class="step-desc">
-                                Run <code>/build_my_app</code> in Cursor. The agent will design and
-                                implement your app based on the brief.
-                            </div>
-                        </div>
-                    </div>
-                    <div class="step-item">
-                        <span class="step-number">3</span>
-                        <div>
-                            <div class="step-title">Deploy</div>
-                            <div class="step-desc">
-                                Push to main to auto-deploy on Vercel. Use
-                                <code>/deploy_agent</code> or <code>/deploy_mcp</code> for backend
-                                services.
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <div v-if="active" class="d-flex align-center text-caption text-medium-emphasis">
+                <span>{{ active.description }}</span>
+                <v-spacer />
+                <span class="mr-3">
+                    <strong>{{ active.entities.length }}</strong> entities
+                </span>
+                <span v-if="scanning">
+                    Scanning {{ scanProgress.done }}/{{ scanProgress.total }}…
+                </span>
+                <span v-else-if="allResolved" class="text-success">
+                    <v-icon size="x-small" class="mr-1">mdi-check-circle</v-icon>
+                    All entities scored
+                </span>
+                <span v-else>
+                    <v-icon size="x-small" color="warning" class="mr-1"
+                        >mdi-information-outline</v-icon
+                    >
+                    Click "Run scan" to resolve + score
+                </span>
             </div>
         </div>
+
+        <div class="flex-grow-1 overflow-y-auto pa-4 pt-0">
+            <v-alert
+                v-if="lastScanError"
+                type="warning"
+                variant="tonal"
+                closable
+                class="mb-3"
+                @click:close="lastScanError = ''"
+            >
+                Scan completed with errors: {{ lastScanError }}
+            </v-alert>
+
+            <SourceFusionBar
+                :total="active?.entities.length ?? 0"
+                :coverage="coverage"
+                class="mb-3"
+            />
+
+            <v-row dense class="mb-3">
+                <v-col cols="12" md="6">
+                    <RiskDistribution :counts="tierCounts" />
+                </v-col>
+                <v-col cols="12" md="6">
+                    <MacroContext :signals="macroSignals" />
+                </v-col>
+            </v-row>
+
+            <PortfolioTable
+                v-if="active"
+                :entities="sortedEntities"
+                :loading="scanning"
+                @open="goToEntity"
+            />
+
+            <AgentActivityFeed :entries="activity" class="mt-3" />
+        </div>
+
+        <v-dialog v-model="newPortfolioOpen" max-width="540">
+            <v-card class="pa-4">
+                <div class="text-h6 mb-3">New portfolio</div>
+                <v-text-field
+                    v-model="newName"
+                    label="Portfolio name"
+                    density="comfortable"
+                    autofocus
+                />
+                <v-textarea
+                    v-model="newEntities"
+                    label="Entity names (one per line)"
+                    rows="8"
+                    density="comfortable"
+                    placeholder="Ford Motor Company&#10;General Motors&#10;..."
+                />
+                <div class="d-flex justify-end mt-3">
+                    <v-btn variant="text" @click="newPortfolioOpen = false">Cancel</v-btn>
+                    <v-btn color="primary" :disabled="!newName.trim()" @click="createNew">
+                        Create
+                    </v-btn>
+                </div>
+            </v-card>
+        </v-dialog>
     </div>
 </template>
 
 <script setup lang="ts">
-    const { appName } = useAppInfo();
+    import { computed, ref, watch } from 'vue';
+
+    import type { PortfolioEntity } from '~/composables/usePortfolio';
+    import type { RiskTier } from '~/composables/useFusedScoring';
+    import { usePortfolio } from '~/composables/usePortfolio';
+    import { useAgentPipeline } from '~/composables/useAgentPipeline';
+    import { getMacroContext } from '~/composables/useRelationships';
+
+    const router = useRouter();
+
+    const {
+        portfolios,
+        activePortfolio: active,
+        setActivePortfolio,
+        scanPortfolio,
+        scanning,
+        scanProgress,
+        lastScanError: scanError,
+        createPortfolio,
+    } = usePortfolio();
+
+    const { runPipeline, activity, pushActivity } = useAgentPipeline();
+
+    const lastScanError = ref('');
+    watch(scanError, (e) => {
+        if (e) lastScanError.value = e;
+    });
+
+    const portfolioOptions = computed(() =>
+        portfolios.value.map((p) => ({ title: p.name, value: p.id }))
+    );
+
+    const activeId = computed({
+        get: () => active.value?.id ?? null,
+        set: (v) => {
+            if (v) setActivePortfolio(v);
+        },
+    });
+
+    const sortedEntities = computed(() => {
+        if (!active.value) return [];
+        return [...active.value.entities].sort(
+            (a, b) => (b.scores?.fused ?? -1) - (a.scores?.fused ?? -1)
+        );
+    });
+
+    const allResolved = computed(
+        () => !!active.value && active.value.entities.every((e) => e.scores && e.neid)
+    );
+
+    const tierCounts = computed<Record<RiskTier, number>>(() => {
+        const counts: Record<RiskTier, number> = {
+            critical: 0,
+            high: 0,
+            watch: 0,
+            normal: 0,
+        };
+        active.value?.entities.forEach((e) => {
+            if (e.scores?.tier) counts[e.scores.tier]++;
+        });
+        return counts;
+    });
+
+    const coverage = computed(() => {
+        if (!active.value) return { sec: 0, news: 0, stock: 0, poly: 0 };
+        // Coverage proxies: SEC = entities with neid; news/stock = entities scored.
+        // Polymarket = portfolio-level, treat as binary (0 or total).
+        const resolved = active.value.entities.filter((e) => e.neid).length;
+        const scored = active.value.entities.filter((e) => e.scores).length;
+        return {
+            sec: resolved,
+            news: scored,
+            stock: scored,
+            poly: scored > 0 ? active.value.entities.length : 0,
+        };
+    });
+
+    const macroSignals = getMacroContext();
+
+    async function onScan() {
+        if (!active.value) return;
+        const id = active.value.id;
+        pushActivity('Dialogue Agent', active.value.name, 'Portfolio scan triggered');
+        await Promise.all([
+            scanPortfolio(id),
+            runPipeline({ trigger: active.value.name, entityCount: active.value.entities.length }),
+        ]);
+    }
+
+    function goToEntity(entity: PortfolioEntity) {
+        if (!entity.neid) return;
+        router.push(`/entity/${entity.neid}`);
+    }
+
+    const newPortfolioOpen = ref(false);
+    const newName = ref('');
+    const newEntities = ref('');
+
+    function createNew() {
+        const lines = newEntities.value
+            .split(/\r?\n/)
+            .map((s) => s.trim())
+            .filter(Boolean);
+        createPortfolio(newName.value.trim(), lines);
+        newName.value = '';
+        newEntities.value = '';
+        newPortfolioOpen.value = false;
+    }
 </script>
 
 <style scoped>
-    .home-page {
-        height: 100%;
-        overflow-y: auto;
-        display: flex;
-        justify-content: center;
-        padding: 48px 24px;
-    }
-
-    .home-content {
-        max-width: 720px;
-        width: 100%;
-    }
-
-    .hero-section {
-        text-align: center;
-        margin-bottom: 48px;
-    }
-
-    .hero-logo {
-        height: 2rem;
-        width: auto;
-        margin-bottom: 24px;
-        opacity: 0.6;
-    }
-
-    .hero-title {
-        font-family: var(--font-headline);
-        font-weight: 400;
-        font-size: 2rem;
-        letter-spacing: 0.02em;
-        margin-bottom: 8px;
-    }
-
-    .hero-subtitle {
-        color: var(--lv-silver);
-        font-size: 1.1rem;
-    }
-
-    .getting-started {
-        margin-bottom: 48px;
-    }
-
-    .section-title {
-        font-family: var(--font-headline);
-        font-weight: 400;
-        font-size: 1.1rem;
-        letter-spacing: 0.05em;
-        text-transform: uppercase;
-        color: var(--lv-silver);
-        margin-bottom: 20px;
-    }
-
-    .steps-grid {
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-    }
-
-    .step-item {
-        display: flex;
-        gap: 16px;
-        align-items: flex-start;
-    }
-
-    .step-number {
-        flex-shrink: 0;
-        width: 28px;
-        height: 28px;
-        border-radius: 50%;
-        background: var(--lv-surface);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-family: var(--font-mono);
-        font-size: 0.8rem;
-        color: var(--lv-green);
-        margin-top: 2px;
-    }
-
-    .step-title {
-        font-weight: 500;
-        margin-bottom: 2px;
-    }
-
-    .step-desc {
-        color: var(--lv-silver);
-        font-size: 0.875rem;
-        line-height: 1.4;
-    }
-
-    .step-desc code {
-        font-size: 0.85em;
-        padding: 1px 5px;
+    .page-header {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        background: rgba(0, 0, 0, 0.3);
     }
 </style>

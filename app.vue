@@ -1,6 +1,7 @@
 <template>
     <v-app class="theme-brand">
         <template v-if="showAppFramework">
+            <SidebarNav />
             <AppHeader />
 
             <v-main class="fill-height">
