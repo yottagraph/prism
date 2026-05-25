@@ -105,16 +105,16 @@ Elemental resolves all of these by providing a unified context layer where entit
 
 ### 5.1 The Walk-Through (3-5 Minutes)
 
-| Step | Presenter says | On-screen action | Expected result |
-| --- | --- | --- | --- |
-| 1 | "Let me load a portfolio. This is a CLO with 40 mid-market issuers." | Select or create a portfolio from a pre-seeded list, or paste company names. | Portfolio loads. Agent activity begins — entity resolution kicks off visibly. |
-| 2 | "Agents are now gathering context from Elemental. Watch — they're pulling SEC filings, news, stock signals, and prediction market indicators for each company." | Agent pipeline panel animates: Dialogue → History → Query → Composition per entity, with source badges (SEC, NEWS, STOCK, POLY). | Progressive loading — entities appear in the table as agents complete, sorted by fused risk. |
-| 3 | "The portfolio is scored. The riskiest names are at the top. Let me show you why this one is flagged." | Click top-ranked entity. Entity Deep Dive opens. | Multi-source breakdown: solvency (from SEC), executive risk (from SEC), news pressure (from news), market signal (from stock), macro context (from Polymarket). Each lens shows score, drivers, evidence. |
-| 4 | "Each score traces back to source. This solvency score comes from leverage ratios in the 10-K. This news pressure score comes from three negative articles last week. Nothing is a black box." | Expand evidence panels for solvency and news pressure lenses. | Filing citations with form type, date, section. Article citations with headline, outlet, date, sentiment. |
-| 5 | "Now let me show the connected universe. For this portfolio, Elemental knows every related company, every officer and director, every credit facility, and every location." | Switch to Relationship Explorer tab. | Graph visualization showing portfolio entities as core nodes, with 1-hop related entities clustered by type: companies (blue), people (green), instruments (orange), locations (red). |
-| 6 | "I can see that three of my portfolio companies share a board member. That's a governance concentration risk I wouldn't have found manually." | Click a person node connected to multiple portfolio entities. | Person detail panel: name, roles, companies served, tenure, departure history. |
-| 7 | "Let me ask the system a question." | Open Agent Workspace chat. Type: "What connects Acme Corp to Global Industries, and should I be concerned?" | Agent pipeline runs visibly: Dialogue (resolves entities) → History (graph traversal) → Query (path analysis + risk assessment) → Composition (narrative answer with evidence). |
-| 8 | "The answer cites specific relationships and evidence. I can defend this in committee." | Point to citation chips and evidence panel in the agent response. | Response includes relationship path, risk drivers along the path, and source citations. |
+| Step | Presenter says                                                                                                                                                                                 | On-screen action                                                                                                                 | Expected result                                                                                                                                                                                           |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | "Let me load a portfolio. This is a CLO with 40 mid-market issuers."                                                                                                                           | Select or create a portfolio from a pre-seeded list, or paste company names.                                                     | Portfolio loads. Agent activity begins — entity resolution kicks off visibly.                                                                                                                             |
+| 2    | "Agents are now gathering context from Elemental. Watch — they're pulling SEC filings, news, stock signals, and prediction market indicators for each company."                                | Agent pipeline panel animates: Dialogue → History → Query → Composition per entity, with source badges (SEC, NEWS, STOCK, POLY). | Progressive loading — entities appear in the table as agents complete, sorted by fused risk.                                                                                                              |
+| 3    | "The portfolio is scored. The riskiest names are at the top. Let me show you why this one is flagged."                                                                                         | Click top-ranked entity. Entity Deep Dive opens.                                                                                 | Multi-source breakdown: solvency (from SEC), executive risk (from SEC), news pressure (from news), market signal (from stock), macro context (from Polymarket). Each lens shows score, drivers, evidence. |
+| 4    | "Each score traces back to source. This solvency score comes from leverage ratios in the 10-K. This news pressure score comes from three negative articles last week. Nothing is a black box." | Expand evidence panels for solvency and news pressure lenses.                                                                    | Filing citations with form type, date, section. Article citations with headline, outlet, date, sentiment.                                                                                                 |
+| 5    | "Now let me show the connected universe. For this portfolio, Elemental knows every related company, every officer and director, every credit facility, and every location."                    | Switch to Relationship Explorer tab.                                                                                             | Graph visualization showing portfolio entities as core nodes, with 1-hop related entities clustered by type: companies (blue), people (green), instruments (orange), locations (red).                     |
+| 6    | "I can see that three of my portfolio companies share a board member. That's a governance concentration risk I wouldn't have found manually."                                                  | Click a person node connected to multiple portfolio entities.                                                                    | Person detail panel: name, roles, companies served, tenure, departure history.                                                                                                                            |
+| 7    | "Let me ask the system a question."                                                                                                                                                            | Open Agent Workspace chat. Type: "What connects Acme Corp to Global Industries, and should I be concerned?"                      | Agent pipeline runs visibly: Dialogue (resolves entities) → History (graph traversal) → Query (path analysis + risk assessment) → Composition (narrative answer with evidence).                           |
+| 8    | "The answer cites specific relationships and evidence. I can defend this in committee."                                                                                                        | Point to citation chips and evidence panel in the agent response.                                                                | Response includes relationship path, risk drivers along the path, and source citations.                                                                                                                   |
 
 ### 5.2 The One-Sentence Takeaway
 
@@ -128,40 +128,40 @@ Elemental resolves all of these by providing a unified context layer where entit
 
 All entity data, relationships, events, properties, and signals are sourced from Elemental. The prototype never ingests raw data.
 
-| Data Domain | Elemental Source | What It Provides |
-| --- | --- | --- |
-| **Entity identity** | Entity resolution layer | CIK, NEID, LEI, ticker, legal name, entity type, SIC code, jurisdiction |
-| **SEC filing signals** | XBRL facts + filing metadata | Financial ratios (leverage, coverage, margins), filing recency, form types, extraction lineage |
-| **Governance data** | Relationship graph | Officers, directors, beneficial owners, subsidiaries, parent entities — with tenure and departure dates |
-| **Events** | Event store | 8-K material events (25+ types), executive departures, auditor changes, M&A, restructuring — with dates, participants, severity |
-| **News signals** | News sentiment layer | Article mentions, sentiment scores, mention velocity, negative clusters, source outlets |
-| **Stock signals** | Market data layer | Price history, returns, volatility, technical indicators (RSI, MACD), anomalies |
-| **Prediction market signals** | Polymarket integration | Event probabilities for macro indicators (recession odds, sector stress) and company-specific events |
-| **Instruments** | Instrument store | Credit facilities (amount, maturity, lender, covenants), bonds/notes (CUSIP, FIGI, principal, maturity), holdings positions |
-| **Locations** | Location graph | HQ addresses, jurisdictions, facility locations, geographic relationships |
+| Data Domain                   | Elemental Source             | What It Provides                                                                                                                |
+| ----------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| **Entity identity**           | Entity resolution layer      | CIK, NEID, LEI, ticker, legal name, entity type, SIC code, jurisdiction                                                         |
+| **SEC filing signals**        | XBRL facts + filing metadata | Financial ratios (leverage, coverage, margins), filing recency, form types, extraction lineage                                  |
+| **Governance data**           | Relationship graph           | Officers, directors, beneficial owners, subsidiaries, parent entities — with tenure and departure dates                         |
+| **Events**                    | Event store                  | 8-K material events (25+ types), executive departures, auditor changes, M&A, restructuring — with dates, participants, severity |
+| **News signals**              | News sentiment layer         | Article mentions, sentiment scores, mention velocity, negative clusters, source outlets                                         |
+| **Stock signals**             | Market data layer            | Price history, returns, volatility, technical indicators (RSI, MACD), anomalies                                                 |
+| **Prediction market signals** | Polymarket integration       | Event probabilities for macro indicators (recession odds, sector stress) and company-specific events                            |
+| **Instruments**               | Instrument store             | Credit facilities (amount, maturity, lender, covenants), bonds/notes (CUSIP, FIGI, principal, maturity), holdings positions     |
+| **Locations**                 | Location graph               | HQ addresses, jurisdictions, facility locations, geographic relationships                                                       |
 
 ### 6.2 What the Prototype Stores Locally (User State)
 
 A lightweight local database holds only user-generated and agent-generated state. This follows the same pattern as the Agent-First FSI PRD.
 
-| Table | Purpose |
-| --- | --- |
-| `portfolios` | Portfolio definitions (name, description, created timestamp) |
-| `portfolio_entities` | Entity list per portfolio (NEID, name, entity type, added timestamp) |
-| `entity_scores` | Agent-computed risk scores per entity per lens (solvency, executive, news, market, fused) |
-| `entity_assessments` | Analyst severity overrides and justifications |
-| `agent_sessions` | Pipeline run audit log (trigger, status, duration, entity count) |
-| `agent_traces` | Per-agent step traces (input summary, output summary, duration, evidence count) |
-| `context_cache` | Cached Elemental responses with TTL (avoids redundant calls during a session) |
-| `chat_history` | Conversational dialogue state per session |
+| Table                | Purpose                                                                                   |
+| -------------------- | ----------------------------------------------------------------------------------------- |
+| `portfolios`         | Portfolio definitions (name, description, created timestamp)                              |
+| `portfolio_entities` | Entity list per portfolio (NEID, name, entity type, added timestamp)                      |
+| `entity_scores`      | Agent-computed risk scores per entity per lens (solvency, executive, news, market, fused) |
+| `entity_assessments` | Analyst severity overrides and justifications                                             |
+| `agent_sessions`     | Pipeline run audit log (trigger, status, duration, entity count)                          |
+| `agent_traces`       | Per-agent step traces (input summary, output summary, duration, evidence count)           |
+| `context_cache`      | Cached Elemental responses with TTL (avoids redundant calls during a session)             |
+| `chat_history`       | Conversational dialogue state per session                                                 |
 
 ### 6.3 Cloud Infrastructure
 
-| Component | Purpose |
-| --- | --- |
-| **Graph DB (local file)** | The local user-state database (SQLite or equivalent). Not a separate graph database — Elemental is the graph. Local storage is relational. |
-| **KV Cache** | Session-scoped cache for Elemental responses. Keyed by `(portfolio_id, neid, data_type)` with configurable TTL (default 15 minutes for demo, longer for production). Prevents redundant Elemental calls during portfolio load and exploration. |
-| **Frontend** | Single-page application. Receives agent outputs via server-sent events. Renders portfolio views, entity profiles, relationship graphs. |
+| Component                 | Purpose                                                                                                                                                                                                                                        |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Graph DB (local file)** | The local user-state database (SQLite or equivalent). Not a separate graph database — Elemental is the graph. Local storage is relational.                                                                                                     |
+| **KV Cache**              | Session-scoped cache for Elemental responses. Keyed by `(portfolio_id, neid, data_type)` with configurable TTL (default 15 minutes for demo, longer for production). Prevents redundant Elemental calls during portfolio load and exploration. |
+| **Frontend**              | Single-page application. Receives agent outputs via server-sent events. Renders portfolio views, entity profiles, relationship graphs.                                                                                                         |
 
 ---
 
@@ -237,24 +237,24 @@ User Request (load portfolio, click entity, ask question)
 
 ### 7.2 Pipeline Invocation Patterns
 
-| Trigger | What Happens | Output Surface |
-| --- | --- | --- |
-| **Portfolio load** | Dialogue resolves all entity names → History fans out across all entities (parallel, bounded concurrency) → Query scores each entity → Composition pushes table rows progressively | Portfolio Overview table populates incrementally |
-| **Entity click** | History retrieves full context for single entity (relationships, events, all sources) → Query produces detailed per-lens breakdown → Composition renders profile | Entity Deep Dive populates |
-| **Relationship Explorer open** | History retrieves 1-hop relationships for all portfolio entities (batched) → Query identifies cross-portfolio patterns (shared people, common lenders, geographic clusters) → Composition renders graph + relationship tables | Relationship Explorer graph + panels populate |
-| **Chat question** | Full 4-agent pipeline with conversational state | Agent Workspace response with evidence |
-| **Score refresh** | History re-fetches (bypasses cache) → Query re-scores → Composition updates table rows | Portfolio Overview table updates |
+| Trigger                        | What Happens                                                                                                                                                                                                                  | Output Surface                                   |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| **Portfolio load**             | Dialogue resolves all entity names → History fans out across all entities (parallel, bounded concurrency) → Query scores each entity → Composition pushes table rows progressively                                            | Portfolio Overview table populates incrementally |
+| **Entity click**               | History retrieves full context for single entity (relationships, events, all sources) → Query produces detailed per-lens breakdown → Composition renders profile                                                              | Entity Deep Dive populates                       |
+| **Relationship Explorer open** | History retrieves 1-hop relationships for all portfolio entities (batched) → Query identifies cross-portfolio patterns (shared people, common lenders, geographic clusters) → Composition renders graph + relationship tables | Relationship Explorer graph + panels populate    |
+| **Chat question**              | Full 4-agent pipeline with conversational state                                                                                                                                                                               | Agent Workspace response with evidence           |
+| **Score refresh**              | History re-fetches (bypasses cache) → Query re-scores → Composition updates table rows                                                                                                                                        | Portfolio Overview table updates                 |
 
 ### 7.3 Multi-Source Fusion
 
 The Query Agent produces per-entity scores across four source-specific lenses, then blends them into a fused score. This fusion is the central analytical narrative of the demo.
 
-| Lens | Score Range | Primary Signals | Elemental Source |
-| --- | --- | --- | --- |
-| **Solvency (FHS)** | 0-100 | Leverage, equity erosion, margin compression, coverage ratios, staleness decay, distress events | SEC XBRL facts, 8-K events |
-| **Executive Risk (ERS)** | 0-100 | Officer/director departures (recency-weighted, C-suite premium), auditor changes, cumulative patterns | SEC relationships, 8-K Item 5.02 events |
-| **News Pressure** | 0-100 | Sentiment trends, mention velocity, negative clusters, adverse media density | News sentiment layer |
-| **Market Signal** | 0-100 | 30-day price change, volatility spike, RSI extremes, anomaly detection | Stock data layer |
+| Lens                     | Score Range | Primary Signals                                                                                       | Elemental Source                        |
+| ------------------------ | ----------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| **Solvency (FHS)**       | 0-100       | Leverage, equity erosion, margin compression, coverage ratios, staleness decay, distress events       | SEC XBRL facts, 8-K events              |
+| **Executive Risk (ERS)** | 0-100       | Officer/director departures (recency-weighted, C-suite premium), auditor changes, cumulative patterns | SEC relationships, 8-K Item 5.02 events |
+| **News Pressure**        | 0-100       | Sentiment trends, mention velocity, negative clusters, adverse media density                          | News sentiment layer                    |
+| **Market Signal**        | 0-100       | 30-day price change, volatility spike, RSI extremes, anomaly detection                                | Stock data layer                        |
 
 **Fused Risk Score:**
 
@@ -344,18 +344,18 @@ Full multi-source profile for a single entity.
 
 3. **Lens Detail Panels** (expandable, one per source):
 
-   | Panel | Content |
-   | --- | --- |
-   | **Solvency (SEC)** | Leverage, equity ratio, coverage, margin trends. Sparklines over recent periods. Distress events. Filing citations. |
-   | **Executive Risk (SEC)** | Current officers/directors with titles and tenure. Departures (recency-weighted list). Auditor changes. Governance summary. |
-   | **News Pressure** | Recent articles with sentiment badges. Mention velocity chart. Negative cluster detection. Source outlets. |
-   | **Market Signal** | Price chart (30d/90d). Volatility indicators. RSI, MACD. Anomaly flags. |
-   | **Macro Context** | Relevant Polymarket events (sector, policy, macro). Probability trends. |
+    | Panel                    | Content                                                                                                                     |
+    | ------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+    | **Solvency (SEC)**       | Leverage, equity ratio, coverage, margin trends. Sparklines over recent periods. Distress events. Filing citations.         |
+    | **Executive Risk (SEC)** | Current officers/directors with titles and tenure. Departures (recency-weighted list). Auditor changes. Governance summary. |
+    | **News Pressure**        | Recent articles with sentiment badges. Mention velocity chart. Negative cluster detection. Source outlets.                  |
+    | **Market Signal**        | Price chart (30d/90d). Volatility indicators. RSI, MACD. Anomaly flags.                                                     |
+    | **Macro Context**        | Relevant Polymarket events (sector, policy, macro). Probability trends.                                                     |
 
 4. **Risk Drivers** — Top 5 drivers ranked by contribution to fused score, each with:
-   - Lens label + source badge
-   - One-sentence explanation
-   - Evidence citation (clickable to source)
+    - Lens label + source badge
+    - One-sentence explanation
+    - Evidence citation (clickable to source)
 
 5. **Relationships Summary** — Counts by type (companies, people, instruments, locations) with top entries shown. "Explore all" links to Relationship Explorer filtered to this entity.
 
@@ -371,22 +371,22 @@ The portfolio's connected universe, rendered as both graph and structured views.
 
 - **Core nodes:** Portfolio entities (larger, colored by risk tier).
 - **Related nodes:** 1-hop connections discovered by agents, clustered by type:
-  - Companies (blue) — subsidiaries, parents, peers, counterparties
-  - People (green) — officers, directors, beneficial owners
-  - Instruments (orange) — credit facilities, bonds, holdings
-  - Locations (red) — HQs, jurisdictions, facility locations
+    - Companies (blue) — subsidiaries, parents, peers, counterparties
+    - People (green) — officers, directors, beneficial owners
+    - Instruments (orange) — credit facilities, bonds, holdings
+    - Locations (red) — HQs, jurisdictions, facility locations
 - **Edges:** Typed and labeled (subsidiary_of, officer_of, holds_position, located_at, etc.).
 - **Layout:** Force-directed with community detection. Portfolio entities form the gravitational center; related entities orbit.
 - **Interactions:** Click node for detail panel. Hover for tooltip. Filter by relationship type or entity type. Search. Zoom/pan.
 
 **Structured Views (tabs alongside graph):**
 
-| Tab | Content |
-| --- | --- |
-| **Related Companies** | Table of non-portfolio companies connected to portfolio entities. Columns: name, connection type, connected to (portfolio entity), relationship count. Sortable. |
-| **People** | Officers and directors across the portfolio. Columns: name, roles, companies served (from portfolio), tenure, departure flag. Highlight people connected to multiple portfolio entities (governance concentration). |
-| **Instruments** | Credit facilities and securities. Columns: instrument type, issuer, amount, maturity, lender/holder, covenants. Highlight shared lenders across portfolio entities. |
-| **Locations** | Jurisdictions and facility locations. Columns: location, entities present, entity types, jurisdiction risk (if applicable). Map view option. |
+| Tab                   | Content                                                                                                                                                                                                             |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Related Companies** | Table of non-portfolio companies connected to portfolio entities. Columns: name, connection type, connected to (portfolio entity), relationship count. Sortable.                                                    |
+| **People**            | Officers and directors across the portfolio. Columns: name, roles, companies served (from portfolio), tenure, departure flag. Highlight people connected to multiple portfolio entities (governance concentration). |
+| **Instruments**       | Credit facilities and securities. Columns: instrument type, issuer, amount, maturity, lender/holder, covenants. Highlight shared lenders across portfolio entities.                                                 |
+| **Locations**         | Jurisdictions and facility locations. Columns: location, entities present, entity types, jurisdiction risk (if applicable). Map view option.                                                                        |
 
 **Cross-Portfolio Patterns** (highlighted panel):
 
@@ -404,12 +404,12 @@ The control surface and conversational interface for the agent pipeline.
 
 **Layout:**
 
-| Panel | Content |
-| --- | --- |
-| **Chat** | Conversational interface routed through the full 4-agent pipeline. Supports follow-up questions. Each response shows agent steps (expandable) and evidence citations. |
-| **Pipeline Viewer** | Visual representation of the 4-agent pipeline with status per step (pending/working/completed). Shows current entity being processed. Duration and evidence count per step. |
-| **Session History** | Table of completed pipeline runs. Columns: session ID, trigger, status, entity count, duration, timestamp. Expand for per-agent traces. |
-| **Cost & Performance** | Aggregate metrics for the session: total Elemental calls, cache hit rate, LLM token usage, estimated cost, total duration. |
+| Panel                  | Content                                                                                                                                                                     |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Chat**               | Conversational interface routed through the full 4-agent pipeline. Supports follow-up questions. Each response shows agent steps (expandable) and evidence citations.       |
+| **Pipeline Viewer**    | Visual representation of the 4-agent pipeline with status per step (pending/working/completed). Shows current entity being processed. Duration and evidence count per step. |
+| **Session History**    | Table of completed pipeline runs. Columns: session ID, trigger, status, entity count, duration, timestamp. Expand for per-agent traces.                                     |
+| **Cost & Performance** | Aggregate metrics for the session: total Elemental calls, cache hit rate, LLM token usage, estimated cost, total duration.                                                  |
 
 **Example Chat Interactions:**
 
@@ -426,53 +426,53 @@ The control surface and conversational interface for the agent pipeline.
 
 ### Portfolio Management
 
-| Method | Path | Purpose |
-| --- | --- | --- |
-| GET | `/api/portfolios` | List all portfolios |
-| POST | `/api/portfolios` | Create portfolio (with entity names for resolution) |
-| GET | `/api/portfolios/:id` | Get portfolio with entity count and scan status |
-| DELETE | `/api/portfolios/:id` | Delete portfolio |
-| GET | `/api/portfolios/:id/entities` | List entities with latest scores |
-| POST | `/api/portfolios/:id/entities` | Add entities (names resolved via Dialogue Agent) |
-| DELETE | `/api/portfolios/:id/entities/:neid` | Remove entity |
+| Method | Path                                 | Purpose                                             |
+| ------ | ------------------------------------ | --------------------------------------------------- |
+| GET    | `/api/portfolios`                    | List all portfolios                                 |
+| POST   | `/api/portfolios`                    | Create portfolio (with entity names for resolution) |
+| GET    | `/api/portfolios/:id`                | Get portfolio with entity count and scan status     |
+| DELETE | `/api/portfolios/:id`                | Delete portfolio                                    |
+| GET    | `/api/portfolios/:id/entities`       | List entities with latest scores                    |
+| POST   | `/api/portfolios/:id/entities`       | Add entities (names resolved via Dialogue Agent)    |
+| DELETE | `/api/portfolios/:id/entities/:neid` | Remove entity                                       |
 
 ### Agent Pipeline
 
-| Method | Path | Purpose |
-| --- | --- | --- |
-| POST | `/api/agents/scan` | Run pipeline for portfolio or single entity |
-| POST | `/api/agents/chat` | Conversational dialogue with session state |
-| GET | `/api/agents/activity-stream` | SSE endpoint for live agent activity |
-| GET | `/api/agents/sessions` | List completed sessions |
-| GET | `/api/agents/sessions/:id` | Session detail with per-agent traces |
+| Method | Path                          | Purpose                                     |
+| ------ | ----------------------------- | ------------------------------------------- |
+| POST   | `/api/agents/scan`            | Run pipeline for portfolio or single entity |
+| POST   | `/api/agents/chat`            | Conversational dialogue with session state  |
+| GET    | `/api/agents/activity-stream` | SSE endpoint for live agent activity        |
+| GET    | `/api/agents/sessions`        | List completed sessions                     |
+| GET    | `/api/agents/sessions/:id`    | Session detail with per-agent traces        |
 
 ### Entity Data (Agent-Cached)
 
-| Method | Path | Purpose |
-| --- | --- | --- |
-| GET | `/api/portfolios/:id/entity/:neid/profile` | Full entity profile (all lenses, relationships, events) |
-| GET | `/api/portfolios/:id/entity/:neid/scores` | Score breakdown with evidence |
-| GET | `/api/portfolios/:id/entity/:neid/relationships` | Relationships by type |
-| GET | `/api/portfolios/:id/entity/:neid/events` | Events timeline |
+| Method | Path                                             | Purpose                                                 |
+| ------ | ------------------------------------------------ | ------------------------------------------------------- |
+| GET    | `/api/portfolios/:id/entity/:neid/profile`       | Full entity profile (all lenses, relationships, events) |
+| GET    | `/api/portfolios/:id/entity/:neid/scores`        | Score breakdown with evidence                           |
+| GET    | `/api/portfolios/:id/entity/:neid/relationships` | Relationships by type                                   |
+| GET    | `/api/portfolios/:id/entity/:neid/events`        | Events timeline                                         |
 
 ### Relationship Explorer
 
-| Method | Path | Purpose |
-| --- | --- | --- |
-| GET | `/api/portfolios/:id/relationships/graph` | Graph data for the portfolio's connected universe |
-| GET | `/api/portfolios/:id/relationships/companies` | Related companies table |
-| GET | `/api/portfolios/:id/relationships/people` | People across portfolio |
-| GET | `/api/portfolios/:id/relationships/instruments` | Instruments across portfolio |
-| GET | `/api/portfolios/:id/relationships/locations` | Locations across portfolio |
-| GET | `/api/portfolios/:id/relationships/patterns` | Cross-portfolio patterns |
+| Method | Path                                            | Purpose                                           |
+| ------ | ----------------------------------------------- | ------------------------------------------------- |
+| GET    | `/api/portfolios/:id/relationships/graph`       | Graph data for the portfolio's connected universe |
+| GET    | `/api/portfolios/:id/relationships/companies`   | Related companies table                           |
+| GET    | `/api/portfolios/:id/relationships/people`      | People across portfolio                           |
+| GET    | `/api/portfolios/:id/relationships/instruments` | Instruments across portfolio                      |
+| GET    | `/api/portfolios/:id/relationships/locations`   | Locations across portfolio                        |
+| GET    | `/api/portfolios/:id/relationships/patterns`    | Cross-portfolio patterns                          |
 
 ### Portfolio Analytics
 
-| Method | Path | Purpose |
-| --- | --- | --- |
-| GET | `/api/portfolios/:id/dashboard` | Aggregate portfolio metrics (risk distribution, macro context) |
-| POST | `/api/portfolios/:id/narrative` | Generate portfolio-level risk narrative |
-| POST | `/api/portfolios/:id/assessments` | Save analyst assessment for an entity |
+| Method | Path                              | Purpose                                                        |
+| ------ | --------------------------------- | -------------------------------------------------------------- |
+| GET    | `/api/portfolios/:id/dashboard`   | Aggregate portfolio metrics (risk distribution, macro context) |
+| POST   | `/api/portfolios/:id/narrative`   | Generate portfolio-level risk narrative                        |
+| POST   | `/api/portfolios/:id/assessments` | Save analyst assessment for an entity                          |
 
 ---
 
@@ -482,18 +482,18 @@ This section defines the relationship types agents discover from Elemental and h
 
 ### 10.1 Relationship Types from Elemental
 
-| Relationship Type | From → To | What It Reveals |
-| --- | --- | --- |
-| `subsidiary_of` | Company → Parent | Corporate ownership chains. Critical for understanding conglomerate exposure. |
-| `officer_of` | Person → Company | Executive leadership. Tenure and departure patterns indicate governance stability. |
-| `director_of` | Person → Company | Board composition. Shared directors across portfolio = governance concentration. |
-| `beneficial_owner_of` | Person/Fund → Company | Ownership influence. Activist positions, insider stakes. |
-| `compensation_peer_of` | Company → Company | Companies that consider each other peers for compensation benchmarking. Proxy for competitive landscape. |
-| `holds_position` | Institution → Instrument | Institutional holdings. Which funds own which securities in the portfolio. |
-| `issued_by` | Instrument → Company | Issuer linkage. Which portfolio company issued which debt/equity. |
-| `located_at` | Entity → Location | Geographic presence. Jurisdiction exposure, regional concentration. |
-| `subject_of_event` | Company → Event | Material events. Filing-backed discrete occurrences. |
-| `lender_of` | Institution → Facility | Credit facility relationships. Common lenders = potential contagion path. |
+| Relationship Type      | From → To                | What It Reveals                                                                                          |
+| ---------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------- |
+| `subsidiary_of`        | Company → Parent         | Corporate ownership chains. Critical for understanding conglomerate exposure.                            |
+| `officer_of`           | Person → Company         | Executive leadership. Tenure and departure patterns indicate governance stability.                       |
+| `director_of`          | Person → Company         | Board composition. Shared directors across portfolio = governance concentration.                         |
+| `beneficial_owner_of`  | Person/Fund → Company    | Ownership influence. Activist positions, insider stakes.                                                 |
+| `compensation_peer_of` | Company → Company        | Companies that consider each other peers for compensation benchmarking. Proxy for competitive landscape. |
+| `holds_position`       | Institution → Instrument | Institutional holdings. Which funds own which securities in the portfolio.                               |
+| `issued_by`            | Instrument → Company     | Issuer linkage. Which portfolio company issued which debt/equity.                                        |
+| `located_at`           | Entity → Location        | Geographic presence. Jurisdiction exposure, regional concentration.                                      |
+| `subject_of_event`     | Company → Event          | Material events. Filing-backed discrete occurrences.                                                     |
+| `lender_of`            | Institution → Facility   | Credit facility relationships. Common lenders = potential contagion path.                                |
 
 ### 10.2 Discovery Depth
 
@@ -505,14 +505,14 @@ This section defines the relationship types agents discover from Elemental and h
 
 Agents don't just retrieve relationships — they identify patterns that create portfolio-level intelligence:
 
-| Pattern | Detection Logic | Risk Implication |
-| --- | --- | --- |
-| **Governance interlock** | Person with `officer_of` or `director_of` to 2+ portfolio entities | Single-person risk; departure impacts multiple holdings |
-| **Common lender concentration** | Same institution as `lender_of` for 3+ portfolio entities | Credit contagion if lender tightens |
-| **Subsidiary chain exposure** | Portfolio entity is `subsidiary_of` another portfolio entity (or shared parent) | Risk correlation — parent distress flows downstream |
-| **Geographic cluster** | 5+ portfolio entities `located_at` same jurisdiction | Regulatory or macro event impacts cluster simultaneously |
-| **Coordinated departures** | Multiple portfolio entities have officer departures in the same 30-day window | Possible sector stress or shared governance problem |
-| **Ownership overlap** | Same `beneficial_owner_of` for 2+ portfolio entities | Activist or concentration risk |
+| Pattern                         | Detection Logic                                                                 | Risk Implication                                         |
+| ------------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| **Governance interlock**        | Person with `officer_of` or `director_of` to 2+ portfolio entities              | Single-person risk; departure impacts multiple holdings  |
+| **Common lender concentration** | Same institution as `lender_of` for 3+ portfolio entities                       | Credit contagion if lender tightens                      |
+| **Subsidiary chain exposure**   | Portfolio entity is `subsidiary_of` another portfolio entity (or shared parent) | Risk correlation — parent distress flows downstream      |
+| **Geographic cluster**          | 5+ portfolio entities `located_at` same jurisdiction                            | Regulatory or macro event impacts cluster simultaneously |
+| **Coordinated departures**      | Multiple portfolio entities have officer departures in the same 30-day window   | Possible sector stress or shared governance problem      |
+| **Ownership overlap**           | Same `beneficial_owner_of` for 2+ portfolio entities                            | Activist or concentration risk                           |
 
 ---
 
@@ -520,11 +520,11 @@ Agents don't just retrieve relationships — they identify patterns that create 
 
 The prototype should ship with 2-3 pre-seeded portfolios that demonstrate different risk profiles:
 
-| Portfolio | Description | Entity Count | Why It's Interesting |
-| --- | --- | --- | --- |
-| **CLO Mid-Market** | Mix of mid-cap industrial and service companies typical of a CLO portfolio | 30-40 | Range of financial health — includes known deteriorating names alongside stable ones. Shows solvency lens at its best. |
-| **Tech Growth** | High-growth technology companies with governance-heavy signal profile | 15-20 | Executive turnover patterns, recent IPOs with limited filing history. Shows executive risk lens and staleness handling. |
-| **Distressed Watchlist** | Companies with known recent distress events (bankruptcy filings, delisting notices, auditor changes) | 10-15 | High-severity events and multi-source signal convergence. Shows the "known problem names rise to the top" narrative. |
+| Portfolio                | Description                                                                                          | Entity Count | Why It's Interesting                                                                                                    |
+| ------------------------ | ---------------------------------------------------------------------------------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| **CLO Mid-Market**       | Mix of mid-cap industrial and service companies typical of a CLO portfolio                           | 30-40        | Range of financial health — includes known deteriorating names alongside stable ones. Shows solvency lens at its best.  |
+| **Tech Growth**          | High-growth technology companies with governance-heavy signal profile                                | 15-20        | Executive turnover patterns, recent IPOs with limited filing history. Shows executive risk lens and staleness handling. |
+| **Distressed Watchlist** | Companies with known recent distress events (bankruptcy filings, delisting notices, auditor changes) | 10-15        | High-severity events and multi-source signal convergence. Shows the "known problem names rise to the top" narrative.    |
 
 Pre-seeded data is loaded from Elemental at build time and cached — the demo doesn't depend on live Elemental connectivity to start (but live refresh demonstrates real-time capability).
 
@@ -593,6 +593,7 @@ portfolio-risk-prototype/
 ```
 
 Expected env vars:
+
 - `ELEMENTAL_ENDPOINT` — Elemental query/MCP endpoint
 - `ELEMENTAL_API_KEY` — Authentication
 - `GEMINI_API_KEY` — LLM for agent reasoning
@@ -602,13 +603,13 @@ Expected env vars:
 
 ## 13. Build Phases
 
-| Phase | Timeline | Deliverables |
-| --- | --- | --- |
-| **Phase 0: Scaffold** | Days 1-3 | Repo scaffold, Elemental client integration, portfolio CRUD, local DB schema, KV cache layer |
-| **Phase 1: Portfolio + Scoring** | Days 4-10 | Agent pipeline (4 agents), portfolio load with parallel entity scanning, multi-source score fusion, Portfolio Overview with ranked table and source fusion bar |
-| **Phase 2: Entity Deep Dive** | Days 11-15 | Entity profile with per-lens detail panels, risk driver cards, evidence drill-down, events timeline, assessment block |
-| **Phase 3: Relationships** | Days 16-20 | Relationship Explorer graph + structured views, cross-portfolio pattern detection, people/instruments/locations tables |
-| **Phase 4: Agent Workspace + Polish** | Days 21-25 | Conversational chat, pipeline viewer animation, session history, cost/performance panel, pre-seeded demo portfolios, demo script rehearsal |
+| Phase                                 | Timeline   | Deliverables                                                                                                                                                   |
+| ------------------------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Phase 0: Scaffold**                 | Days 1-3   | Repo scaffold, Elemental client integration, portfolio CRUD, local DB schema, KV cache layer                                                                   |
+| **Phase 1: Portfolio + Scoring**      | Days 4-10  | Agent pipeline (4 agents), portfolio load with parallel entity scanning, multi-source score fusion, Portfolio Overview with ranked table and source fusion bar |
+| **Phase 2: Entity Deep Dive**         | Days 11-15 | Entity profile with per-lens detail panels, risk driver cards, evidence drill-down, events timeline, assessment block                                          |
+| **Phase 3: Relationships**            | Days 16-20 | Relationship Explorer graph + structured views, cross-portfolio pattern detection, people/instruments/locations tables                                         |
+| **Phase 4: Agent Workspace + Polish** | Days 21-25 | Conversational chat, pipeline viewer animation, session history, cost/performance panel, pre-seeded demo portfolios, demo script rehearsal                     |
 
 ---
 
@@ -659,14 +660,14 @@ A risk technology evaluator can explain the value proposition in one sentence:
 
 This prototype is explicitly an **Agent Demonstration Environment** (Solution Pack), not an Elemental product feature. It demonstrates:
 
-| Elemental Capability (Engine) | Demo Capability (Solution Pack) |
-| --- | --- |
-| Entity resolution across SEC, news, market sources | Agents resolving portfolio entity names to canonical NEIDs |
-| Relationship graph with typed edges | Relationship Explorer surfacing governance interlocks, lender concentration, geographic clusters |
-| Event store with severity and participants | Events timeline with agent-generated significance assessment |
-| Multi-source property series | Per-lens score breakdown showing SEC vs. news vs. market signals |
-| Temporal graph queries | Agent-driven "what changed since last quarter?" analysis |
-| Provenance and evidence chains | Evidence panels tracing every score back to source documents |
+| Elemental Capability (Engine)                      | Demo Capability (Solution Pack)                                                                  |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Entity resolution across SEC, news, market sources | Agents resolving portfolio entity names to canonical NEIDs                                       |
+| Relationship graph with typed edges                | Relationship Explorer surfacing governance interlocks, lender concentration, geographic clusters |
+| Event store with severity and participants         | Events timeline with agent-generated significance assessment                                     |
+| Multi-source property series                       | Per-lens score breakdown showing SEC vs. news vs. market signals                                 |
+| Temporal graph queries                             | Agent-driven "what changed since last quarter?" analysis                                         |
+| Provenance and evidence chains                     | Evidence panels tracing every score back to source documents                                     |
 
 The prototype never modifies Elemental. It reads from Elemental, applies analytical judgment through agents, stores user state locally, and surfaces results through purpose-built UI. This separation is the architecture customers should replicate.
 
@@ -674,19 +675,19 @@ The prototype never modifies Elemental. It reads from Elemental, applies analyti
 
 ## Appendix A: Reuse Map
 
-| Need | Reuse Asset |
-| --- | --- |
-| Multi-source scoring methodology | [docs/guides/DATA_AGGREGATIONS_AND_RISK_SCORING.md](../guides/DATA_AGGREGATIONS_AND_RISK_SCORING.md) |
-| Solvency and Executive risk calculations | Solvency/Executive deep dives in DATA_AGGREGATIONS doc |
-| Agent pipeline architecture | [docs/prd/AGENT_FIRST_FSI.md](AGENT_FIRST_FSI.md) |
-| Agent step UX pattern | [docs/reference/AGENT_PIPELINE_UX_PRD.md](../reference/AGENT_PIPELINE_UX_PRD.md) |
-| Relationship types reference | [docs/reference/RELATIONSHIP_TYPES.md](../reference/RELATIONSHIP_TYPES.md) |
-| Event taxonomy | [docs/reference/EVENT_TAXONOMY.md](../reference/EVENT_TAXONOMY.md) |
-| Standalone prototype pattern | [docs/prd/CUSTOMER_PROPENSITY_PROTOTYPE.md](CUSTOMER_PROPENSITY_PROTOTYPE.md) |
-| Sigma.js graph patterns | `features/lovelace-dashboard/components/NetworkGraphTab.vue` |
-| SSE activity stream | `server/api/lovelace/agents/activity-stream.get.ts` |
-| Elemental MCP client | `server/agents/mcp/elemental_client.py` |
-| Vuetify Lovelace theme | `nuxt.config.ts` (vuetify section) |
+| Need                                     | Reuse Asset                                                                                          |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Multi-source scoring methodology         | [docs/guides/DATA_AGGREGATIONS_AND_RISK_SCORING.md](../guides/DATA_AGGREGATIONS_AND_RISK_SCORING.md) |
+| Solvency and Executive risk calculations | Solvency/Executive deep dives in DATA_AGGREGATIONS doc                                               |
+| Agent pipeline architecture              | [docs/prd/AGENT_FIRST_FSI.md](AGENT_FIRST_FSI.md)                                                    |
+| Agent step UX pattern                    | [docs/reference/AGENT_PIPELINE_UX_PRD.md](../reference/AGENT_PIPELINE_UX_PRD.md)                     |
+| Relationship types reference             | [docs/reference/RELATIONSHIP_TYPES.md](../reference/RELATIONSHIP_TYPES.md)                           |
+| Event taxonomy                           | [docs/reference/EVENT_TAXONOMY.md](../reference/EVENT_TAXONOMY.md)                                   |
+| Standalone prototype pattern             | [docs/prd/CUSTOMER_PROPENSITY_PROTOTYPE.md](CUSTOMER_PROPENSITY_PROTOTYPE.md)                        |
+| Sigma.js graph patterns                  | `features/lovelace-dashboard/components/NetworkGraphTab.vue`                                         |
+| SSE activity stream                      | `server/api/lovelace/agents/activity-stream.get.ts`                                                  |
+| Elemental MCP client                     | `server/agents/mcp/elemental_client.py`                                                              |
+| Vuetify Lovelace theme                   | `nuxt.config.ts` (vuetify section)                                                                   |
 
 ## Appendix B: Out of Scope for v1
 
@@ -701,11 +702,10 @@ The prototype never modifies Elemental. It reads from Elemental, applies analyti
 - Custom extraction pipeline triggers.
 - Production governance/compliance controls beyond demo-level handling.
 
-
 ## Status
 
 Project just created. Run `/build_my_app` in Cursor to start building.
 
 ## Modules
 
-*None yet — the agent will populate this as features are built.*
+_None yet — the agent will populate this as features are built._
