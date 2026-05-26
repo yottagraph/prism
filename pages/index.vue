@@ -74,7 +74,37 @@
                     <RiskDistribution :counts="tierCounts" />
                 </v-col>
                 <v-col cols="12" md="6">
-                    <MacroContext :signals="macroSignals" />
+                    <v-row dense>
+                        <v-col cols="12">
+                            <MacroContext
+                                :signals="fredMacroSignals"
+                                title="Macro Fundamentals"
+                                source="FRED"
+                            />
+                        </v-col>
+                        <v-col cols="12">
+                            <MacroContext
+                                :signals="macroSignals"
+                                title="Macro Outlook"
+                                source="Polymarket"
+                            />
+                        </v-col>
+                        <v-col cols="12">
+                            <v-card class="pa-3">
+                                <div class="d-flex align-center">
+                                    <v-icon size="small" class="mr-2">mdi-compare</v-icon>
+                                    <span class="text-subtitle-2">Macro Signal Alignment</span>
+                                    <v-spacer />
+                                    <v-chip :color="alignmentChip.color" size="small" variant="tonal">
+                                        {{ alignmentChip.label }}
+                                    </v-chip>
+                                </div>
+                                <div class="text-caption text-medium-emphasis mt-2">
+                                    {{ alignmentChip.note }}
+                                </div>
+                            </v-card>
+                        </v-col>
+                    </v-row>
                 </v-col>
             </v-row>
 
@@ -122,7 +152,7 @@
     import type { RiskTier } from '~/composables/useFusedScoring';
     import { usePortfolio } from '~/composables/usePortfolio';
     import { useAgentPipeline } from '~/composables/useAgentPipeline';
-    import { useMacroContext } from '~/composables/useRelationships';
+    import { useFredMacroContext, useMacroContext } from '~/composables/useRelationships';
 
     const router = useRouter();
 
@@ -196,6 +226,31 @@
     });
 
     const { signals: macroSignals } = useMacroContext();
+    const { signals: fredMacroSignals } = useFredMacroContext();
+
+    const alignmentChip = computed(() => {
+        const polyTrend = macroSignals.value[0]?.trend ?? 'flat';
+        const fredTrend = fredMacroSignals.value[0]?.trend ?? 'flat';
+        if (polyTrend === fredTrend) {
+            return {
+                label: 'Aligned',
+                color: 'success',
+                note: 'Market-implied probabilities and macro fundamentals are moving in the same direction.',
+            };
+        }
+        if (polyTrend === 'flat' || fredTrend === 'flat') {
+            return {
+                label: 'Mixed',
+                color: 'warning',
+                note: 'One source is neutral while the other trends, indicating partial agreement.',
+            };
+        }
+        return {
+            label: 'Divergent',
+            color: 'error',
+            note: 'Polymarket outlook and FRED fundamentals are pointing in different directions.',
+        };
+    });
 
     async function onScan() {
         if (!active.value) return;

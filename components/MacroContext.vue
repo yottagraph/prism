@@ -2,10 +2,13 @@
     <v-card class="pa-4 fill-height">
         <div class="d-flex align-center mb-3">
             <v-icon size="small" class="mr-2">mdi-earth</v-icon>
-            <span class="text-subtitle-2">Macro Context</span>
-            <span class="text-caption text-medium-emphasis ml-2">via Polymarket</span>
+            <span class="text-subtitle-2">{{ title }}</span>
+            <span class="text-caption text-medium-emphasis ml-2">via {{ source }}</span>
         </div>
         <div class="macro-grid">
+            <div v-if="!signals.length" class="text-caption text-medium-emphasis">
+                No live {{ source }} macro signals available.
+            </div>
             <div v-for="m in signals" :key="m.label" class="macro-row">
                 <div class="d-flex justify-space-between align-center mb-1">
                     <span class="text-body-2">{{ m.label }}</span>
@@ -41,7 +44,17 @@
 
 <script setup lang="ts">
     import type { MacroSignal } from '~/composables/useRelationships';
-    defineProps<{ signals: MacroSignal[] }>();
+    withDefaults(
+        defineProps<{
+            signals: MacroSignal[];
+            title?: string;
+            source?: string;
+        }>(),
+        {
+            title: 'Macro Context',
+            source: 'Polymarket',
+        }
+    );
 </script>
 
 <style scoped>

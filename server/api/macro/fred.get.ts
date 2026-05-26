@@ -7,11 +7,10 @@ export default defineEventHandler(async () => {
         return [];
     }
 
-    // Gateway proxy attempt. If the tenant has the lovelace-polymarket MCP wired,
-    // this endpoint can be routed through the org-scoped MCP path.
     const candidateUrls = [
-        `${gatewayUrl}/api/mcp/${tenantOrgId}/lovelace-polymarket/macro`,
-        `${gatewayUrl}/api/mcp/${tenantOrgId}/lovelace-polymarket/context`,
+        `${gatewayUrl}/api/mcp/${tenantOrgId}/lovelace-fred/macro`,
+        `${gatewayUrl}/api/mcp/${tenantOrgId}/lovelace-fred/context`,
+        `${gatewayUrl}/api/mcp/${tenantOrgId}/lovelace-fred/latest`,
     ];
 
     for (const url of candidateUrls) {
@@ -22,7 +21,7 @@ export default defineEventHandler(async () => {
             if (Array.isArray(res) && res.length) return res;
             if (Array.isArray(res?.signals) && res.signals.length) return res.signals;
         } catch {
-            // Try next endpoint.
+            // Try next candidate.
         }
     }
 

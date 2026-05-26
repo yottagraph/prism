@@ -2,7 +2,7 @@ import type { H3Event } from 'h3';
 
 import { makeCacheKey, readScoringCache, writeScoringCache } from './cache';
 import { extractDates, extractNumeric, getPropertyValues, getSchema, normalizePidMap } from './elemental';
-import { clampScore, seededScore } from './hash';
+import { clampScore } from './hash';
 
 interface SolvencyResult {
     score: number;
@@ -20,7 +20,7 @@ export async function computeSolvencyScore(
     const cached = await readScoringCache<SolvencyResult>(event, cacheKey);
     if (cached) return cached;
 
-    let score = seededScore(neid, 'fhs');
+    let score = 0;
     let hasRealData = false;
     const metrics: Array<{ label: string; value: string }> = [];
     const evidence: string[] = [];
@@ -72,14 +72,14 @@ export async function computeSolvencyScore(
             }
         }
     } catch (error) {
-        console.warn('[solvency] failed, using fallback', error);
+        console.warn('[solvency] failed', error);
     }
 
     const result: SolvencyResult = {
         score,
         hasRealData,
-        metrics: metrics.length ? metrics : [{ label: 'Fallback model', value: 'Seeded baseline' }],
-        evidence: evidence.length ? evidence : ['Fallback seeded score while source-specific metrics are sparse'],
+        metrics: metrics.length ? metrics : [{ label: 'Status', value: 'Elemental data unavailable' }],
+        evidence: evidence.length ? evidence : ['No solvency metrics returned from Elemental sources'],
     };
     await writeScoringCache(event, cacheKey, result);
     return result;

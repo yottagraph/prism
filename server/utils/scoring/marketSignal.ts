@@ -2,7 +2,7 @@ import type { H3Event } from 'h3';
 
 import { makeCacheKey, readScoringCache, writeScoringCache } from './cache';
 import { extractNumeric, getPropertyValues, getSchema, normalizePidMap } from './elemental';
-import { clampScore, seededScore } from './hash';
+import { clampScore } from './hash';
 
 interface MarketResult {
     score: number;
@@ -20,7 +20,7 @@ export async function computeMarketSignalScore(
     const cached = await readScoringCache<MarketResult>(event, cacheKey);
     if (cached) return cached;
 
-    let score = seededScore(neid, 'mkt');
+    let score = 0;
     let hasRealData = false;
     const metrics: Array<{ label: string; value: string }> = [];
     const evidence: string[] = [];
@@ -63,14 +63,14 @@ export async function computeMarketSignalScore(
             }
         }
     } catch (error) {
-        console.warn('[market signal] failed, using fallback', error);
+        console.warn('[market signal] failed', error);
     }
 
     const result: MarketResult = {
         score,
         hasRealData,
-        metrics: metrics.length ? metrics : [{ label: 'Fallback model', value: 'Seeded baseline' }],
-        evidence: evidence.length ? evidence : ['Fallback seeded score while market properties are sparse'],
+        metrics: metrics.length ? metrics : [{ label: 'Status', value: 'Elemental data unavailable' }],
+        evidence: evidence.length ? evidence : ['No market signals returned from Elemental sources'],
     };
     await writeScoringCache(event, cacheKey, result);
     return result;

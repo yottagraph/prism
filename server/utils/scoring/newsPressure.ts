@@ -2,7 +2,7 @@ import type { H3Event } from 'h3';
 
 import { makeCacheKey, readScoringCache, writeScoringCache } from './cache';
 import { extractNumeric, getPropertyValues, getSchema, normalizePidMap } from './elemental';
-import { clampScore, seededScore } from './hash';
+import { clampScore } from './hash';
 
 interface NewsResult {
     score: number;
@@ -20,7 +20,7 @@ export async function computeNewsPressureScore(
     const cached = await readScoringCache<NewsResult>(event, cacheKey);
     if (cached) return cached;
 
-    let score = seededScore(neid, 'news');
+    let score = 0;
     let hasRealData = false;
     const metrics: Array<{ label: string; value: string }> = [];
     const evidence: string[] = [];
@@ -58,14 +58,14 @@ export async function computeNewsPressureScore(
             }
         }
     } catch (error) {
-        console.warn('[news pressure] failed, using fallback', error);
+        console.warn('[news pressure] failed', error);
     }
 
     const result: NewsResult = {
         score,
         hasRealData,
-        metrics: metrics.length ? metrics : [{ label: 'Fallback model', value: 'Seeded baseline' }],
-        evidence: evidence.length ? evidence : ['Fallback seeded score while sentiment properties are sparse'],
+        metrics: metrics.length ? metrics : [{ label: 'Status', value: 'Elemental data unavailable' }],
+        evidence: evidence.length ? evidence : ['No news sentiment signals returned from Elemental sources'],
     };
     await writeScoringCache(event, cacheKey, result);
     return result;

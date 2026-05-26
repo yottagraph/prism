@@ -3,12 +3,7 @@ import type { H3Event } from 'h3';
 import { makeCacheKey, readScoringCache, writeScoringCache } from './cache';
 import { deriveDrivers, detectConflicts, confidence } from './fuse';
 import { findEntities, getEntityName, getSchema, normalizePidMap } from './elemental';
-import { hash32 } from './hash';
 import { scoreEntity } from './scoreEntity';
-
-function daysAgo(days: number) {
-    return new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
-}
 
 async function resolveNeighborNames(eids: string[], limit = 10): Promise<string[]> {
     const trimmed = eids.slice(0, limit);
@@ -64,43 +59,7 @@ async function getRelationships(neid: string) {
         linkedBy(pid.located_at, 'located_at', 'locations'),
     ]);
 
-    if (
-        !links.companies.length &&
-        !links.people.length &&
-        !links.instruments.length &&
-        !links.locations.length
-    ) {
-        const synthetic = (salt: string, relationship: string, count: number) =>
-            Array.from({ length: count }).map((_, idx) => ({
-                neid: `${salt}-${idx}`,
-                name: `${salt.replace('-', ' ')} ${1 + ((hash32(`${neid}|${salt}|${idx}`) % 20) as number)}`,
-                relationship,
-            }));
-        links.companies = synthetic('related-company', 'compensation_peer_of', 4);
-        links.people = synthetic('related-person', 'director_of', 4);
-        links.instruments = synthetic('related-instrument', 'issued_by', 3);
-        links.locations = synthetic('related-location', 'located_at', 2);
-    }
-
     return links;
-}
-
-function buildEvents(neid: string) {
-    const templates = [
-        { category: '8-K Item 5.02', title: 'Departure of principal officer', severity: 'high' as const },
-        { category: '8-K Item 4.01', title: 'Change of certifying accountant', severity: 'high' as const },
-        { category: '8-K Item 1.01', title: 'Entry into material agreement', severity: 'medium' as const },
-        { category: '8-K Item 2.04', title: 'Financial obligation trigger', severity: 'high' as const },
-        { category: '10-Q', title: 'Quarterly report filed', severity: 'low' as const },
-        { category: '8-K Item 8.01', title: 'Other events disclosed', severity: 'medium' as const },
-    ];
-    return Array.from({ length: 5 }).map((_, idx) => {
-        const item = templates[(hash32(`${neid}|event|${idx}`) % templates.length) | 0];
-        return {
-            date: daysAgo(5 + (hash32(`${neid}|event-day|${idx}`) % 220)),
-            ...item,
-        };
-    });
 }
 
 export async function getEntityProfile(event: H3Event, portfolioId: string, neid: string) {
@@ -123,7 +82,12 @@ export async function getEntityProfile(event: H3Event, portfolioId: string, neid
         entityType: null as string | null,
         properties: [] as Array<{ pid: number; name: string; value: string | number | null }>,
         relationships,
-        events: buildEvents(neid),
+        events: [] as Array<{
+            date: string;
+            category: string;
+            title: string;
+            severity: 'low' | 'medium' | 'high';
+        }>,
         scores: scored.scores,
         drivers: scored.drivers,
         conflicts: scored.conflicts,
@@ -146,8 +110,8 @@ export async function getEntityProfile(event: H3Event, portfolioId: string, neid
                 evidence: ['Market return/volatility/anomaly features'],
             },
             macro: {
-                metrics: [{ label: 'Recession probability', value: '18%' }],
-                evidence: ['Macro overlay (Polymarket proxy)'],
+                metrics: [{ label: 'Status', value: 'Macro signals loaded separately' }],
+                evidence: ['Macro context rendered from live Elemental-backed macro endpoints'],
             },
         },
     };

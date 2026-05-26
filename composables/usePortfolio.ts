@@ -9,15 +9,12 @@
 
 import { computed, ref } from 'vue';
 
-import seededPortfolioFixture from '~/assets/seeded-portfolios.json';
+import portfolioFixture from '~/assets/portfolios-fixture.json';
 import { searchEntities } from '~/utils/elementalHelpers';
 import {
     type EntityRiskScore,
     type RiskTier,
     type SourceFusionWeights,
-    deriveTier,
-    fuseScore,
-    seededEntityScore,
 } from './useFusedScoring';
 
 export interface PortfolioEntity {
@@ -86,14 +83,13 @@ const DEFAULT_WEIGHTS: SourceFusionWeights = {
     market: 0.15,
 };
 
-// Pre-seeded demo portfolios. Names are real, well-known issuers so entity
-// resolution against Elemental returns hits. Scoring is deterministic (seeded
-// by NEID) so the demo is reproducible without live agent runs.
+// Preloaded demo portfolios. Names are real, well-known issuers so entity
+// resolution against Elemental returns hits.
 function defaultPortfolios(): PortfolioDoc[] {
     const now = Date.now();
-    const seeded = (seededPortfolioFixture as any)?.portfolios;
-    if (Array.isArray(seeded) && seeded.length > 0) {
-        return seeded.map((portfolio: any) => ({
+    const fixturePortfolios = (portfolioFixture as any)?.portfolios;
+    if (Array.isArray(fixturePortfolios) && fixturePortfolios.length > 0) {
+        return fixturePortfolios.map((portfolio: any) => ({
             id: portfolio.id,
             name: portfolio.name,
             description: portfolio.description || '',
@@ -399,10 +395,12 @@ export function usePortfolio() {
             }
         } catch (e: any) {
             lastScanError.value = e?.message || 'Scan failed';
-            // Keep the old deterministic flow as a fallback so demo scans still work
-            // when the server-side route is unavailable.
+            // Best-effort resolution without local placeholder scoring when scan API is unavailable.
             for (const entity of ents) {
-                if (!opts.force && entity.neid && entity.scores) continue;
+                if (entity.neid && entity.scores && !opts.force) {
+                    scanProgress.value.done++;
+                    continue;
+                }
                 try {
                     if (!entity.neid || opts.force) {
                         const matches = await searchEntities(entity.inputName, {
@@ -415,24 +413,7 @@ export function usePortfolio() {
                             entity.resolutionError = undefined;
                         }
                     }
-                    const seed = entity.neid || entity.inputName;
-                    const subs = seededEntityScore(seed);
-                    const fused = fuseScore(subs, weights.value);
-                    entity.scores = {
-                        ...subs,
-                        fused,
-                        tier: deriveTier(fused),
-                        updatedAt: Date.now(),
-                    };
-                } catch {
-                    const subs = seededEntityScore(entity.inputName);
-                    const fused = fuseScore(subs, weights.value);
-                    entity.scores = {
-                        ...subs,
-                        fused,
-                        tier: deriveTier(fused),
-                        updatedAt: Date.now(),
-                    };
+                    entity.scores = null;
                 } finally {
                     scanProgress.value.done++;
                 }

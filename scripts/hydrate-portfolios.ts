@@ -1,21 +1,21 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-type SeedEntity = {
+type FixtureEntity = {
     inputName: string;
     resolvedName: string;
     neid: string | null;
 };
 
-type SeedPortfolio = {
+type FixturePortfolio = {
     id: string;
     name: string;
     description: string;
-    entities: SeedEntity[];
+    entities: FixtureEntity[];
 };
 
 function usage() {
-    console.log('Usage: tsx scripts/seed-portfolios.ts <gatewayUrl> <tenantOrgId> <qsApiKey>');
+    console.log('Usage: tsx scripts/hydrate-portfolios.ts <gatewayUrl> <tenantOrgId> <qsApiKey>');
 }
 
 async function resolveEntity(
@@ -23,7 +23,7 @@ async function resolveEntity(
     tenantOrgId: string,
     qsApiKey: string,
     query: string
-): Promise<SeedEntity> {
+): Promise<FixtureEntity> {
     try {
         const res = await fetch(`${gatewayUrl.replace(/\/$/, '')}/api/qs/${tenantOrgId}/entities/search`, {
             method: 'POST',
@@ -64,15 +64,15 @@ async function main() {
         process.exit(1);
     }
 
-    const sourcePath = path.resolve(process.cwd(), 'assets/seeded-portfolios.json');
+    const sourcePath = path.resolve(process.cwd(), 'assets/portfolios-fixture.json');
     const outputPath = sourcePath;
     const raw = JSON.parse(readFileSync(sourcePath, 'utf-8')) as {
-        portfolios: SeedPortfolio[];
+        portfolios: FixturePortfolio[];
     };
 
-    const portfolios: SeedPortfolio[] = [];
+    const portfolios: FixturePortfolio[] = [];
     for (const portfolio of raw.portfolios) {
-        const resolvedEntities: SeedEntity[] = [];
+        const resolvedEntities: FixtureEntity[] = [];
         for (const entity of portfolio.entities) {
             const resolved = await resolveEntity(gatewayUrl, tenantOrgId, qsApiKey, entity.inputName);
             resolvedEntities.push(resolved);
@@ -99,4 +99,3 @@ async function main() {
 }
 
 void main();
-

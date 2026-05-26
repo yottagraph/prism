@@ -7,13 +7,6 @@ export function hash32(input: string): number {
     return h >>> 0;
 }
 
-export function seededScore(seed: string, salt: string, min = 20, span = 75): number {
-    const h = hash32(`${seed}|${salt}`);
-    const u = (h % 10000) / 10000;
-    const biased = Math.pow(u, 0.85);
-    return Math.round(min + biased * span);
-}
-
 export function clampScore(v: number): number {
     return Math.max(0, Math.min(100, Math.round(v)));
 }

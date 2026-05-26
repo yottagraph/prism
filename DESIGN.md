@@ -107,7 +107,7 @@ Elemental resolves all of these by providing a unified context layer where entit
 
 | Step | Presenter says                                                                                                                                                                                 | On-screen action                                                                                                                 | Expected result                                                                                                                                                                                           |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1    | "Let me load a portfolio. This is a CLO with 40 mid-market issuers."                                                                                                                           | Select or create a portfolio from a pre-seeded list, or paste company names.                                                     | Portfolio loads. Agent activity begins — entity resolution kicks off visibly.                                                                                                                             |
+| 1    | "Let me load a portfolio. This is a CLO with 40 mid-market issuers."                                                                                                                           | Select or create a portfolio from a preloaded list, or paste company names.                                                      | Portfolio loads. Agent activity begins — entity resolution kicks off visibly.                                                                                                                             |
 | 2    | "Agents are now gathering context from Elemental. Watch — they're pulling SEC filings, news, stock signals, and prediction market indicators for each company."                                | Agent pipeline panel animates: Dialogue → History → Query → Composition per entity, with source badges (SEC, NEWS, STOCK, POLY). | Progressive loading — entities appear in the table as agents complete, sorted by fused risk.                                                                                                              |
 | 3    | "The portfolio is scored. The riskiest names are at the top. Let me show you why this one is flagged."                                                                                         | Click top-ranked entity. Entity Deep Dive opens.                                                                                 | Multi-source breakdown: solvency (from SEC), executive risk (from SEC), news pressure (from news), market signal (from stock), macro context (from Polymarket). Each lens shows score, drivers, evidence. |
 | 4    | "Each score traces back to source. This solvency score comes from leverage ratios in the 10-K. This news pressure score comes from three negative articles last week. Nothing is a black box." | Expand evidence panels for solvency and news pressure lenses.                                                                    | Filing citations with form type, date, section. Article citations with headline, outlet, date, sentiment.                                                                                                 |
@@ -516,9 +516,9 @@ Agents don't just retrieve relationships — they identify patterns that create 
 
 ---
 
-## 11. Pre-Seeded Demo Data
+## 11. Preloaded Demo Data
 
-The prototype should ship with 2-3 pre-seeded portfolios that demonstrate different risk profiles:
+The prototype should ship with 2-3 preloaded portfolios that demonstrate different risk profiles:
 
 | Portfolio                | Description                                                                                          | Entity Count | Why It's Interesting                                                                                                    |
 | ------------------------ | ---------------------------------------------------------------------------------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------- |
@@ -526,7 +526,7 @@ The prototype should ship with 2-3 pre-seeded portfolios that demonstrate differ
 | **Tech Growth**          | High-growth technology companies with governance-heavy signal profile                                | 15-20        | Executive turnover patterns, recent IPOs with limited filing history. Shows executive risk lens and staleness handling. |
 | **Distressed Watchlist** | Companies with known recent distress events (bankruptcy filings, delisting notices, auditor changes) | 10-15        | High-severity events and multi-source signal convergence. Shows the "known problem names rise to the top" narrative.    |
 
-Pre-seeded data is loaded from Elemental at build time and cached — the demo doesn't depend on live Elemental connectivity to start (but live refresh demonstrates real-time capability).
+Preloaded portfolio membership can be bundled as a fixture, but every score, relationship, and macro/fundamental signal must come from live Elemental-backed APIs at runtime.
 
 ---
 
@@ -586,7 +586,7 @@ portfolio-risk-prototype/
       cache.ts                    # KV cache implementation
       elemental.ts                # Elemental client wrapper
   scripts/
-    seed-portfolios.py            # Pre-seed demo portfolios from Elemental
+    hydrate-portfolios.ts         # Refresh portfolio fixture members from Elemental
   docs/
     PRD.md                        # This document
   .env.example
@@ -609,7 +609,7 @@ Expected env vars:
 | **Phase 1: Portfolio + Scoring**      | Days 4-10  | Agent pipeline (4 agents), portfolio load with parallel entity scanning, multi-source score fusion, Portfolio Overview with ranked table and source fusion bar |
 | **Phase 2: Entity Deep Dive**         | Days 11-15 | Entity profile with per-lens detail panels, risk driver cards, evidence drill-down, events timeline, assessment block                                          |
 | **Phase 3: Relationships**            | Days 16-20 | Relationship Explorer graph + structured views, cross-portfolio pattern detection, people/instruments/locations tables                                         |
-| **Phase 4: Agent Workspace + Polish** | Days 21-25 | Conversational chat, pipeline viewer animation, session history, cost/performance panel, pre-seeded demo portfolios, demo script rehearsal                     |
+| **Phase 4: Agent Workspace + Polish** | Days 21-25 | Conversational chat, pipeline viewer animation, session history, cost/performance panel, preloaded demo portfolios, demo script rehearsal                      |
 
 ---
 
@@ -630,7 +630,7 @@ Expected env vars:
 - [ ] Zero local data ingestion pipelines — all entity data sourced from Elemental.
 - [ ] KV cache reduces redundant Elemental calls by >50% during portfolio exploration.
 - [ ] Agent traces are complete and auditable — every pipeline run has per-step records.
-- [ ] Pre-seeded portfolios load without live Elemental connectivity.
+- [ ] Preloaded portfolios initialize correctly from the fixture.
 
 ### Buyer Outcome
 
@@ -642,7 +642,7 @@ A risk technology evaluator can explain the value proposition in one sentence:
 
 ## 15. Risks and Open Questions
 
-1. **Elemental data coverage** — the demo quality depends on how many of the pre-seeded entities have rich data across all four sources in Elemental. Entities with only SEC data will show sparse news/market panels. Mitigation: choose pre-seeded portfolios based on known Elemental coverage.
+1. **Elemental data coverage** — the demo quality depends on how many of the preloaded entities have rich data across all four sources in Elemental. Entities with only SEC data will show sparse news/market panels. Mitigation: choose preloaded portfolios based on known Elemental coverage.
 
 2. **Elemental latency at scale** — 30-entity portfolio with 1-hop relationships could mean hundreds of Elemental calls. The History Agent's parallel fan-out with bounded concurrency (8-10 concurrent calls) and KV cache are the mitigation. If Elemental latency is >2s per call, portfolio load will exceed the 120-second target.
 
@@ -704,13 +704,11 @@ The prototype never modifies Elemental. It reads from Elemental, applies analyti
 
 ## Status
 
-Initial scaffold complete. All four UI surfaces are wired with the prefs-backed
-portfolio store, deterministic seeded scoring, and a simulated four-agent
-pipeline. Live entity resolution against the gateway runs on portfolio scan;
-multi-source data (SEC fundamentals, news sentiment, market signals, Polymarket
-macro) is currently mocked with deterministic seeded values so the demo is
-reproducible — replacing the seeded helpers with real Query Agent output is the
-next step.
+Core scaffold complete. All four UI surfaces are wired with the prefs-backed
+portfolio store, Nitro routes, and SSE-driven scan/activity flows. Portfolio
+scans resolve entities and compute lens scores from Elemental-backed APIs.
+Legacy placeholder fundamentals, placeholder relationship/event generation, and
+hardcoded macro fallbacks have been removed from runtime scoring/profile paths.
 
 ## Modules
 
@@ -725,7 +723,7 @@ portfolios can be created from pasted entity-name lists.
 ### Entity Deep Dive (`pages/entity/[neid].vue`)
 
 Header with NEID + fused-risk chip; expandable per-lens detail panels with
-mock fundamentals, governance metrics, news sentiment, and market signals;
+live fundamentals, governance metrics, news sentiment, and market signals;
 top risk-driver cards with source-tagged evidence; relationship summary by
 type; events timeline; and an analyst assessment block whose severity choice
 and justification persist via `useAppFeaturePrefs('portfolio-risk', …)`.
@@ -741,20 +739,20 @@ geographic clusters.
 
 ### Agent Workspace (`pages/agents.vue`)
 
-Conversational chat that routes every message through the simulated four-agent
+Conversational chat that routes every message through the four-agent
 pipeline (Dialogue → History → Query → Composition) with a step-status viewer,
 a cost & performance panel (Elemental calls, cache hit rate, LLM tokens, est.
 cost, total duration), a live activity feed, and a session-history table.
-Includes seeded suggestion chips for the typical demo questions.
+Includes suggestion chips for the typical demo questions.
 
 ### Composables
 
 - `usePortfolio` — portfolio CRUD, active selection, scan orchestration with
   bounded concurrency. Persists via `useAppFeaturePrefs('portfolio-risk', …)`.
-- `useFusedScoring` — FNV-1a–seeded sub-scoring, weighted fusion, tier
-  derivation, confidence proxy, conflict detection, risk-driver library.
-- `useEntityProfile` — single-entity deep dive with name lookup, synthetic
-  relationships and events, in-memory cache.
+- `useFusedScoring` — weighted fusion, tier derivation, confidence proxy,
+  conflict detection, risk-driver library.
+- `useEntityProfile` — single-entity deep dive from server profile routes with
+  in-memory cache.
 - `useRelationships` — portfolio-wide graph + structured tables + pattern
   detection. Includes `getMacroContext()` for the Polymarket overlay.
 - `useAgentPipeline` — pipeline-step state machine, simulated runner,
@@ -769,12 +767,9 @@ Includes seeded suggestion chips for the typical demo questions.
 
 ### Known follow-ups
 
-- Replace deterministic seeded scoring with real Query Agent output (Python
-  ADK agents in `agents/` deployed to Vertex AI Agent Engine).
-- Wire the chat to a deployed agent via `useAgentChat` once the ADK pipeline
-  is registered with the tenant.
-- Replace synthetic relationship/event data in `useEntityProfile` /
-  `useRelationships` with real `findEntities()` + `getPropertyValues()` calls
-  against the relationship PIDs discovered from the schema.
-- Add live Polymarket fetch (lovelace-polymarket MCP) for the macro context
-  panel instead of static demo values.
+- Expand profile event enrichment so entity timelines include richer live
+  Elemental event coverage.
+- Continue hardening chat orchestration and analytical narratives via the
+  deployed ADK agent.
+- Add deeper relationship traversal and broader PID coverage for portfolio-level
+  pattern detection.

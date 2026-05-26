@@ -1,7 +1,7 @@
 /**
  * Reactive, persisted preferences for one feature within the
  * current app. Returns a reactive subtree of the app-prefs root
- * (`useAppPrefs()`), pre-seeded with the feature's defaults.
+ * (`useAppPrefs()`), initialized with the feature's defaults.
  *
  * Mutations flow up to the same single Firestore doc as
  * `useAppPrefs`; the feature name is just a property key inside

@@ -51,7 +51,7 @@ export async function scoreEntity(
             sec: solvency.hasRealData || executive.hasRealData,
             news: news.hasRealData,
             stock: market.hasRealData,
-            poly: true,
+            poly: false,
         },
     };
 }

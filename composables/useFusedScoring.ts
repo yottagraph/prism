@@ -2,11 +2,7 @@
  * Multi-source fused scoring.
  *
  * Each entity carries four per-lens scores (solvency / executive / news /
- * market) plus a fused composite. In the production pipeline these come
- * from the Query Agent's analytical modules; until those are wired the
- * UI uses a deterministic seeded score so the demo is reproducible and
- * the visual story (high-risk names rising to the top, conflicts between
- * lenses) still lands.
+ * market) plus a fused composite, all computed from Elemental-backed inputs.
  */
 
 export type RiskTier = 'critical' | 'high' | 'watch' | 'normal';
@@ -47,25 +43,6 @@ function hash32(input: string): number {
         h = Math.imul(h, 0x01000193);
     }
     return h >>> 0;
-}
-
-/** Convert a hash into a 0–100 score with a pleasant distribution. */
-function scoreFromHash(seed: string, salt: string): number {
-    const h = hash32(`${seed}|${salt}`);
-    // Map to 0..1 then squash toward the middle/high range with a mild bias
-    // (most names live in 30..85 — only a few are extreme).
-    const u = (h % 10000) / 10000;
-    const biased = Math.pow(u, 0.85);
-    return Math.round(20 + biased * 75);
-}
-
-export function seededEntityScore(seed: string): SubScores {
-    return {
-        solvency: scoreFromHash(seed, 'fhs'),
-        executive: scoreFromHash(seed, 'ers'),
-        news: scoreFromHash(seed, 'news'),
-        market: scoreFromHash(seed, 'mkt'),
-    };
 }
 
 export function fuseScore(s: SubScores, w: SourceFusionWeights = DEFAULT_WEIGHTS): number {

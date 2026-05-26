@@ -84,7 +84,7 @@ const _scopes: Partial<Record<PrefsScope, ScopeState>> = {};
 /**
  * Get-or-create the reactive root for a scope. Idempotent.
  *
- * Returns the root immediately, seeded with defaults from any
+ * Returns the root immediately, initialized with defaults from any
  * earlier `useAppPrefs(defaults)` calls. Hydration from storage is
  * async and merges on top (overlaying disk values onto in-memory
  * defaults without replacing subtree references — see `hydrateOnce`
@@ -348,7 +348,7 @@ async function hydrateOnce(scope: PrefsScope, state: ScopeState): Promise<void> 
     state.hydrated = true;
     markHydrationComplete(scope);
     if (dirty) {
-        // In-memory has fields that aren't on disk (newly-seeded
+        // In-memory has fields that aren't on disk (newly initialized
         // defaults). Persist them so the next session sees a populated
         // doc instead of re-seeding from code.
         scheduleWrite(scope, state);
@@ -380,7 +380,7 @@ function mergeIntoReactive(
         }
     }
     // Detect keys in target that don't exist in source — those are
-    // seeded defaults that need persisting.
+    // initialized defaults that need persisting.
     for (const k of Object.keys(target)) {
         if (!(k in source)) {
             dirty = true;
