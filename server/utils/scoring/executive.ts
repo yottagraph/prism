@@ -26,7 +26,7 @@ export async function computeExecutiveScore(
     const evidence: string[] = [];
 
     try {
-        const schema = await getSchema();
+        const schema = await getSchema(event);
         const pids = normalizePidMap(schema);
 
         const officerPid = pids.officer_of ?? pids.officer ?? pids.has_officer;
@@ -39,14 +39,18 @@ export async function computeExecutiveScore(
         if (relationshipPids.length) {
             let links = 0;
             for (const pid of relationshipPids) {
-                const eids = await findEntities({
-                    type: 'linked',
-                    linked: {
-                        expression: { type: 'is_entity', is_entity: { eid: neid } },
-                        pid,
-                        direction: 'incoming',
+                const eids = await findEntities(
+                    {
+                        type: 'linked',
+                        linked: {
+                            expression: { type: 'is_entity', is_entity: { eid: neid } },
+                            pid,
+                            direction: 'incoming',
+                        },
                     },
-                });
+                    50,
+                    event
+                );
                 links += eids.length;
             }
             hasRealData = true;
@@ -63,10 +67,13 @@ export async function computeExecutiveScore(
     const result: ExecutiveResult = {
         score,
         hasRealData,
-        metrics: metrics.length ? metrics : [{ label: 'Status', value: 'Elemental data unavailable' }],
-        evidence: evidence.length ? evidence : ['No executive risk signals returned from Elemental sources'],
+        metrics: metrics.length
+            ? metrics
+            : [{ label: 'Status', value: 'Elemental data unavailable' }],
+        evidence: evidence.length
+            ? evidence
+            : ['No executive risk signals returned from Elemental sources'],
     };
     await writeScoringCache(event, cacheKey, result);
     return result;
 }
-

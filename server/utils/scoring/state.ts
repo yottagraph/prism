@@ -3,7 +3,10 @@ import type { EntityRiskScore } from './types';
 type SnapshotKey = string;
 
 const latestScores = new Map<SnapshotKey, EntityRiskScore>();
-const latestCoverage = new Map<string, { sec: number; news: number; stock: number; poly: number }>();
+const latestCoverage = new Map<
+    string,
+    { sec: number; news: number; stock: number; poly: number }
+>();
 
 function key(portfolioId: string, neid: string) {
     return `${portfolioId}:${neid}`;
@@ -24,7 +27,11 @@ export function writeCoverage(
     latestCoverage.set(portfolioId, coverage);
 }
 
-export function readCoverage(portfolioId: string): { sec: number; news: number; stock: number; poly: number } {
+export function readCoverage(portfolioId: string): {
+    sec: number;
+    news: number;
+    stock: number;
+    poly: number;
+} {
     return latestCoverage.get(portfolioId) ?? { sec: 0, news: 0, stock: 0, poly: 0 };
 }
-

@@ -39,4 +39,3 @@ export function getActivityHistory(portfolioId?: string): AgentActivityEntry[] {
     if (!portfolioId) return [...history];
     return history.filter((entry) => entry.portfolioId === portfolioId);
 }
-

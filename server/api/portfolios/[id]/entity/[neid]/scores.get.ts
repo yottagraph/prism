@@ -8,4 +8,3 @@ export default defineEventHandler(async (event) => {
     }
     return await getEntityScoreBreakdown(event, portfolioId, neid);
 });
-

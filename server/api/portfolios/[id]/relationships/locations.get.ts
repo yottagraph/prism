@@ -23,4 +23,3 @@ export default defineEventHandler(async (event) => {
         entitiesPresent: node.connectsTo,
     }));
 });
-

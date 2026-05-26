@@ -34,8 +34,10 @@
                 </div>
                 <div class="text-body-1 font-weight-medium">{{ selectedNode.label }}</div>
                 <div class="text-caption text-medium-emphasis mb-2">
-                    {{ selectedNode.kind }} · connected to {{ selectedNode.connectsTo.length }} portfolio
-                    entit{{ selectedNode.connectsTo.length === 1 ? 'y' : 'ies' }}
+                    {{ selectedNode.kind }} · connected to
+                    {{ selectedNode.connectsTo.length }} portfolio entit{{
+                        selectedNode.connectsTo.length === 1 ? 'y' : 'ies'
+                    }}
                 </div>
                 <v-chip
                     v-for="nodeId in selectedNode.connectsTo"
@@ -178,7 +180,12 @@
                             </template>
                         </v-data-table>
                         <v-row v-else dense class="pa-3">
-                            <v-col v-for="loc in filteredLocations" :key="loc.name" cols="12" md="6">
+                            <v-col
+                                v-for="loc in filteredLocations"
+                                :key="loc.name"
+                                cols="12"
+                                md="6"
+                            >
                                 <v-sheet class="pa-3 map-node">
                                     <div class="text-subtitle-2">{{ loc.name }}</div>
                                     <div class="text-caption text-medium-emphasis">

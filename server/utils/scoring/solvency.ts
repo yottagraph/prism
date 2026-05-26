@@ -1,7 +1,13 @@
 import type { H3Event } from 'h3';
 
 import { makeCacheKey, readScoringCache, writeScoringCache } from './cache';
-import { extractDates, extractNumeric, getPropertyValues, getSchema, normalizePidMap } from './elemental';
+import {
+    extractDates,
+    extractNumeric,
+    getPropertyValues,
+    getSchema,
+    normalizePidMap,
+} from './elemental';
 import { clampScore } from './hash';
 
 interface SolvencyResult {
@@ -26,7 +32,7 @@ export async function computeSolvencyScore(
     const evidence: string[] = [];
 
     try {
-        const schema = await getSchema();
+        const schema = await getSchema(event);
         const pid = normalizePidMap(schema);
         const candidatePids = [
             pid.total_debt,
@@ -40,7 +46,7 @@ export async function computeSolvencyScore(
         ].filter((v): v is number => typeof v === 'number');
 
         if (candidatePids.length) {
-            const values = await getPropertyValues([neid], candidatePids);
+            const values = await getPropertyValues([neid], candidatePids, true, event);
             const debt = extractNumeric(values, pid.total_debt ?? -1)[0];
             const ebitda = extractNumeric(values, pid.ebitda ?? -1)[0];
             const opMargin = extractNumeric(values, pid.operating_margin ?? -1)[0];
@@ -48,25 +54,38 @@ export async function computeSolvencyScore(
             const filings = extractDates(values, pid.filing_date ?? pid.report_date ?? -1);
 
             const leverage = debt && ebitda ? Math.max(0, debt / Math.max(1, ebitda)) : null;
-            const coverage = ebitda && interest ? Math.max(0, ebitda / Math.max(1, interest)) : null;
+            const coverage =
+                ebitda && interest ? Math.max(0, ebitda / Math.max(1, interest)) : null;
             const freshestDays =
                 filings.length > 0
-                    ? Math.round((Date.now() - Math.max(...filings.map((d) => d.getTime()))) / 86_400_000)
+                    ? Math.round(
+                          (Date.now() - Math.max(...filings.map((d) => d.getTime()))) / 86_400_000
+                      )
                     : null;
 
-            if (leverage !== null || coverage !== null || opMargin !== undefined || freshestDays !== null) {
+            if (
+                leverage !== null ||
+                coverage !== null ||
+                opMargin !== undefined ||
+                freshestDays !== null
+            ) {
                 hasRealData = true;
                 let raw = 45;
                 if (leverage !== null) raw += Math.min(35, leverage * 4);
                 if (coverage !== null) raw += Math.max(-20, 12 - coverage * 3);
                 if (typeof opMargin === 'number') raw += opMargin < 0 ? 18 : opMargin < 8 ? 10 : 0;
-                if (freshestDays !== null) raw += Math.min(15, Math.max(0, freshestDays - 120) / 12);
+                if (freshestDays !== null)
+                    raw += Math.min(15, Math.max(0, freshestDays - 120) / 12);
                 score = clampScore(raw);
 
-                if (leverage !== null) metrics.push({ label: 'Net Debt / EBITDA', value: `${leverage.toFixed(2)}x` });
-                if (coverage !== null) metrics.push({ label: 'Interest Coverage', value: `${coverage.toFixed(2)}x` });
-                if (typeof opMargin === 'number') metrics.push({ label: 'Operating Margin', value: `${opMargin.toFixed(1)}%` });
-                if (freshestDays !== null) metrics.push({ label: 'Latest filing age', value: `${freshestDays}d` });
+                if (leverage !== null)
+                    metrics.push({ label: 'Net Debt / EBITDA', value: `${leverage.toFixed(2)}x` });
+                if (coverage !== null)
+                    metrics.push({ label: 'Interest Coverage', value: `${coverage.toFixed(2)}x` });
+                if (typeof opMargin === 'number')
+                    metrics.push({ label: 'Operating Margin', value: `${opMargin.toFixed(1)}%` });
+                if (freshestDays !== null)
+                    metrics.push({ label: 'Latest filing age', value: `${freshestDays}d` });
 
                 evidence.push('Computed from Elemental fundamentals and filing timestamps');
             }
@@ -78,10 +97,13 @@ export async function computeSolvencyScore(
     const result: SolvencyResult = {
         score,
         hasRealData,
-        metrics: metrics.length ? metrics : [{ label: 'Status', value: 'Elemental data unavailable' }],
-        evidence: evidence.length ? evidence : ['No solvency metrics returned from Elemental sources'],
+        metrics: metrics.length
+            ? metrics
+            : [{ label: 'Status', value: 'Elemental data unavailable' }],
+        evidence: evidence.length
+            ? evidence
+            : ['No solvency metrics returned from Elemental sources'],
     };
     await writeScoringCache(event, cacheKey, result);
     return result;
 }
-

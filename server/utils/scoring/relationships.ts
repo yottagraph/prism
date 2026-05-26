@@ -33,12 +33,12 @@ export interface PortfolioPattern {
     entities: string[];
 }
 
-async function resolveNames(eids: string[], limit = 20) {
+async function resolveNames(event: H3Event, eids: string[], limit = 20) {
     const trimmed = eids.slice(0, limit);
     return await Promise.all(
         trimmed.map(async (eid) => {
             try {
-                return { eid, name: await getEntityName(eid) };
+                return { eid, name: await getEntityName(eid, event) };
             } catch {
                 return { eid, name: eid };
             }
@@ -46,7 +46,12 @@ async function resolveNames(eids: string[], limit = 20) {
     );
 }
 
-async function linked(expression: object, pid?: number, direction: 'incoming' | 'outgoing' = 'outgoing') {
+async function linked(
+    event: H3Event,
+    expression: object,
+    pid?: number,
+    direction: 'incoming' | 'outgoing' = 'outgoing'
+) {
     if (!pid) return [] as string[];
     try {
         return await findEntities(
@@ -58,7 +63,8 @@ async function linked(expression: object, pid?: number, direction: 'incoming' | 
                     direction,
                 },
             },
-            20
+            20,
+            event
         );
     } catch {
         return [];
@@ -79,7 +85,7 @@ export async function buildRelationshipUniverse(event: H3Event, entities: Portfo
     const instrumentMap = new Map<string, GraphNode>();
     const locationMap = new Map<string, GraphNode>();
 
-    const schema = await getSchema().catch(() => ({ flavors: [], properties: [] }));
+    const schema = await getSchema(event).catch(() => ({ flavors: [], properties: [] }));
     const pid = normalizePidMap(schema);
     const pids = {
         company: pid.subsidiary_of ?? pid.compensation_peer_of,
@@ -93,27 +99,29 @@ export async function buildRelationshipUniverse(event: H3Event, entities: Portfo
         const expression = { type: 'is_entity', is_entity: { eid: entity.neid } };
 
         const [companyIds, personIds, ownerIds, instrumentIds, locationIds] = await Promise.all([
-            linked(expression, pids.company, 'outgoing'),
-            linked(expression, pids.people, 'incoming'),
-            linked(expression, pids.owner, 'incoming'),
-            linked(expression, pids.instrument, 'incoming'),
-            linked(expression, pids.location, 'outgoing'),
+            linked(event, expression, pids.company, 'outgoing'),
+            linked(event, expression, pids.people, 'incoming'),
+            linked(event, expression, pids.owner, 'incoming'),
+            linked(event, expression, pids.instrument, 'incoming'),
+            linked(event, expression, pids.location, 'outgoing'),
         ]);
 
-        const companies = await resolveNames(companyIds);
-        const people = await resolveNames([...personIds, ...ownerIds]);
-        const instruments = await resolveNames(instrumentIds);
-        const locations = await resolveNames(locationIds);
+        const companies = await resolveNames(event, companyIds);
+        const people = await resolveNames(event, [...personIds, ...ownerIds]);
+        const instruments = await resolveNames(event, instrumentIds);
+        const locations = await resolveNames(event, locationIds);
 
         for (const row of companies) {
             const id = `co-${row.eid}`;
-            if (!companyMap.has(id)) companyMap.set(id, { id, label: row.name, kind: 'company', connectsTo: [] });
+            if (!companyMap.has(id))
+                companyMap.set(id, { id, label: row.name, kind: 'company', connectsTo: [] });
             companyMap.get(id)!.connectsTo.push(`p-${entity.neid}`);
             edges.push({ source: `p-${entity.neid}`, target: id, relationship: 'subsidiary_of' });
         }
         for (const row of people) {
             const id = `pp-${row.eid}`;
-            if (!personMap.has(id)) personMap.set(id, { id, label: row.name, kind: 'person', connectsTo: [] });
+            if (!personMap.has(id))
+                personMap.set(id, { id, label: row.name, kind: 'person', connectsTo: [] });
             personMap.get(id)!.connectsTo.push(`p-${entity.neid}`);
             edges.push({ source: `p-${entity.neid}`, target: id, relationship: 'officer_of' });
         }
@@ -153,7 +161,9 @@ export async function buildRelationshipUniverse(event: H3Event, entities: Portfo
     };
 }
 
-export function detectPatterns(universe: Awaited<ReturnType<typeof buildRelationshipUniverse>>): PortfolioPattern[] {
+export function detectPatterns(
+    universe: Awaited<ReturnType<typeof buildRelationshipUniverse>>
+): PortfolioPattern[] {
     const patterns: PortfolioPattern[] = [];
     const people = universe.people.filter((node) => node.connectsTo.length >= 2);
     for (const person of people.slice(0, 4)) {
@@ -199,7 +209,8 @@ export function detectPatterns(universe: Awaited<ReturnType<typeof buildRelation
         patterns.push({
             kind: 'coordinated_departures',
             title: 'Coordinated executive departures detected',
-            description: 'Multiple entities show governance-event timing overlap in the same window.',
+            description:
+                'Multiple entities show governance-event timing overlap in the same window.',
             entities: universe.nodes
                 .filter((node) => node.kind === 'portfolio')
                 .slice(0, 3)
@@ -218,4 +229,3 @@ export function detectPatterns(universe: Awaited<ReturnType<typeof buildRelation
 
     return patterns;
 }
-

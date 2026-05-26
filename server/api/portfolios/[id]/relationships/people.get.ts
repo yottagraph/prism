@@ -26,4 +26,3 @@ export default defineEventHandler(async (event) => {
         departed: node.connectsTo.length % 5 === 0,
     }));
 });
-

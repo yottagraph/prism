@@ -249,7 +249,9 @@
                         <tr>
                             <td :colspan="columns.length">
                                 <div class="pa-3">
-                                    <div class="text-caption text-medium-emphasis mb-2">Agent trace</div>
+                                    <div class="text-caption text-medium-emphasis mb-2">
+                                        Agent trace
+                                    </div>
                                     <v-row dense>
                                         <v-col
                                             v-for="step in item.steps"
@@ -331,7 +333,11 @@
             const latest = events[events.length - 1];
             if (!latest) return;
             if (latest.event === 'function_call') {
-                pushActivity('History Agent', active.value?.name ?? 'portfolio', latest.data?.name ?? 'tool call');
+                pushActivity(
+                    'History Agent',
+                    active.value?.name ?? 'portfolio',
+                    latest.data?.name ?? 'tool call'
+                );
             } else if (latest.event === 'function_response') {
                 pushActivity(
                     'Query Agent',
@@ -339,7 +345,11 @@
                     `${latest.data?.name ?? 'tool'} response received`
                 );
             } else if (latest.event === 'text') {
-                pushActivity('Composition Agent', active.value?.name ?? 'portfolio', 'Narrative updated');
+                pushActivity(
+                    'Composition Agent',
+                    active.value?.name ?? 'portfolio',
+                    'Narrative updated'
+                );
             }
         },
         { deep: true }
@@ -386,7 +396,11 @@
     });
 
     function normalizeWeights() {
-        const sum = weights.value.solvency + weights.value.executive + weights.value.news + weights.value.market;
+        const sum =
+            weights.value.solvency +
+            weights.value.executive +
+            weights.value.news +
+            weights.value.market;
         if (sum <= 0) return;
         weights.value = {
             solvency: Number((weights.value.solvency / sum).toFixed(3)),

@@ -1,5 +1,11 @@
 import { clampScore, hash32 } from './hash';
-import type { EntityRiskScore, RiskDriver, RiskTier, SourceFusionWeights, SubScores } from './types';
+import type {
+    EntityRiskScore,
+    RiskDriver,
+    RiskTier,
+    SourceFusionWeights,
+    SubScores,
+} from './types';
 
 export const DEFAULT_WEIGHTS: SourceFusionWeights = {
     solvency: 0.4,
@@ -11,7 +17,10 @@ export const DEFAULT_WEIGHTS: SourceFusionWeights = {
 export function fuseScore(s: SubScores, w: SourceFusionWeights = DEFAULT_WEIGHTS): number {
     const sum = w.solvency + w.executive + w.news + w.market || 1;
     return clampScore(
-        (s.solvency * w.solvency + s.executive * w.executive + s.news * w.news + s.market * w.market) /
+        (s.solvency * w.solvency +
+            s.executive * w.executive +
+            s.news * w.news +
+            s.market * w.market) /
             sum
     );
 }
@@ -162,4 +171,3 @@ export function makeEntityRiskScore(
         updatedAt: Date.now(),
     };
 }
-

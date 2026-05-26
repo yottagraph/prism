@@ -38,7 +38,10 @@ async function writeFirestore<T>(db: Firestore, key: string, value: T, expiresAt
     );
 }
 
-export async function readScoringCache<T = unknown>(event: H3Event, key: string): Promise<T | null> {
+export async function readScoringCache<T = unknown>(
+    event: H3Event,
+    key: string
+): Promise<T | null> {
     const entry = inMemoryCache.get(key);
     if (entry && entry.expiresAt > now()) return entry.value as T;
 
@@ -81,4 +84,3 @@ export function makeCacheKey(
 ) {
     return `${portfolioId}:${neid}:${dataType}`;
 }
-

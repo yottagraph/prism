@@ -1,6 +1,12 @@
 import type { H3Event } from 'h3';
 
-import { confidence, deriveDrivers, detectConflicts, makeEntityRiskScore, DEFAULT_WEIGHTS } from './fuse';
+import {
+    confidence,
+    deriveDrivers,
+    detectConflicts,
+    makeEntityRiskScore,
+    DEFAULT_WEIGHTS,
+} from './fuse';
 import { computeExecutiveScore } from './executive';
 import { computeMarketSignalScore } from './marketSignal';
 import { computeNewsPressureScore } from './newsPressure';
@@ -36,15 +42,12 @@ export async function scoreEntity(
 
     return {
         scores,
-        drivers: deriveDrivers(
-            neid,
-            {
-                solvency: scores.solvency,
-                executive: scores.executive,
-                news: scores.news,
-                market: scores.market,
-            }
-        ),
+        drivers: deriveDrivers(neid, {
+            solvency: scores.solvency,
+            executive: scores.executive,
+            news: scores.news,
+            market: scores.market,
+        }),
         conflicts: detectConflicts(scores),
         confidenceLevel: confidence(scores),
         coverage: {
@@ -55,4 +58,3 @@ export async function scoreEntity(
         },
     };
 }
-

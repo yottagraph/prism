@@ -48,7 +48,10 @@
     const props = defineProps<{
         scores: EntityRiskScore;
         seed: string;
-        lensDetails?: Record<string, { metrics: Array<{ label: string; value: string }>; evidence: string[] }>;
+        lensDetails?: Record<
+            string,
+            { metrics: Array<{ label: string; value: string }>; evidence: string[] }
+        >;
     }>();
 
     function h(s: string, salt: string) {

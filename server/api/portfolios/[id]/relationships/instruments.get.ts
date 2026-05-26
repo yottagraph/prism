@@ -27,4 +27,3 @@ export default defineEventHandler(async (event) => {
         lender: node.label,
     }));
 });
-

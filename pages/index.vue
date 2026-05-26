@@ -45,7 +45,9 @@
                     All entities scored
                 </span>
                 <span v-else class="text-caption text-medium-emphasis">
-                    <v-icon size="x-small" color="warning" class="mr-1">mdi-information-outline</v-icon>
+                    <v-icon size="x-small" color="warning" class="mr-1"
+                        >mdi-information-outline</v-icon
+                    >
                     Run scan to resolve + score
                 </span>
             </div>
@@ -95,7 +97,11 @@
                                     <v-icon size="small" class="mr-2">mdi-compare</v-icon>
                                     <span class="text-subtitle-2">Macro Signal Alignment</span>
                                     <v-spacer />
-                                    <v-chip :color="alignmentChip.color" size="small" variant="tonal">
+                                    <v-chip
+                                        :color="alignmentChip.color"
+                                        size="small"
+                                        variant="tonal"
+                                    >
                                         {{ alignmentChip.label }}
                                     </v-chip>
                                 </div>

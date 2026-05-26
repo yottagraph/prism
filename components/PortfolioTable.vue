@@ -58,7 +58,11 @@
             <template v-slot:item.trend="{ item }">
                 <v-icon
                     :color="
-                        item.trend === 'up' ? 'error' : item.trend === 'down' ? 'success' : 'medium-emphasis'
+                        item.trend === 'up'
+                            ? 'error'
+                            : item.trend === 'down'
+                              ? 'success'
+                              : 'medium-emphasis'
                     "
                     size="small"
                 >

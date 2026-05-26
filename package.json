@@ -38,7 +38,6 @@
         "jose": "^5.9.6",
         "localforage": "^1.10.0",
         "mitt": "^3.0.1",
-        "prettier": "^3.5.3",
         "vuetify": "^3.8.5"
     },
     "devDependencies": {
@@ -53,6 +52,7 @@
         "husky": "^9.1.7",
         "lint-staged": "^16.1.6",
         "nuxt": "^3.16.0",
+        "prettier": "^3.8.3",
         "sass": "^1.84.0",
         "typescript": "^5.7.3",
         "vercel": "^50.13.2",

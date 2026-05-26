@@ -51,4 +51,3 @@ export interface EntityDescriptor {
     resolvedName: string;
     neid: string | null;
 }
-

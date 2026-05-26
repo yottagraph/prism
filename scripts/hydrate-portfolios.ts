@@ -25,18 +25,21 @@ async function resolveEntity(
     query: string
 ): Promise<FixtureEntity> {
     try {
-        const res = await fetch(`${gatewayUrl.replace(/\/$/, '')}/api/qs/${tenantOrgId}/entities/search`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Api-Key': qsApiKey,
-            },
-            body: JSON.stringify({
-                queries: [{ queryId: 1, query }],
-                includeNames: true,
-                maxResults: 1,
-            }),
-        });
+        const res = await fetch(
+            `${gatewayUrl.replace(/\/$/, '')}/api/qs/${tenantOrgId}/entities/search`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Api-Key': qsApiKey,
+                },
+                body: JSON.stringify({
+                    queries: [{ queryId: 1, query }],
+                    includeNames: true,
+                    maxResults: 1,
+                }),
+            }
+        );
         if (!res.ok) throw new Error(`status ${res.status}`);
         const data = (await res.json()) as any;
         const match = data?.results?.[0]?.matches?.[0];
@@ -74,7 +77,12 @@ async function main() {
     for (const portfolio of raw.portfolios) {
         const resolvedEntities: FixtureEntity[] = [];
         for (const entity of portfolio.entities) {
-            const resolved = await resolveEntity(gatewayUrl, tenantOrgId, qsApiKey, entity.inputName);
+            const resolved = await resolveEntity(
+                gatewayUrl,
+                tenantOrgId,
+                qsApiKey,
+                entity.inputName
+            );
             resolvedEntities.push(resolved);
         }
         portfolios.push({

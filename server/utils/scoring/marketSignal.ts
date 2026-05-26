@@ -26,7 +26,7 @@ export async function computeMarketSignalScore(
     const evidence: string[] = [];
 
     try {
-        const schema = await getSchema();
+        const schema = await getSchema(event);
         const pid = normalizePidMap(schema);
         const returnPid = pid.return_30d ?? pid.price_change_30d ?? pid.returns_30d;
         const volPid = pid.volatility_30d ?? pid.realized_volatility ?? pid.volatility;
@@ -37,27 +37,33 @@ export async function computeMarketSignalScore(
         );
 
         if (candidatePids.length) {
-            const values = await getPropertyValues([neid], candidatePids);
+            const values = await getPropertyValues([neid], candidatePids, true, event);
             const return30 = extractNumeric(values, returnPid ?? -1)[0];
             const vol30 = extractNumeric(values, volPid ?? -1)[0];
             const rsi = extractNumeric(values, rsiPid ?? -1)[0];
             const anomaly = extractNumeric(values, anomalyPid ?? -1)[0];
 
             if (
-                [return30, vol30, rsi, anomaly].some((v) => typeof v === 'number' && Number.isFinite(v))
+                [return30, vol30, rsi, anomaly].some(
+                    (v) => typeof v === 'number' && Number.isFinite(v)
+                )
             ) {
                 hasRealData = true;
-                const drawdownRisk = typeof return30 === 'number' ? Math.max(0, -return30) * 1.5 : 6;
+                const drawdownRisk =
+                    typeof return30 === 'number' ? Math.max(0, -return30) * 1.5 : 6;
                 const volRisk = typeof vol30 === 'number' ? Math.max(0, vol30 - 25) * 0.8 : 5;
-                const rsiRisk =
-                    typeof rsi === 'number' ? (rsi < 30 ? 10 : rsi > 70 ? 12 : 4) : 4;
+                const rsiRisk = typeof rsi === 'number' ? (rsi < 30 ? 10 : rsi > 70 ? 12 : 4) : 4;
                 const anomalyRisk = typeof anomaly === 'number' ? Math.min(15, anomaly * 6) : 3;
                 score = clampScore(35 + drawdownRisk + volRisk + rsiRisk + anomalyRisk);
 
-                if (typeof return30 === 'number') metrics.push({ label: '30d return', value: `${return30.toFixed(1)}%` });
-                if (typeof vol30 === 'number') metrics.push({ label: '30d volatility', value: `${vol30.toFixed(1)}%` });
-                if (typeof rsi === 'number') metrics.push({ label: 'RSI (14)', value: `${rsi.toFixed(1)}` });
-                if (typeof anomaly === 'number') metrics.push({ label: 'Anomaly flags', value: `${Math.round(anomaly)}` });
+                if (typeof return30 === 'number')
+                    metrics.push({ label: '30d return', value: `${return30.toFixed(1)}%` });
+                if (typeof vol30 === 'number')
+                    metrics.push({ label: '30d volatility', value: `${vol30.toFixed(1)}%` });
+                if (typeof rsi === 'number')
+                    metrics.push({ label: 'RSI (14)', value: `${rsi.toFixed(1)}` });
+                if (typeof anomaly === 'number')
+                    metrics.push({ label: 'Anomaly flags', value: `${Math.round(anomaly)}` });
 
                 evidence.push('Computed from Elemental market signal properties');
             }
@@ -69,10 +75,13 @@ export async function computeMarketSignalScore(
     const result: MarketResult = {
         score,
         hasRealData,
-        metrics: metrics.length ? metrics : [{ label: 'Status', value: 'Elemental data unavailable' }],
-        evidence: evidence.length ? evidence : ['No market signals returned from Elemental sources'],
+        metrics: metrics.length
+            ? metrics
+            : [{ label: 'Status', value: 'Elemental data unavailable' }],
+        evidence: evidence.length
+            ? evidence
+            : ['No market signals returned from Elemental sources'],
     };
     await writeScoringCache(event, cacheKey, result);
     return result;
 }
-

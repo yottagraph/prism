@@ -26,7 +26,7 @@ export async function computeNewsPressureScore(
     const evidence: string[] = [];
 
     try {
-        const schema = await getSchema();
+        const schema = await getSchema(event);
         const pid = normalizePidMap(schema);
         const sentimentPid = pid.sentiment ?? pid.news_sentiment ?? pid.article_sentiment;
         const mentionPid = pid.mention_velocity ?? pid.mentions_30d ?? pid.article_count;
@@ -35,7 +35,7 @@ export async function computeNewsPressureScore(
             (v): v is number => typeof v === 'number'
         );
         if (candidatePids.length) {
-            const values = await getPropertyValues([neid], candidatePids);
+            const values = await getPropertyValues([neid], candidatePids, true, event);
             const sentimentValues = extractNumeric(values, sentimentPid ?? -1);
             const mentionValues = extractNumeric(values, mentionPid ?? -1);
             const articleValues = extractNumeric(values, articlePid ?? -1);
@@ -49,7 +49,9 @@ export async function computeNewsPressureScore(
                 const mentions = mentionValues[0] ?? 0;
                 const articles = articleValues[0] ?? 0;
                 const adverse = sentimentAvg < 0 ? Math.abs(sentimentAvg) * 60 : 0;
-                score = clampScore(30 + adverse + Math.min(25, mentions * 1.2) + Math.min(20, articles * 0.7));
+                score = clampScore(
+                    30 + adverse + Math.min(25, mentions * 1.2) + Math.min(20, articles * 0.7)
+                );
 
                 metrics.push({ label: 'Avg sentiment', value: `${sentimentAvg.toFixed(2)}` });
                 metrics.push({ label: 'Mention velocity', value: `${mentions.toFixed(1)}` });
@@ -64,10 +66,13 @@ export async function computeNewsPressureScore(
     const result: NewsResult = {
         score,
         hasRealData,
-        metrics: metrics.length ? metrics : [{ label: 'Status', value: 'Elemental data unavailable' }],
-        evidence: evidence.length ? evidence : ['No news sentiment signals returned from Elemental sources'],
+        metrics: metrics.length
+            ? metrics
+            : [{ label: 'Status', value: 'Elemental data unavailable' }],
+        evidence: evidence.length
+            ? evidence
+            : ['No news sentiment signals returned from Elemental sources'],
     };
     await writeScoringCache(event, cacheKey, result);
     return result;
 }
-

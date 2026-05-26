@@ -94,17 +94,23 @@ export function useRelationships(portfolio: import('vue').Ref<PortfolioDoc | nul
             const encoded = encodeURIComponent(JSON.stringify(entities));
             const base = `/api/portfolios/${value.id}/relationships`;
             try {
-                const [graphRes, companiesRes, peopleRes, instrumentsRes, locationsRes, patternsRes] =
-                    await Promise.all([
-                        $fetch<{ nodes: GraphNode[]; edges: GraphEdge[] }>(
-                            `${base}/graph?entities=${encoded}`
-                        ),
-                        $fetch<RelatedCompanyRow[]>(`${base}/companies?entities=${encoded}`),
-                        $fetch<PersonRow[]>(`${base}/people?entities=${encoded}`),
-                        $fetch<InstrumentRow[]>(`${base}/instruments?entities=${encoded}`),
-                        $fetch<LocationRow[]>(`${base}/locations?entities=${encoded}`),
-                        $fetch<PortfolioPattern[]>(`${base}/patterns?entities=${encoded}`),
-                    ]);
+                const [
+                    graphRes,
+                    companiesRes,
+                    peopleRes,
+                    instrumentsRes,
+                    locationsRes,
+                    patternsRes,
+                ] = await Promise.all([
+                    $fetch<{ nodes: GraphNode[]; edges: GraphEdge[] }>(
+                        `${base}/graph?entities=${encoded}`
+                    ),
+                    $fetch<RelatedCompanyRow[]>(`${base}/companies?entities=${encoded}`),
+                    $fetch<PersonRow[]>(`${base}/people?entities=${encoded}`),
+                    $fetch<InstrumentRow[]>(`${base}/instruments?entities=${encoded}`),
+                    $fetch<LocationRow[]>(`${base}/locations?entities=${encoded}`),
+                    $fetch<PortfolioPattern[]>(`${base}/patterns?entities=${encoded}`),
+                ]);
                 remoteGraph.value = graphRes;
                 remoteCompanies.value = companiesRes;
                 remotePeople.value = peopleRes;
@@ -112,7 +118,10 @@ export function useRelationships(portfolio: import('vue').Ref<PortfolioDoc | nul
                 remoteLocations.value = locationsRes;
                 remotePatterns.value = patternsRes;
             } catch (error) {
-                console.warn('[useRelationships] failed to load Elemental relationship data', error);
+                console.warn(
+                    '[useRelationships] failed to load Elemental relationship data',
+                    error
+                );
                 remoteGraph.value = { nodes: [], edges: [] };
                 remoteCompanies.value = [];
                 remotePeople.value = [];

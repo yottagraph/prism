@@ -83,9 +83,16 @@
                         <v-card class="pa-4 mb-3">
                             <div class="text-subtitle-2 mb-3">Macro Context</div>
                             <v-row dense>
-                                <v-col v-for="signal in macroSignals" :key="signal.label" cols="12" sm="6">
+                                <v-col
+                                    v-for="signal in macroSignals"
+                                    :key="signal.label"
+                                    cols="12"
+                                    sm="6"
+                                >
                                     <v-sheet class="pa-3 relation-card">
-                                        <div class="text-caption text-medium-emphasis">{{ signal.label }}</div>
+                                        <div class="text-caption text-medium-emphasis">
+                                            {{ signal.label }}
+                                        </div>
                                         <div class="text-h6 font-mono">{{ signal.value }}%</div>
                                         <div class="text-caption">{{ signal.note }}</div>
                                     </v-sheet>

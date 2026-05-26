@@ -1,2803 +1,2803 @@
 {
-  "generatedAt": "2026-05-26T20:07:47Z",
-  "portfolios": [
-    {
-      "id": "clo-mid-market",
-      "name": "CLO Mid-Market",
-      "description": "Mid-cap industrial and service issuers typical of a CLO.",
-      "entities": [
+    "generatedAt": "2026-05-26T20:07:47Z",
+    "portfolios": [
         {
-          "inputName": "Ford Motor Company",
-          "resolvedName": "Ford Motor Company",
-          "neid": null
+            "id": "clo-mid-market",
+            "name": "CLO Mid-Market",
+            "description": "Mid-cap industrial and service issuers typical of a CLO.",
+            "entities": [
+                {
+                    "inputName": "Ford Motor Company",
+                    "resolvedName": "Ford Motor Company",
+                    "neid": null
+                },
+                {
+                    "inputName": "General Motors",
+                    "resolvedName": "General Motors",
+                    "neid": null
+                },
+                {
+                    "inputName": "Carnival Corporation",
+                    "resolvedName": "Carnival Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "Macy's",
+                    "resolvedName": "Macy's",
+                    "neid": null
+                },
+                {
+                    "inputName": "Bed Bath & Beyond",
+                    "resolvedName": "Bed Bath & Beyond",
+                    "neid": null
+                },
+                {
+                    "inputName": "AMC Entertainment",
+                    "resolvedName": "AMC Entertainment",
+                    "neid": null
+                },
+                {
+                    "inputName": "Hertz Global",
+                    "resolvedName": "Hertz Global",
+                    "neid": null
+                },
+                {
+                    "inputName": "United States Steel",
+                    "resolvedName": "United States Steel",
+                    "neid": null
+                },
+                {
+                    "inputName": "Cleveland-Cliffs",
+                    "resolvedName": "Cleveland-Cliffs",
+                    "neid": null
+                },
+                {
+                    "inputName": "Wynn Resorts",
+                    "resolvedName": "Wynn Resorts",
+                    "neid": null
+                },
+                {
+                    "inputName": "Las Vegas Sands",
+                    "resolvedName": "Las Vegas Sands",
+                    "neid": null
+                },
+                {
+                    "inputName": "Royal Caribbean",
+                    "resolvedName": "Royal Caribbean",
+                    "neid": null
+                },
+                {
+                    "inputName": "JetBlue Airways",
+                    "resolvedName": "JetBlue Airways",
+                    "neid": null
+                },
+                {
+                    "inputName": "American Airlines",
+                    "resolvedName": "American Airlines",
+                    "neid": null
+                },
+                {
+                    "inputName": "Delta Air Lines",
+                    "resolvedName": "Delta Air Lines",
+                    "neid": null
+                },
+                {
+                    "inputName": "Norwegian Cruise Line",
+                    "resolvedName": "Norwegian Cruise Line",
+                    "neid": null
+                },
+                {
+                    "inputName": "Spirit Airlines",
+                    "resolvedName": "Spirit Airlines",
+                    "neid": null
+                },
+                {
+                    "inputName": "Chesapeake Energy",
+                    "resolvedName": "Chesapeake Energy",
+                    "neid": null
+                },
+                {
+                    "inputName": "Occidental Petroleum",
+                    "resolvedName": "Occidental Petroleum",
+                    "neid": null
+                },
+                {
+                    "inputName": "Halliburton",
+                    "resolvedName": "Halliburton",
+                    "neid": null
+                },
+                {
+                    "inputName": "Schlumberger",
+                    "resolvedName": "Schlumberger",
+                    "neid": null
+                },
+                {
+                    "inputName": "Marathon Oil",
+                    "resolvedName": "Marathon Oil",
+                    "neid": null
+                },
+                {
+                    "inputName": "Sunrun",
+                    "resolvedName": "Sunrun",
+                    "neid": null
+                },
+                {
+                    "inputName": "Plug Power",
+                    "resolvedName": "Plug Power",
+                    "neid": null
+                },
+                {
+                    "inputName": "Beyond Meat",
+                    "resolvedName": "Beyond Meat",
+                    "neid": null
+                },
+                {
+                    "inputName": "Peloton Interactive",
+                    "resolvedName": "Peloton Interactive",
+                    "neid": null
+                },
+                {
+                    "inputName": "GameStop",
+                    "resolvedName": "GameStop",
+                    "neid": null
+                },
+                {
+                    "inputName": "Rite Aid",
+                    "resolvedName": "Rite Aid",
+                    "neid": null
+                },
+                {
+                    "inputName": "CVS Health",
+                    "resolvedName": "CVS Health",
+                    "neid": null
+                },
+                {
+                    "inputName": "Walgreens Boots Alliance",
+                    "resolvedName": "Walgreens Boots Alliance",
+                    "neid": null
+                }
+            ]
         },
         {
-          "inputName": "General Motors",
-          "resolvedName": "General Motors",
-          "neid": null
+            "id": "tech-growth",
+            "name": "Tech Growth",
+            "description": "High-growth tech with governance-heavy signal profile.",
+            "entities": [
+                {
+                    "inputName": "Snowflake",
+                    "resolvedName": "Snowflake",
+                    "neid": null
+                },
+                {
+                    "inputName": "Datadog",
+                    "resolvedName": "Datadog",
+                    "neid": null
+                },
+                {
+                    "inputName": "Cloudflare",
+                    "resolvedName": "Cloudflare",
+                    "neid": null
+                },
+                {
+                    "inputName": "MongoDB",
+                    "resolvedName": "MongoDB",
+                    "neid": null
+                },
+                {
+                    "inputName": "CrowdStrike",
+                    "resolvedName": "CrowdStrike",
+                    "neid": null
+                },
+                {
+                    "inputName": "Palantir Technologies",
+                    "resolvedName": "Palantir Technologies",
+                    "neid": null
+                },
+                {
+                    "inputName": "Coinbase",
+                    "resolvedName": "Coinbase",
+                    "neid": null
+                },
+                {
+                    "inputName": "Robinhood",
+                    "resolvedName": "Robinhood",
+                    "neid": null
+                },
+                {
+                    "inputName": "Shopify",
+                    "resolvedName": "Shopify",
+                    "neid": null
+                },
+                {
+                    "inputName": "Roblox",
+                    "resolvedName": "Roblox",
+                    "neid": null
+                },
+                {
+                    "inputName": "Unity Software",
+                    "resolvedName": "Unity Software",
+                    "neid": null
+                },
+                {
+                    "inputName": "DoorDash",
+                    "resolvedName": "DoorDash",
+                    "neid": null
+                },
+                {
+                    "inputName": "Airbnb",
+                    "resolvedName": "Airbnb",
+                    "neid": null
+                },
+                {
+                    "inputName": "Lyft",
+                    "resolvedName": "Lyft",
+                    "neid": null
+                },
+                {
+                    "inputName": "Pinterest",
+                    "resolvedName": "Pinterest",
+                    "neid": null
+                }
+            ]
         },
         {
-          "inputName": "Carnival Corporation",
-          "resolvedName": "Carnival Corporation",
-          "neid": null
+            "id": "distressed-watchlist",
+            "name": "Distressed Watchlist",
+            "description": "Names with known recent distress signals.",
+            "entities": [
+                {
+                    "inputName": "WeWork",
+                    "resolvedName": "WeWork",
+                    "neid": null
+                },
+                {
+                    "inputName": "Bed Bath & Beyond",
+                    "resolvedName": "Bed Bath & Beyond",
+                    "neid": null
+                },
+                {
+                    "inputName": "Rite Aid",
+                    "resolvedName": "Rite Aid",
+                    "neid": null
+                },
+                {
+                    "inputName": "Yellow Corporation",
+                    "resolvedName": "Yellow Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "SVB Financial Group",
+                    "resolvedName": "SVB Financial Group",
+                    "neid": null
+                },
+                {
+                    "inputName": "Signature Bank",
+                    "resolvedName": "Signature Bank",
+                    "neid": null
+                },
+                {
+                    "inputName": "First Republic Bank",
+                    "resolvedName": "First Republic Bank",
+                    "neid": null
+                },
+                {
+                    "inputName": "Lordstown Motors",
+                    "resolvedName": "Lordstown Motors",
+                    "neid": null
+                },
+                {
+                    "inputName": "Mullen Automotive",
+                    "resolvedName": "Mullen Automotive",
+                    "neid": null
+                },
+                {
+                    "inputName": "Tupperware Brands",
+                    "resolvedName": "Tupperware Brands",
+                    "neid": null
+                }
+            ]
         },
         {
-          "inputName": "Macy's",
-          "resolvedName": "Macy's",
-          "neid": null
-        },
-        {
-          "inputName": "Bed Bath & Beyond",
-          "resolvedName": "Bed Bath & Beyond",
-          "neid": null
-        },
-        {
-          "inputName": "AMC Entertainment",
-          "resolvedName": "AMC Entertainment",
-          "neid": null
-        },
-        {
-          "inputName": "Hertz Global",
-          "resolvedName": "Hertz Global",
-          "neid": null
-        },
-        {
-          "inputName": "United States Steel",
-          "resolvedName": "United States Steel",
-          "neid": null
-        },
-        {
-          "inputName": "Cleveland-Cliffs",
-          "resolvedName": "Cleveland-Cliffs",
-          "neid": null
-        },
-        {
-          "inputName": "Wynn Resorts",
-          "resolvedName": "Wynn Resorts",
-          "neid": null
-        },
-        {
-          "inputName": "Las Vegas Sands",
-          "resolvedName": "Las Vegas Sands",
-          "neid": null
-        },
-        {
-          "inputName": "Royal Caribbean",
-          "resolvedName": "Royal Caribbean",
-          "neid": null
-        },
-        {
-          "inputName": "JetBlue Airways",
-          "resolvedName": "JetBlue Airways",
-          "neid": null
-        },
-        {
-          "inputName": "American Airlines",
-          "resolvedName": "American Airlines",
-          "neid": null
-        },
-        {
-          "inputName": "Delta Air Lines",
-          "resolvedName": "Delta Air Lines",
-          "neid": null
-        },
-        {
-          "inputName": "Norwegian Cruise Line",
-          "resolvedName": "Norwegian Cruise Line",
-          "neid": null
-        },
-        {
-          "inputName": "Spirit Airlines",
-          "resolvedName": "Spirit Airlines",
-          "neid": null
-        },
-        {
-          "inputName": "Chesapeake Energy",
-          "resolvedName": "Chesapeake Energy",
-          "neid": null
-        },
-        {
-          "inputName": "Occidental Petroleum",
-          "resolvedName": "Occidental Petroleum",
-          "neid": null
-        },
-        {
-          "inputName": "Halliburton",
-          "resolvedName": "Halliburton",
-          "neid": null
-        },
-        {
-          "inputName": "Schlumberger",
-          "resolvedName": "Schlumberger",
-          "neid": null
-        },
-        {
-          "inputName": "Marathon Oil",
-          "resolvedName": "Marathon Oil",
-          "neid": null
-        },
-        {
-          "inputName": "Sunrun",
-          "resolvedName": "Sunrun",
-          "neid": null
-        },
-        {
-          "inputName": "Plug Power",
-          "resolvedName": "Plug Power",
-          "neid": null
-        },
-        {
-          "inputName": "Beyond Meat",
-          "resolvedName": "Beyond Meat",
-          "neid": null
-        },
-        {
-          "inputName": "Peloton Interactive",
-          "resolvedName": "Peloton Interactive",
-          "neid": null
-        },
-        {
-          "inputName": "GameStop",
-          "resolvedName": "GameStop",
-          "neid": null
-        },
-        {
-          "inputName": "Rite Aid",
-          "resolvedName": "Rite Aid",
-          "neid": null
-        },
-        {
-          "inputName": "CVS Health",
-          "resolvedName": "CVS Health",
-          "neid": null
-        },
-        {
-          "inputName": "Walgreens Boots Alliance",
-          "resolvedName": "Walgreens Boots Alliance",
-          "neid": null
+            "id": "sp-500",
+            "name": "S&P 500",
+            "description": "Preloaded list of S&P 500 constituents.",
+            "entities": [
+                {
+                    "inputName": "3M",
+                    "resolvedName": "3M",
+                    "neid": null
+                },
+                {
+                    "inputName": "A. O. Smith",
+                    "resolvedName": "A. O. Smith",
+                    "neid": null
+                },
+                {
+                    "inputName": "Abbott Laboratories",
+                    "resolvedName": "Abbott Laboratories",
+                    "neid": null
+                },
+                {
+                    "inputName": "AbbVie",
+                    "resolvedName": "AbbVie",
+                    "neid": null
+                },
+                {
+                    "inputName": "Accenture",
+                    "resolvedName": "Accenture",
+                    "neid": null
+                },
+                {
+                    "inputName": "Adobe Inc.",
+                    "resolvedName": "Adobe Inc.",
+                    "neid": null
+                },
+                {
+                    "inputName": "Advanced Micro Devices",
+                    "resolvedName": "Advanced Micro Devices",
+                    "neid": null
+                },
+                {
+                    "inputName": "AES Corporation",
+                    "resolvedName": "AES Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "Aflac",
+                    "resolvedName": "Aflac",
+                    "neid": null
+                },
+                {
+                    "inputName": "Agilent Technologies",
+                    "resolvedName": "Agilent Technologies",
+                    "neid": null
+                },
+                {
+                    "inputName": "Air Products",
+                    "resolvedName": "Air Products",
+                    "neid": null
+                },
+                {
+                    "inputName": "Airbnb",
+                    "resolvedName": "Airbnb",
+                    "neid": null
+                },
+                {
+                    "inputName": "Akamai Technologies",
+                    "resolvedName": "Akamai Technologies",
+                    "neid": null
+                },
+                {
+                    "inputName": "Albemarle Corporation",
+                    "resolvedName": "Albemarle Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "Alexandria Real Estate Equities",
+                    "resolvedName": "Alexandria Real Estate Equities",
+                    "neid": null
+                },
+                {
+                    "inputName": "Align Technology",
+                    "resolvedName": "Align Technology",
+                    "neid": null
+                },
+                {
+                    "inputName": "Allegion",
+                    "resolvedName": "Allegion",
+                    "neid": null
+                },
+                {
+                    "inputName": "Alliant Energy",
+                    "resolvedName": "Alliant Energy",
+                    "neid": null
+                },
+                {
+                    "inputName": "Allstate",
+                    "resolvedName": "Allstate",
+                    "neid": null
+                },
+                {
+                    "inputName": "Alphabet Inc.",
+                    "resolvedName": "Alphabet Inc.",
+                    "neid": null
+                },
+                {
+                    "inputName": "Altria",
+                    "resolvedName": "Altria",
+                    "neid": null
+                },
+                {
+                    "inputName": "Amazon",
+                    "resolvedName": "Amazon",
+                    "neid": null
+                },
+                {
+                    "inputName": "Amcor",
+                    "resolvedName": "Amcor",
+                    "neid": null
+                },
+                {
+                    "inputName": "Ameren",
+                    "resolvedName": "Ameren",
+                    "neid": null
+                },
+                {
+                    "inputName": "American Electric Power",
+                    "resolvedName": "American Electric Power",
+                    "neid": null
+                },
+                {
+                    "inputName": "American Express",
+                    "resolvedName": "American Express",
+                    "neid": null
+                },
+                {
+                    "inputName": "American International Group",
+                    "resolvedName": "American International Group",
+                    "neid": null
+                },
+                {
+                    "inputName": "American Tower",
+                    "resolvedName": "American Tower",
+                    "neid": null
+                },
+                {
+                    "inputName": "American Water Works",
+                    "resolvedName": "American Water Works",
+                    "neid": null
+                },
+                {
+                    "inputName": "Ameriprise Financial",
+                    "resolvedName": "Ameriprise Financial",
+                    "neid": null
+                },
+                {
+                    "inputName": "Ametek",
+                    "resolvedName": "Ametek",
+                    "neid": null
+                },
+                {
+                    "inputName": "Amgen",
+                    "resolvedName": "Amgen",
+                    "neid": null
+                },
+                {
+                    "inputName": "Amphenol",
+                    "resolvedName": "Amphenol",
+                    "neid": null
+                },
+                {
+                    "inputName": "Analog Devices",
+                    "resolvedName": "Analog Devices",
+                    "neid": null
+                },
+                {
+                    "inputName": "Aon plc",
+                    "resolvedName": "Aon plc",
+                    "neid": null
+                },
+                {
+                    "inputName": "APA Corporation",
+                    "resolvedName": "APA Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "Apollo Global Management",
+                    "resolvedName": "Apollo Global Management",
+                    "neid": null
+                },
+                {
+                    "inputName": "Apple Inc.",
+                    "resolvedName": "Apple Inc.",
+                    "neid": null
+                },
+                {
+                    "inputName": "Applied Materials",
+                    "resolvedName": "Applied Materials",
+                    "neid": null
+                },
+                {
+                    "inputName": "AppLovin",
+                    "resolvedName": "AppLovin",
+                    "neid": null
+                },
+                {
+                    "inputName": "Aptiv",
+                    "resolvedName": "Aptiv",
+                    "neid": null
+                },
+                {
+                    "inputName": "Arch Capital Group",
+                    "resolvedName": "Arch Capital Group",
+                    "neid": null
+                },
+                {
+                    "inputName": "Archer Daniels Midland",
+                    "resolvedName": "Archer Daniels Midland",
+                    "neid": null
+                },
+                {
+                    "inputName": "Ares Management",
+                    "resolvedName": "Ares Management",
+                    "neid": null
+                },
+                {
+                    "inputName": "Arista Networks",
+                    "resolvedName": "Arista Networks",
+                    "neid": null
+                },
+                {
+                    "inputName": "Arthur J. Gallagher & Co.",
+                    "resolvedName": "Arthur J. Gallagher & Co.",
+                    "neid": null
+                },
+                {
+                    "inputName": "Assurant",
+                    "resolvedName": "Assurant",
+                    "neid": null
+                },
+                {
+                    "inputName": "AT&T",
+                    "resolvedName": "AT&T",
+                    "neid": null
+                },
+                {
+                    "inputName": "Atmos Energy",
+                    "resolvedName": "Atmos Energy",
+                    "neid": null
+                },
+                {
+                    "inputName": "Autodesk",
+                    "resolvedName": "Autodesk",
+                    "neid": null
+                },
+                {
+                    "inputName": "Automatic Data Processing",
+                    "resolvedName": "Automatic Data Processing",
+                    "neid": null
+                },
+                {
+                    "inputName": "AutoZone",
+                    "resolvedName": "AutoZone",
+                    "neid": null
+                },
+                {
+                    "inputName": "AvalonBay Communities",
+                    "resolvedName": "AvalonBay Communities",
+                    "neid": null
+                },
+                {
+                    "inputName": "Avery Dennison",
+                    "resolvedName": "Avery Dennison",
+                    "neid": null
+                },
+                {
+                    "inputName": "Axon Enterprise",
+                    "resolvedName": "Axon Enterprise",
+                    "neid": null
+                },
+                {
+                    "inputName": "Baker Hughes",
+                    "resolvedName": "Baker Hughes",
+                    "neid": null
+                },
+                {
+                    "inputName": "Ball Corporation",
+                    "resolvedName": "Ball Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "Bank of America",
+                    "resolvedName": "Bank of America",
+                    "neid": null
+                },
+                {
+                    "inputName": "Baxter International",
+                    "resolvedName": "Baxter International",
+                    "neid": null
+                },
+                {
+                    "inputName": "Becton Dickinson",
+                    "resolvedName": "Becton Dickinson",
+                    "neid": null
+                },
+                {
+                    "inputName": "Berkshire Hathaway",
+                    "resolvedName": "Berkshire Hathaway",
+                    "neid": null
+                },
+                {
+                    "inputName": "Best Buy",
+                    "resolvedName": "Best Buy",
+                    "neid": null
+                },
+                {
+                    "inputName": "Bio-Techne",
+                    "resolvedName": "Bio-Techne",
+                    "neid": null
+                },
+                {
+                    "inputName": "Biogen",
+                    "resolvedName": "Biogen",
+                    "neid": null
+                },
+                {
+                    "inputName": "BlackRock",
+                    "resolvedName": "BlackRock",
+                    "neid": null
+                },
+                {
+                    "inputName": "Blackstone Inc.",
+                    "resolvedName": "Blackstone Inc.",
+                    "neid": null
+                },
+                {
+                    "inputName": "Block, Inc.",
+                    "resolvedName": "Block, Inc.",
+                    "neid": null
+                },
+                {
+                    "inputName": "BNY Mellon",
+                    "resolvedName": "BNY Mellon",
+                    "neid": null
+                },
+                {
+                    "inputName": "Boeing",
+                    "resolvedName": "Boeing",
+                    "neid": null
+                },
+                {
+                    "inputName": "Booking Holdings",
+                    "resolvedName": "Booking Holdings",
+                    "neid": null
+                },
+                {
+                    "inputName": "Boston Scientific",
+                    "resolvedName": "Boston Scientific",
+                    "neid": null
+                },
+                {
+                    "inputName": "Bristol Myers Squibb",
+                    "resolvedName": "Bristol Myers Squibb",
+                    "neid": null
+                },
+                {
+                    "inputName": "Broadcom",
+                    "resolvedName": "Broadcom",
+                    "neid": null
+                },
+                {
+                    "inputName": "Broadridge Financial Solutions",
+                    "resolvedName": "Broadridge Financial Solutions",
+                    "neid": null
+                },
+                {
+                    "inputName": "Brown & Brown",
+                    "resolvedName": "Brown & Brown",
+                    "neid": null
+                },
+                {
+                    "inputName": "Brown–Forman",
+                    "resolvedName": "Brown–Forman",
+                    "neid": null
+                },
+                {
+                    "inputName": "Builders FirstSource",
+                    "resolvedName": "Builders FirstSource",
+                    "neid": null
+                },
+                {
+                    "inputName": "Bunge Global",
+                    "resolvedName": "Bunge Global",
+                    "neid": null
+                },
+                {
+                    "inputName": "BXP, Inc.",
+                    "resolvedName": "BXP, Inc.",
+                    "neid": null
+                },
+                {
+                    "inputName": "C.H. Robinson",
+                    "resolvedName": "C.H. Robinson",
+                    "neid": null
+                },
+                {
+                    "inputName": "Cadence Design Systems",
+                    "resolvedName": "Cadence Design Systems",
+                    "neid": null
+                },
+                {
+                    "inputName": "Camden Property Trust",
+                    "resolvedName": "Camden Property Trust",
+                    "neid": null
+                },
+                {
+                    "inputName": "Campbell's Company",
+                    "resolvedName": "Campbell's Company",
+                    "neid": null
+                },
+                {
+                    "inputName": "Capital One",
+                    "resolvedName": "Capital One",
+                    "neid": null
+                },
+                {
+                    "inputName": "Cardinal Health",
+                    "resolvedName": "Cardinal Health",
+                    "neid": null
+                },
+                {
+                    "inputName": "Carnival Corporation",
+                    "resolvedName": "Carnival Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "Carrier Global",
+                    "resolvedName": "Carrier Global",
+                    "neid": null
+                },
+                {
+                    "inputName": "Carvana",
+                    "resolvedName": "Carvana",
+                    "neid": null
+                },
+                {
+                    "inputName": "Casey's",
+                    "resolvedName": "Casey's",
+                    "neid": null
+                },
+                {
+                    "inputName": "Caterpillar Inc.",
+                    "resolvedName": "Caterpillar Inc.",
+                    "neid": null
+                },
+                {
+                    "inputName": "Cboe Global Markets",
+                    "resolvedName": "Cboe Global Markets",
+                    "neid": null
+                },
+                {
+                    "inputName": "CBRE Group",
+                    "resolvedName": "CBRE Group",
+                    "neid": null
+                },
+                {
+                    "inputName": "CDW Corporation",
+                    "resolvedName": "CDW Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "Cencora",
+                    "resolvedName": "Cencora",
+                    "neid": null
+                },
+                {
+                    "inputName": "Centene Corporation",
+                    "resolvedName": "Centene Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "CenterPoint Energy",
+                    "resolvedName": "CenterPoint Energy",
+                    "neid": null
+                },
+                {
+                    "inputName": "CF Industries",
+                    "resolvedName": "CF Industries",
+                    "neid": null
+                },
+                {
+                    "inputName": "Charles River Laboratories",
+                    "resolvedName": "Charles River Laboratories",
+                    "neid": null
+                },
+                {
+                    "inputName": "Charles Schwab Corporation",
+                    "resolvedName": "Charles Schwab Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "Charter Communications",
+                    "resolvedName": "Charter Communications",
+                    "neid": null
+                },
+                {
+                    "inputName": "Chevron Corporation",
+                    "resolvedName": "Chevron Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "Chipotle Mexican Grill",
+                    "resolvedName": "Chipotle Mexican Grill",
+                    "neid": null
+                },
+                {
+                    "inputName": "Chubb Limited",
+                    "resolvedName": "Chubb Limited",
+                    "neid": null
+                },
+                {
+                    "inputName": "Church & Dwight",
+                    "resolvedName": "Church & Dwight",
+                    "neid": null
+                },
+                {
+                    "inputName": "Ciena",
+                    "resolvedName": "Ciena",
+                    "neid": null
+                },
+                {
+                    "inputName": "Cigna",
+                    "resolvedName": "Cigna",
+                    "neid": null
+                },
+                {
+                    "inputName": "Cincinnati Financial",
+                    "resolvedName": "Cincinnati Financial",
+                    "neid": null
+                },
+                {
+                    "inputName": "Cintas",
+                    "resolvedName": "Cintas",
+                    "neid": null
+                },
+                {
+                    "inputName": "Cisco",
+                    "resolvedName": "Cisco",
+                    "neid": null
+                },
+                {
+                    "inputName": "Citigroup",
+                    "resolvedName": "Citigroup",
+                    "neid": null
+                },
+                {
+                    "inputName": "Citizens Financial Group",
+                    "resolvedName": "Citizens Financial Group",
+                    "neid": null
+                },
+                {
+                    "inputName": "Clorox",
+                    "resolvedName": "Clorox",
+                    "neid": null
+                },
+                {
+                    "inputName": "CME Group",
+                    "resolvedName": "CME Group",
+                    "neid": null
+                },
+                {
+                    "inputName": "CMS Energy",
+                    "resolvedName": "CMS Energy",
+                    "neid": null
+                },
+                {
+                    "inputName": "Coca-Cola Company",
+                    "resolvedName": "Coca-Cola Company",
+                    "neid": null
+                },
+                {
+                    "inputName": "Cognizant",
+                    "resolvedName": "Cognizant",
+                    "neid": null
+                },
+                {
+                    "inputName": "Coherent Corp.",
+                    "resolvedName": "Coherent Corp.",
+                    "neid": null
+                },
+                {
+                    "inputName": "Coinbase",
+                    "resolvedName": "Coinbase",
+                    "neid": null
+                },
+                {
+                    "inputName": "Colgate-Palmolive",
+                    "resolvedName": "Colgate-Palmolive",
+                    "neid": null
+                },
+                {
+                    "inputName": "Comcast",
+                    "resolvedName": "Comcast",
+                    "neid": null
+                },
+                {
+                    "inputName": "Comfort Systems USA",
+                    "resolvedName": "Comfort Systems USA",
+                    "neid": null
+                },
+                {
+                    "inputName": "Conagra Brands",
+                    "resolvedName": "Conagra Brands",
+                    "neid": null
+                },
+                {
+                    "inputName": "ConocoPhillips",
+                    "resolvedName": "ConocoPhillips",
+                    "neid": null
+                },
+                {
+                    "inputName": "Consolidated Edison",
+                    "resolvedName": "Consolidated Edison",
+                    "neid": null
+                },
+                {
+                    "inputName": "Constellation Brands",
+                    "resolvedName": "Constellation Brands",
+                    "neid": null
+                },
+                {
+                    "inputName": "Constellation Energy",
+                    "resolvedName": "Constellation Energy",
+                    "neid": null
+                },
+                {
+                    "inputName": "Cooper Companies",
+                    "resolvedName": "Cooper Companies",
+                    "neid": null
+                },
+                {
+                    "inputName": "Copart",
+                    "resolvedName": "Copart",
+                    "neid": null
+                },
+                {
+                    "inputName": "Corning Inc.",
+                    "resolvedName": "Corning Inc.",
+                    "neid": null
+                },
+                {
+                    "inputName": "Corpay",
+                    "resolvedName": "Corpay",
+                    "neid": null
+                },
+                {
+                    "inputName": "Corteva",
+                    "resolvedName": "Corteva",
+                    "neid": null
+                },
+                {
+                    "inputName": "CoStar Group",
+                    "resolvedName": "CoStar Group",
+                    "neid": null
+                },
+                {
+                    "inputName": "Costco",
+                    "resolvedName": "Costco",
+                    "neid": null
+                },
+                {
+                    "inputName": "CRH plc",
+                    "resolvedName": "CRH plc",
+                    "neid": null
+                },
+                {
+                    "inputName": "CrowdStrike",
+                    "resolvedName": "CrowdStrike",
+                    "neid": null
+                },
+                {
+                    "inputName": "Crown Castle",
+                    "resolvedName": "Crown Castle",
+                    "neid": null
+                },
+                {
+                    "inputName": "CSX Corporation",
+                    "resolvedName": "CSX Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "Cummins",
+                    "resolvedName": "Cummins",
+                    "neid": null
+                },
+                {
+                    "inputName": "CVS Health",
+                    "resolvedName": "CVS Health",
+                    "neid": null
+                },
+                {
+                    "inputName": "Danaher Corporation",
+                    "resolvedName": "Danaher Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "Darden Restaurants",
+                    "resolvedName": "Darden Restaurants",
+                    "neid": null
+                },
+                {
+                    "inputName": "Datadog",
+                    "resolvedName": "Datadog",
+                    "neid": null
+                },
+                {
+                    "inputName": "DaVita",
+                    "resolvedName": "DaVita",
+                    "neid": null
+                },
+                {
+                    "inputName": "Deckers Brands",
+                    "resolvedName": "Deckers Brands",
+                    "neid": null
+                },
+                {
+                    "inputName": "Deere & Company",
+                    "resolvedName": "Deere & Company",
+                    "neid": null
+                },
+                {
+                    "inputName": "Dell Technologies",
+                    "resolvedName": "Dell Technologies",
+                    "neid": null
+                },
+                {
+                    "inputName": "Delta Air Lines",
+                    "resolvedName": "Delta Air Lines",
+                    "neid": null
+                },
+                {
+                    "inputName": "Devon Energy",
+                    "resolvedName": "Devon Energy",
+                    "neid": null
+                },
+                {
+                    "inputName": "Dexcom",
+                    "resolvedName": "Dexcom",
+                    "neid": null
+                },
+                {
+                    "inputName": "Diamondback Energy",
+                    "resolvedName": "Diamondback Energy",
+                    "neid": null
+                },
+                {
+                    "inputName": "Digital Realty",
+                    "resolvedName": "Digital Realty",
+                    "neid": null
+                },
+                {
+                    "inputName": "Dollar General",
+                    "resolvedName": "Dollar General",
+                    "neid": null
+                },
+                {
+                    "inputName": "Dollar Tree",
+                    "resolvedName": "Dollar Tree",
+                    "neid": null
+                },
+                {
+                    "inputName": "Dominion Energy",
+                    "resolvedName": "Dominion Energy",
+                    "neid": null
+                },
+                {
+                    "inputName": "Domino's",
+                    "resolvedName": "Domino's",
+                    "neid": null
+                },
+                {
+                    "inputName": "DoorDash",
+                    "resolvedName": "DoorDash",
+                    "neid": null
+                },
+                {
+                    "inputName": "Dover Corporation",
+                    "resolvedName": "Dover Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "Dow Inc.",
+                    "resolvedName": "Dow Inc.",
+                    "neid": null
+                },
+                {
+                    "inputName": "D. R. Horton",
+                    "resolvedName": "D. R. Horton",
+                    "neid": null
+                },
+                {
+                    "inputName": "DTE Energy",
+                    "resolvedName": "DTE Energy",
+                    "neid": null
+                },
+                {
+                    "inputName": "Duke Energy",
+                    "resolvedName": "Duke Energy",
+                    "neid": null
+                },
+                {
+                    "inputName": "DuPont",
+                    "resolvedName": "DuPont",
+                    "neid": null
+                },
+                {
+                    "inputName": "Eaton Corporation",
+                    "resolvedName": "Eaton Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "eBay Inc.",
+                    "resolvedName": "eBay Inc.",
+                    "neid": null
+                },
+                {
+                    "inputName": "EchoStar",
+                    "resolvedName": "EchoStar",
+                    "neid": null
+                },
+                {
+                    "inputName": "Ecolab",
+                    "resolvedName": "Ecolab",
+                    "neid": null
+                },
+                {
+                    "inputName": "Edison International",
+                    "resolvedName": "Edison International",
+                    "neid": null
+                },
+                {
+                    "inputName": "Edwards Lifesciences",
+                    "resolvedName": "Edwards Lifesciences",
+                    "neid": null
+                },
+                {
+                    "inputName": "Electronic Arts",
+                    "resolvedName": "Electronic Arts",
+                    "neid": null
+                },
+                {
+                    "inputName": "Elevance Health",
+                    "resolvedName": "Elevance Health",
+                    "neid": null
+                },
+                {
+                    "inputName": "Emcor",
+                    "resolvedName": "Emcor",
+                    "neid": null
+                },
+                {
+                    "inputName": "Emerson Electric",
+                    "resolvedName": "Emerson Electric",
+                    "neid": null
+                },
+                {
+                    "inputName": "Entergy",
+                    "resolvedName": "Entergy",
+                    "neid": null
+                },
+                {
+                    "inputName": "EOG Resources",
+                    "resolvedName": "EOG Resources",
+                    "neid": null
+                },
+                {
+                    "inputName": "EQT Corporation",
+                    "resolvedName": "EQT Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "Equifax",
+                    "resolvedName": "Equifax",
+                    "neid": null
+                },
+                {
+                    "inputName": "Equinix",
+                    "resolvedName": "Equinix",
+                    "neid": null
+                },
+                {
+                    "inputName": "Equity Residential",
+                    "resolvedName": "Equity Residential",
+                    "neid": null
+                },
+                {
+                    "inputName": "Erie Indemnity",
+                    "resolvedName": "Erie Indemnity",
+                    "neid": null
+                },
+                {
+                    "inputName": "Essex Property Trust",
+                    "resolvedName": "Essex Property Trust",
+                    "neid": null
+                },
+                {
+                    "inputName": "Estée Lauder Companies",
+                    "resolvedName": "Estée Lauder Companies",
+                    "neid": null
+                },
+                {
+                    "inputName": "Everest Group",
+                    "resolvedName": "Everest Group",
+                    "neid": null
+                },
+                {
+                    "inputName": "Evergy",
+                    "resolvedName": "Evergy",
+                    "neid": null
+                },
+                {
+                    "inputName": "Eversource Energy",
+                    "resolvedName": "Eversource Energy",
+                    "neid": null
+                },
+                {
+                    "inputName": "Exelon",
+                    "resolvedName": "Exelon",
+                    "neid": null
+                },
+                {
+                    "inputName": "Expand Energy",
+                    "resolvedName": "Expand Energy",
+                    "neid": null
+                },
+                {
+                    "inputName": "Expedia Group",
+                    "resolvedName": "Expedia Group",
+                    "neid": null
+                },
+                {
+                    "inputName": "Expeditors International",
+                    "resolvedName": "Expeditors International",
+                    "neid": null
+                },
+                {
+                    "inputName": "Extra Space Storage",
+                    "resolvedName": "Extra Space Storage",
+                    "neid": null
+                },
+                {
+                    "inputName": "ExxonMobil",
+                    "resolvedName": "ExxonMobil",
+                    "neid": null
+                },
+                {
+                    "inputName": "F5, Inc.",
+                    "resolvedName": "F5, Inc.",
+                    "neid": null
+                },
+                {
+                    "inputName": "FactSet",
+                    "resolvedName": "FactSet",
+                    "neid": null
+                },
+                {
+                    "inputName": "Fair Isaac",
+                    "resolvedName": "Fair Isaac",
+                    "neid": null
+                },
+                {
+                    "inputName": "Fastenal",
+                    "resolvedName": "Fastenal",
+                    "neid": null
+                },
+                {
+                    "inputName": "Federal Realty Investment Trust",
+                    "resolvedName": "Federal Realty Investment Trust",
+                    "neid": null
+                },
+                {
+                    "inputName": "FedEx",
+                    "resolvedName": "FedEx",
+                    "neid": null
+                },
+                {
+                    "inputName": "Fidelity National Information Services",
+                    "resolvedName": "Fidelity National Information Services",
+                    "neid": null
+                },
+                {
+                    "inputName": "Fifth Third Bancorp",
+                    "resolvedName": "Fifth Third Bancorp",
+                    "neid": null
+                },
+                {
+                    "inputName": "First Solar",
+                    "resolvedName": "First Solar",
+                    "neid": null
+                },
+                {
+                    "inputName": "FirstEnergy",
+                    "resolvedName": "FirstEnergy",
+                    "neid": null
+                },
+                {
+                    "inputName": "Fiserv",
+                    "resolvedName": "Fiserv",
+                    "neid": null
+                },
+                {
+                    "inputName": "Ford Motor Company",
+                    "resolvedName": "Ford Motor Company",
+                    "neid": null
+                },
+                {
+                    "inputName": "Fortinet",
+                    "resolvedName": "Fortinet",
+                    "neid": null
+                },
+                {
+                    "inputName": "Fortive",
+                    "resolvedName": "Fortive",
+                    "neid": null
+                },
+                {
+                    "inputName": "Fox Corporation",
+                    "resolvedName": "Fox Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "Franklin Resources",
+                    "resolvedName": "Franklin Resources",
+                    "neid": null
+                },
+                {
+                    "inputName": "Freeport-McMoRan",
+                    "resolvedName": "Freeport-McMoRan",
+                    "neid": null
+                },
+                {
+                    "inputName": "Garmin",
+                    "resolvedName": "Garmin",
+                    "neid": null
+                },
+                {
+                    "inputName": "Gartner",
+                    "resolvedName": "Gartner",
+                    "neid": null
+                },
+                {
+                    "inputName": "GE Aerospace",
+                    "resolvedName": "GE Aerospace",
+                    "neid": null
+                },
+                {
+                    "inputName": "GE HealthCare",
+                    "resolvedName": "GE HealthCare",
+                    "neid": null
+                },
+                {
+                    "inputName": "GE Vernova",
+                    "resolvedName": "GE Vernova",
+                    "neid": null
+                },
+                {
+                    "inputName": "Gen Digital",
+                    "resolvedName": "Gen Digital",
+                    "neid": null
+                },
+                {
+                    "inputName": "Generac",
+                    "resolvedName": "Generac",
+                    "neid": null
+                },
+                {
+                    "inputName": "General Dynamics",
+                    "resolvedName": "General Dynamics",
+                    "neid": null
+                },
+                {
+                    "inputName": "General Mills",
+                    "resolvedName": "General Mills",
+                    "neid": null
+                },
+                {
+                    "inputName": "General Motors",
+                    "resolvedName": "General Motors",
+                    "neid": null
+                },
+                {
+                    "inputName": "Genuine Parts Company",
+                    "resolvedName": "Genuine Parts Company",
+                    "neid": null
+                },
+                {
+                    "inputName": "Gilead Sciences",
+                    "resolvedName": "Gilead Sciences",
+                    "neid": null
+                },
+                {
+                    "inputName": "Global Payments",
+                    "resolvedName": "Global Payments",
+                    "neid": null
+                },
+                {
+                    "inputName": "Globe Life",
+                    "resolvedName": "Globe Life",
+                    "neid": null
+                },
+                {
+                    "inputName": "GoDaddy",
+                    "resolvedName": "GoDaddy",
+                    "neid": null
+                },
+                {
+                    "inputName": "Goldman Sachs",
+                    "resolvedName": "Goldman Sachs",
+                    "neid": null
+                },
+                {
+                    "inputName": "Halliburton",
+                    "resolvedName": "Halliburton",
+                    "neid": null
+                },
+                {
+                    "inputName": "Hartford",
+                    "resolvedName": "Hartford",
+                    "neid": null
+                },
+                {
+                    "inputName": "Hasbro",
+                    "resolvedName": "Hasbro",
+                    "neid": null
+                },
+                {
+                    "inputName": "HCA Healthcare",
+                    "resolvedName": "HCA Healthcare",
+                    "neid": null
+                },
+                {
+                    "inputName": "Healthpeak Properties",
+                    "resolvedName": "Healthpeak Properties",
+                    "neid": null
+                },
+                {
+                    "inputName": "Henry Schein",
+                    "resolvedName": "Henry Schein",
+                    "neid": null
+                },
+                {
+                    "inputName": "Hershey Company",
+                    "resolvedName": "Hershey Company",
+                    "neid": null
+                },
+                {
+                    "inputName": "Hewlett Packard Enterprise",
+                    "resolvedName": "Hewlett Packard Enterprise",
+                    "neid": null
+                },
+                {
+                    "inputName": "Hilton Worldwide",
+                    "resolvedName": "Hilton Worldwide",
+                    "neid": null
+                },
+                {
+                    "inputName": "Home Depot",
+                    "resolvedName": "Home Depot",
+                    "neid": null
+                },
+                {
+                    "inputName": "Honeywell",
+                    "resolvedName": "Honeywell",
+                    "neid": null
+                },
+                {
+                    "inputName": "Hormel Foods",
+                    "resolvedName": "Hormel Foods",
+                    "neid": null
+                },
+                {
+                    "inputName": "Host Hotels & Resorts",
+                    "resolvedName": "Host Hotels & Resorts",
+                    "neid": null
+                },
+                {
+                    "inputName": "Howmet Aerospace",
+                    "resolvedName": "Howmet Aerospace",
+                    "neid": null
+                },
+                {
+                    "inputName": "HP Inc.",
+                    "resolvedName": "HP Inc.",
+                    "neid": null
+                },
+                {
+                    "inputName": "Hubbell Incorporated",
+                    "resolvedName": "Hubbell Incorporated",
+                    "neid": null
+                },
+                {
+                    "inputName": "Humana",
+                    "resolvedName": "Humana",
+                    "neid": null
+                },
+                {
+                    "inputName": "Huntington Bancshares",
+                    "resolvedName": "Huntington Bancshares",
+                    "neid": null
+                },
+                {
+                    "inputName": "Huntington Ingalls Industries",
+                    "resolvedName": "Huntington Ingalls Industries",
+                    "neid": null
+                },
+                {
+                    "inputName": "IBM",
+                    "resolvedName": "IBM",
+                    "neid": null
+                },
+                {
+                    "inputName": "IDEX Corporation",
+                    "resolvedName": "IDEX Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "Idexx Laboratories",
+                    "resolvedName": "Idexx Laboratories",
+                    "neid": null
+                },
+                {
+                    "inputName": "Illinois Tool Works",
+                    "resolvedName": "Illinois Tool Works",
+                    "neid": null
+                },
+                {
+                    "inputName": "Incyte",
+                    "resolvedName": "Incyte",
+                    "neid": null
+                },
+                {
+                    "inputName": "Ingersoll Rand",
+                    "resolvedName": "Ingersoll Rand",
+                    "neid": null
+                },
+                {
+                    "inputName": "Insulet Corporation",
+                    "resolvedName": "Insulet Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "Intel",
+                    "resolvedName": "Intel",
+                    "neid": null
+                },
+                {
+                    "inputName": "Interactive Brokers",
+                    "resolvedName": "Interactive Brokers",
+                    "neid": null
+                },
+                {
+                    "inputName": "Intercontinental Exchange",
+                    "resolvedName": "Intercontinental Exchange",
+                    "neid": null
+                },
+                {
+                    "inputName": "International Flavors & Fragrances",
+                    "resolvedName": "International Flavors & Fragrances",
+                    "neid": null
+                },
+                {
+                    "inputName": "International Paper",
+                    "resolvedName": "International Paper",
+                    "neid": null
+                },
+                {
+                    "inputName": "Intuit",
+                    "resolvedName": "Intuit",
+                    "neid": null
+                },
+                {
+                    "inputName": "Intuitive Surgical",
+                    "resolvedName": "Intuitive Surgical",
+                    "neid": null
+                },
+                {
+                    "inputName": "Invesco",
+                    "resolvedName": "Invesco",
+                    "neid": null
+                },
+                {
+                    "inputName": "Invitation Homes",
+                    "resolvedName": "Invitation Homes",
+                    "neid": null
+                },
+                {
+                    "inputName": "IQVIA",
+                    "resolvedName": "IQVIA",
+                    "neid": null
+                },
+                {
+                    "inputName": "Iron Mountain",
+                    "resolvedName": "Iron Mountain",
+                    "neid": null
+                },
+                {
+                    "inputName": "J.B. Hunt",
+                    "resolvedName": "J.B. Hunt",
+                    "neid": null
+                },
+                {
+                    "inputName": "Jabil",
+                    "resolvedName": "Jabil",
+                    "neid": null
+                },
+                {
+                    "inputName": "Jack Henry & Associates",
+                    "resolvedName": "Jack Henry & Associates",
+                    "neid": null
+                },
+                {
+                    "inputName": "Jacobs Solutions",
+                    "resolvedName": "Jacobs Solutions",
+                    "neid": null
+                },
+                {
+                    "inputName": "Johnson & Johnson",
+                    "resolvedName": "Johnson & Johnson",
+                    "neid": null
+                },
+                {
+                    "inputName": "Johnson Controls",
+                    "resolvedName": "Johnson Controls",
+                    "neid": null
+                },
+                {
+                    "inputName": "JPMorgan Chase",
+                    "resolvedName": "JPMorgan Chase",
+                    "neid": null
+                },
+                {
+                    "inputName": "Kenvue",
+                    "resolvedName": "Kenvue",
+                    "neid": null
+                },
+                {
+                    "inputName": "Keurig Dr Pepper",
+                    "resolvedName": "Keurig Dr Pepper",
+                    "neid": null
+                },
+                {
+                    "inputName": "KeyCorp",
+                    "resolvedName": "KeyCorp",
+                    "neid": null
+                },
+                {
+                    "inputName": "Keysight Technologies",
+                    "resolvedName": "Keysight Technologies",
+                    "neid": null
+                },
+                {
+                    "inputName": "Kimberly-Clark",
+                    "resolvedName": "Kimberly-Clark",
+                    "neid": null
+                },
+                {
+                    "inputName": "Kimco Realty",
+                    "resolvedName": "Kimco Realty",
+                    "neid": null
+                },
+                {
+                    "inputName": "Kinder Morgan",
+                    "resolvedName": "Kinder Morgan",
+                    "neid": null
+                },
+                {
+                    "inputName": "KKR & Co.",
+                    "resolvedName": "KKR & Co.",
+                    "neid": null
+                },
+                {
+                    "inputName": "KLA Corporation",
+                    "resolvedName": "KLA Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "Kraft Heinz",
+                    "resolvedName": "Kraft Heinz",
+                    "neid": null
+                },
+                {
+                    "inputName": "Kroger",
+                    "resolvedName": "Kroger",
+                    "neid": null
+                },
+                {
+                    "inputName": "L3Harris",
+                    "resolvedName": "L3Harris",
+                    "neid": null
+                },
+                {
+                    "inputName": "Labcorp",
+                    "resolvedName": "Labcorp",
+                    "neid": null
+                },
+                {
+                    "inputName": "Lam Research",
+                    "resolvedName": "Lam Research",
+                    "neid": null
+                },
+                {
+                    "inputName": "Las Vegas Sands",
+                    "resolvedName": "Las Vegas Sands",
+                    "neid": null
+                },
+                {
+                    "inputName": "Leidos",
+                    "resolvedName": "Leidos",
+                    "neid": null
+                },
+                {
+                    "inputName": "Lennar",
+                    "resolvedName": "Lennar",
+                    "neid": null
+                },
+                {
+                    "inputName": "Lennox International",
+                    "resolvedName": "Lennox International",
+                    "neid": null
+                },
+                {
+                    "inputName": "Lilly (Eli)",
+                    "resolvedName": "Lilly (Eli)",
+                    "neid": null
+                },
+                {
+                    "inputName": "Linde plc",
+                    "resolvedName": "Linde plc",
+                    "neid": null
+                },
+                {
+                    "inputName": "Live Nation Entertainment",
+                    "resolvedName": "Live Nation Entertainment",
+                    "neid": null
+                },
+                {
+                    "inputName": "Lockheed Martin",
+                    "resolvedName": "Lockheed Martin",
+                    "neid": null
+                },
+                {
+                    "inputName": "Loews Corporation",
+                    "resolvedName": "Loews Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "Lowe's",
+                    "resolvedName": "Lowe's",
+                    "neid": null
+                },
+                {
+                    "inputName": "Lululemon Athletica",
+                    "resolvedName": "Lululemon Athletica",
+                    "neid": null
+                },
+                {
+                    "inputName": "Lumentum",
+                    "resolvedName": "Lumentum",
+                    "neid": null
+                },
+                {
+                    "inputName": "LyondellBasell",
+                    "resolvedName": "LyondellBasell",
+                    "neid": null
+                },
+                {
+                    "inputName": "M&T Bank",
+                    "resolvedName": "M&T Bank",
+                    "neid": null
+                },
+                {
+                    "inputName": "Marathon Petroleum",
+                    "resolvedName": "Marathon Petroleum",
+                    "neid": null
+                },
+                {
+                    "inputName": "Marriott International",
+                    "resolvedName": "Marriott International",
+                    "neid": null
+                },
+                {
+                    "inputName": "Marsh McLennan",
+                    "resolvedName": "Marsh McLennan",
+                    "neid": null
+                },
+                {
+                    "inputName": "Martin Marietta Materials",
+                    "resolvedName": "Martin Marietta Materials",
+                    "neid": null
+                },
+                {
+                    "inputName": "Masco",
+                    "resolvedName": "Masco",
+                    "neid": null
+                },
+                {
+                    "inputName": "Mastercard",
+                    "resolvedName": "Mastercard",
+                    "neid": null
+                },
+                {
+                    "inputName": "McCormick & Company",
+                    "resolvedName": "McCormick & Company",
+                    "neid": null
+                },
+                {
+                    "inputName": "McDonald's",
+                    "resolvedName": "McDonald's",
+                    "neid": null
+                },
+                {
+                    "inputName": "McKesson Corporation",
+                    "resolvedName": "McKesson Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "Medtronic",
+                    "resolvedName": "Medtronic",
+                    "neid": null
+                },
+                {
+                    "inputName": "Merck & Co.",
+                    "resolvedName": "Merck & Co.",
+                    "neid": null
+                },
+                {
+                    "inputName": "Meta Platforms",
+                    "resolvedName": "Meta Platforms",
+                    "neid": null
+                },
+                {
+                    "inputName": "MetLife",
+                    "resolvedName": "MetLife",
+                    "neid": null
+                },
+                {
+                    "inputName": "Mettler Toledo",
+                    "resolvedName": "Mettler Toledo",
+                    "neid": null
+                },
+                {
+                    "inputName": "MGM Resorts",
+                    "resolvedName": "MGM Resorts",
+                    "neid": null
+                },
+                {
+                    "inputName": "Microchip Technology",
+                    "resolvedName": "Microchip Technology",
+                    "neid": null
+                },
+                {
+                    "inputName": "Micron Technology",
+                    "resolvedName": "Micron Technology",
+                    "neid": null
+                },
+                {
+                    "inputName": "Microsoft",
+                    "resolvedName": "Microsoft",
+                    "neid": null
+                },
+                {
+                    "inputName": "Mid-America Apartment Communities",
+                    "resolvedName": "Mid-America Apartment Communities",
+                    "neid": null
+                },
+                {
+                    "inputName": "Moderna",
+                    "resolvedName": "Moderna",
+                    "neid": null
+                },
+                {
+                    "inputName": "Molson Coors Beverage Company",
+                    "resolvedName": "Molson Coors Beverage Company",
+                    "neid": null
+                },
+                {
+                    "inputName": "Mondelez International",
+                    "resolvedName": "Mondelez International",
+                    "neid": null
+                },
+                {
+                    "inputName": "Monolithic Power Systems",
+                    "resolvedName": "Monolithic Power Systems",
+                    "neid": null
+                },
+                {
+                    "inputName": "Monster Beverage",
+                    "resolvedName": "Monster Beverage",
+                    "neid": null
+                },
+                {
+                    "inputName": "Moody's Corporation",
+                    "resolvedName": "Moody's Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "Morgan Stanley",
+                    "resolvedName": "Morgan Stanley",
+                    "neid": null
+                },
+                {
+                    "inputName": "Mosaic Company",
+                    "resolvedName": "Mosaic Company",
+                    "neid": null
+                },
+                {
+                    "inputName": "Motorola Solutions",
+                    "resolvedName": "Motorola Solutions",
+                    "neid": null
+                },
+                {
+                    "inputName": "MSCI Inc.",
+                    "resolvedName": "MSCI Inc.",
+                    "neid": null
+                },
+                {
+                    "inputName": "Nasdaq, Inc.",
+                    "resolvedName": "Nasdaq, Inc.",
+                    "neid": null
+                },
+                {
+                    "inputName": "NetApp",
+                    "resolvedName": "NetApp",
+                    "neid": null
+                },
+                {
+                    "inputName": "Netflix",
+                    "resolvedName": "Netflix",
+                    "neid": null
+                },
+                {
+                    "inputName": "Newmont",
+                    "resolvedName": "Newmont",
+                    "neid": null
+                },
+                {
+                    "inputName": "News Corp",
+                    "resolvedName": "News Corp",
+                    "neid": null
+                },
+                {
+                    "inputName": "NextEra Energy",
+                    "resolvedName": "NextEra Energy",
+                    "neid": null
+                },
+                {
+                    "inputName": "Nike, Inc.",
+                    "resolvedName": "Nike, Inc.",
+                    "neid": null
+                },
+                {
+                    "inputName": "NiSource",
+                    "resolvedName": "NiSource",
+                    "neid": null
+                },
+                {
+                    "inputName": "Nordson Corporation",
+                    "resolvedName": "Nordson Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "Norfolk Southern",
+                    "resolvedName": "Norfolk Southern",
+                    "neid": null
+                },
+                {
+                    "inputName": "Northern Trust",
+                    "resolvedName": "Northern Trust",
+                    "neid": null
+                },
+                {
+                    "inputName": "Northrop Grumman",
+                    "resolvedName": "Northrop Grumman",
+                    "neid": null
+                },
+                {
+                    "inputName": "Norwegian Cruise Line Holdings",
+                    "resolvedName": "Norwegian Cruise Line Holdings",
+                    "neid": null
+                },
+                {
+                    "inputName": "NRG Energy",
+                    "resolvedName": "NRG Energy",
+                    "neid": null
+                },
+                {
+                    "inputName": "Nucor",
+                    "resolvedName": "Nucor",
+                    "neid": null
+                },
+                {
+                    "inputName": "Nvidia",
+                    "resolvedName": "Nvidia",
+                    "neid": null
+                },
+                {
+                    "inputName": "NVR, Inc.",
+                    "resolvedName": "NVR, Inc.",
+                    "neid": null
+                },
+                {
+                    "inputName": "NXP Semiconductors",
+                    "resolvedName": "NXP Semiconductors",
+                    "neid": null
+                },
+                {
+                    "inputName": "O’Reilly Automotive",
+                    "resolvedName": "O’Reilly Automotive",
+                    "neid": null
+                },
+                {
+                    "inputName": "Occidental Petroleum",
+                    "resolvedName": "Occidental Petroleum",
+                    "neid": null
+                },
+                {
+                    "inputName": "Old Dominion",
+                    "resolvedName": "Old Dominion",
+                    "neid": null
+                },
+                {
+                    "inputName": "Omnicom Group",
+                    "resolvedName": "Omnicom Group",
+                    "neid": null
+                },
+                {
+                    "inputName": "ON Semiconductor",
+                    "resolvedName": "ON Semiconductor",
+                    "neid": null
+                },
+                {
+                    "inputName": "Oneok",
+                    "resolvedName": "Oneok",
+                    "neid": null
+                },
+                {
+                    "inputName": "Oracle Corporation",
+                    "resolvedName": "Oracle Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "Otis Worldwide",
+                    "resolvedName": "Otis Worldwide",
+                    "neid": null
+                },
+                {
+                    "inputName": "Paccar",
+                    "resolvedName": "Paccar",
+                    "neid": null
+                },
+                {
+                    "inputName": "Packaging Corporation of America",
+                    "resolvedName": "Packaging Corporation of America",
+                    "neid": null
+                },
+                {
+                    "inputName": "Palantir Technologies",
+                    "resolvedName": "Palantir Technologies",
+                    "neid": null
+                },
+                {
+                    "inputName": "Palo Alto Networks",
+                    "resolvedName": "Palo Alto Networks",
+                    "neid": null
+                },
+                {
+                    "inputName": "Paramount Skydance Corporation",
+                    "resolvedName": "Paramount Skydance Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "Parker Hannifin",
+                    "resolvedName": "Parker Hannifin",
+                    "neid": null
+                },
+                {
+                    "inputName": "Paychex",
+                    "resolvedName": "Paychex",
+                    "neid": null
+                },
+                {
+                    "inputName": "PayPal",
+                    "resolvedName": "PayPal",
+                    "neid": null
+                },
+                {
+                    "inputName": "Pentair",
+                    "resolvedName": "Pentair",
+                    "neid": null
+                },
+                {
+                    "inputName": "PepsiCo",
+                    "resolvedName": "PepsiCo",
+                    "neid": null
+                },
+                {
+                    "inputName": "Pfizer",
+                    "resolvedName": "Pfizer",
+                    "neid": null
+                },
+                {
+                    "inputName": "PG&E Corporation",
+                    "resolvedName": "PG&E Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "Philip Morris International",
+                    "resolvedName": "Philip Morris International",
+                    "neid": null
+                },
+                {
+                    "inputName": "Phillips 66",
+                    "resolvedName": "Phillips 66",
+                    "neid": null
+                },
+                {
+                    "inputName": "Pinnacle West Capital",
+                    "resolvedName": "Pinnacle West Capital",
+                    "neid": null
+                },
+                {
+                    "inputName": "PNC Financial Services",
+                    "resolvedName": "PNC Financial Services",
+                    "neid": null
+                },
+                {
+                    "inputName": "Pool Corporation",
+                    "resolvedName": "Pool Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "PPG Industries",
+                    "resolvedName": "PPG Industries",
+                    "neid": null
+                },
+                {
+                    "inputName": "PPL Corporation",
+                    "resolvedName": "PPL Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "Principal Financial Group",
+                    "resolvedName": "Principal Financial Group",
+                    "neid": null
+                },
+                {
+                    "inputName": "Procter & Gamble",
+                    "resolvedName": "Procter & Gamble",
+                    "neid": null
+                },
+                {
+                    "inputName": "Progressive Corporation",
+                    "resolvedName": "Progressive Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "Prologis",
+                    "resolvedName": "Prologis",
+                    "neid": null
+                },
+                {
+                    "inputName": "Prudential Financial",
+                    "resolvedName": "Prudential Financial",
+                    "neid": null
+                },
+                {
+                    "inputName": "Public Service Enterprise Group",
+                    "resolvedName": "Public Service Enterprise Group",
+                    "neid": null
+                },
+                {
+                    "inputName": "PTC Inc.",
+                    "resolvedName": "PTC Inc.",
+                    "neid": null
+                },
+                {
+                    "inputName": "Public Storage",
+                    "resolvedName": "Public Storage",
+                    "neid": null
+                },
+                {
+                    "inputName": "PulteGroup",
+                    "resolvedName": "PulteGroup",
+                    "neid": null
+                },
+                {
+                    "inputName": "Quanta Services",
+                    "resolvedName": "Quanta Services",
+                    "neid": null
+                },
+                {
+                    "inputName": "Qualcomm",
+                    "resolvedName": "Qualcomm",
+                    "neid": null
+                },
+                {
+                    "inputName": "Quest Diagnostics",
+                    "resolvedName": "Quest Diagnostics",
+                    "neid": null
+                },
+                {
+                    "inputName": "Qnity Electronics",
+                    "resolvedName": "Qnity Electronics",
+                    "neid": null
+                },
+                {
+                    "inputName": "Ralph Lauren Corporation",
+                    "resolvedName": "Ralph Lauren Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "Raymond James Financial",
+                    "resolvedName": "Raymond James Financial",
+                    "neid": null
+                },
+                {
+                    "inputName": "RTX Corporation",
+                    "resolvedName": "RTX Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "Realty Income",
+                    "resolvedName": "Realty Income",
+                    "neid": null
+                },
+                {
+                    "inputName": "Regency Centers",
+                    "resolvedName": "Regency Centers",
+                    "neid": null
+                },
+                {
+                    "inputName": "Regeneron Pharmaceuticals",
+                    "resolvedName": "Regeneron Pharmaceuticals",
+                    "neid": null
+                },
+                {
+                    "inputName": "Regions Financial Corporation",
+                    "resolvedName": "Regions Financial Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "Republic Services",
+                    "resolvedName": "Republic Services",
+                    "neid": null
+                },
+                {
+                    "inputName": "ResMed",
+                    "resolvedName": "ResMed",
+                    "neid": null
+                },
+                {
+                    "inputName": "Revvity",
+                    "resolvedName": "Revvity",
+                    "neid": null
+                },
+                {
+                    "inputName": "Robinhood Markets",
+                    "resolvedName": "Robinhood Markets",
+                    "neid": null
+                },
+                {
+                    "inputName": "Rockwell Automation",
+                    "resolvedName": "Rockwell Automation",
+                    "neid": null
+                },
+                {
+                    "inputName": "Rollins, Inc.",
+                    "resolvedName": "Rollins, Inc.",
+                    "neid": null
+                },
+                {
+                    "inputName": "Roper Technologies",
+                    "resolvedName": "Roper Technologies",
+                    "neid": null
+                },
+                {
+                    "inputName": "Ross Stores",
+                    "resolvedName": "Ross Stores",
+                    "neid": null
+                },
+                {
+                    "inputName": "Royal Caribbean Group",
+                    "resolvedName": "Royal Caribbean Group",
+                    "neid": null
+                },
+                {
+                    "inputName": "S&P Global",
+                    "resolvedName": "S&P Global",
+                    "neid": null
+                },
+                {
+                    "inputName": "Salesforce",
+                    "resolvedName": "Salesforce",
+                    "neid": null
+                },
+                {
+                    "inputName": "Sandisk",
+                    "resolvedName": "Sandisk",
+                    "neid": null
+                },
+                {
+                    "inputName": "SBA Communications",
+                    "resolvedName": "SBA Communications",
+                    "neid": null
+                },
+                {
+                    "inputName": "Schlumberger",
+                    "resolvedName": "Schlumberger",
+                    "neid": null
+                },
+                {
+                    "inputName": "Seagate Technology",
+                    "resolvedName": "Seagate Technology",
+                    "neid": null
+                },
+                {
+                    "inputName": "Sempra",
+                    "resolvedName": "Sempra",
+                    "neid": null
+                },
+                {
+                    "inputName": "ServiceNow",
+                    "resolvedName": "ServiceNow",
+                    "neid": null
+                },
+                {
+                    "inputName": "Sherwin-Williams",
+                    "resolvedName": "Sherwin-Williams",
+                    "neid": null
+                },
+                {
+                    "inputName": "Simon Property Group",
+                    "resolvedName": "Simon Property Group",
+                    "neid": null
+                },
+                {
+                    "inputName": "Skyworks Solutions",
+                    "resolvedName": "Skyworks Solutions",
+                    "neid": null
+                },
+                {
+                    "inputName": "J.M. Smucker Company",
+                    "resolvedName": "J.M. Smucker Company",
+                    "neid": null
+                },
+                {
+                    "inputName": "Smurfit Westrock",
+                    "resolvedName": "Smurfit Westrock",
+                    "neid": null
+                },
+                {
+                    "inputName": "Snap-on",
+                    "resolvedName": "Snap-on",
+                    "neid": null
+                },
+                {
+                    "inputName": "Solventum",
+                    "resolvedName": "Solventum",
+                    "neid": null
+                },
+                {
+                    "inputName": "Southern Company",
+                    "resolvedName": "Southern Company",
+                    "neid": null
+                },
+                {
+                    "inputName": "Southwest Airlines",
+                    "resolvedName": "Southwest Airlines",
+                    "neid": null
+                },
+                {
+                    "inputName": "Stanley Black & Decker",
+                    "resolvedName": "Stanley Black & Decker",
+                    "neid": null
+                },
+                {
+                    "inputName": "Starbucks",
+                    "resolvedName": "Starbucks",
+                    "neid": null
+                },
+                {
+                    "inputName": "State Street Corporation",
+                    "resolvedName": "State Street Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "Steel Dynamics",
+                    "resolvedName": "Steel Dynamics",
+                    "neid": null
+                },
+                {
+                    "inputName": "Steris",
+                    "resolvedName": "Steris",
+                    "neid": null
+                },
+                {
+                    "inputName": "Stryker Corporation",
+                    "resolvedName": "Stryker Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "Supermicro",
+                    "resolvedName": "Supermicro",
+                    "neid": null
+                },
+                {
+                    "inputName": "Synchrony Financial",
+                    "resolvedName": "Synchrony Financial",
+                    "neid": null
+                },
+                {
+                    "inputName": "Synopsys",
+                    "resolvedName": "Synopsys",
+                    "neid": null
+                },
+                {
+                    "inputName": "Sysco",
+                    "resolvedName": "Sysco",
+                    "neid": null
+                },
+                {
+                    "inputName": "T-Mobile US",
+                    "resolvedName": "T-Mobile US",
+                    "neid": null
+                },
+                {
+                    "inputName": "T. Rowe Price",
+                    "resolvedName": "T. Rowe Price",
+                    "neid": null
+                },
+                {
+                    "inputName": "Take-Two Interactive",
+                    "resolvedName": "Take-Two Interactive",
+                    "neid": null
+                },
+                {
+                    "inputName": "Tapestry, Inc.",
+                    "resolvedName": "Tapestry, Inc.",
+                    "neid": null
+                },
+                {
+                    "inputName": "Targa Resources",
+                    "resolvedName": "Targa Resources",
+                    "neid": null
+                },
+                {
+                    "inputName": "Target Corporation",
+                    "resolvedName": "Target Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "TE Connectivity",
+                    "resolvedName": "TE Connectivity",
+                    "neid": null
+                },
+                {
+                    "inputName": "Teledyne Technologies",
+                    "resolvedName": "Teledyne Technologies",
+                    "neid": null
+                },
+                {
+                    "inputName": "Teradyne",
+                    "resolvedName": "Teradyne",
+                    "neid": null
+                },
+                {
+                    "inputName": "Tesla, Inc.",
+                    "resolvedName": "Tesla, Inc.",
+                    "neid": null
+                },
+                {
+                    "inputName": "Texas Instruments",
+                    "resolvedName": "Texas Instruments",
+                    "neid": null
+                },
+                {
+                    "inputName": "Texas Pacific Land Corporation",
+                    "resolvedName": "Texas Pacific Land Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "Textron",
+                    "resolvedName": "Textron",
+                    "neid": null
+                },
+                {
+                    "inputName": "Thermo Fisher Scientific",
+                    "resolvedName": "Thermo Fisher Scientific",
+                    "neid": null
+                },
+                {
+                    "inputName": "TJX Companies",
+                    "resolvedName": "TJX Companies",
+                    "neid": null
+                },
+                {
+                    "inputName": "TKO Group Holdings",
+                    "resolvedName": "TKO Group Holdings",
+                    "neid": null
+                },
+                {
+                    "inputName": "Trade Desk",
+                    "resolvedName": "Trade Desk",
+                    "neid": null
+                },
+                {
+                    "inputName": "Tractor Supply",
+                    "resolvedName": "Tractor Supply",
+                    "neid": null
+                },
+                {
+                    "inputName": "Trane Technologies",
+                    "resolvedName": "Trane Technologies",
+                    "neid": null
+                },
+                {
+                    "inputName": "TransDigm Group",
+                    "resolvedName": "TransDigm Group",
+                    "neid": null
+                },
+                {
+                    "inputName": "Travelers Companies",
+                    "resolvedName": "Travelers Companies",
+                    "neid": null
+                },
+                {
+                    "inputName": "Trimble Inc.",
+                    "resolvedName": "Trimble Inc.",
+                    "neid": null
+                },
+                {
+                    "inputName": "Truist Financial",
+                    "resolvedName": "Truist Financial",
+                    "neid": null
+                },
+                {
+                    "inputName": "Tyler Technologies",
+                    "resolvedName": "Tyler Technologies",
+                    "neid": null
+                },
+                {
+                    "inputName": "Tyson Foods",
+                    "resolvedName": "Tyson Foods",
+                    "neid": null
+                },
+                {
+                    "inputName": "U.S. Bancorp",
+                    "resolvedName": "U.S. Bancorp",
+                    "neid": null
+                },
+                {
+                    "inputName": "Uber",
+                    "resolvedName": "Uber",
+                    "neid": null
+                },
+                {
+                    "inputName": "UDR, Inc.",
+                    "resolvedName": "UDR, Inc.",
+                    "neid": null
+                },
+                {
+                    "inputName": "Ulta Beauty",
+                    "resolvedName": "Ulta Beauty",
+                    "neid": null
+                },
+                {
+                    "inputName": "Union Pacific Corporation",
+                    "resolvedName": "Union Pacific Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "United Airlines Holdings",
+                    "resolvedName": "United Airlines Holdings",
+                    "neid": null
+                },
+                {
+                    "inputName": "United Parcel Service",
+                    "resolvedName": "United Parcel Service",
+                    "neid": null
+                },
+                {
+                    "inputName": "United Rentals",
+                    "resolvedName": "United Rentals",
+                    "neid": null
+                },
+                {
+                    "inputName": "UnitedHealth Group",
+                    "resolvedName": "UnitedHealth Group",
+                    "neid": null
+                },
+                {
+                    "inputName": "Universal Health Services",
+                    "resolvedName": "Universal Health Services",
+                    "neid": null
+                },
+                {
+                    "inputName": "Valero Energy",
+                    "resolvedName": "Valero Energy",
+                    "neid": null
+                },
+                {
+                    "inputName": "Veeva Systems",
+                    "resolvedName": "Veeva Systems",
+                    "neid": null
+                },
+                {
+                    "inputName": "Ventas",
+                    "resolvedName": "Ventas",
+                    "neid": null
+                },
+                {
+                    "inputName": "Veralto",
+                    "resolvedName": "Veralto",
+                    "neid": null
+                },
+                {
+                    "inputName": "Verisign",
+                    "resolvedName": "Verisign",
+                    "neid": null
+                },
+                {
+                    "inputName": "Verisk Analytics",
+                    "resolvedName": "Verisk Analytics",
+                    "neid": null
+                },
+                {
+                    "inputName": "Verizon",
+                    "resolvedName": "Verizon",
+                    "neid": null
+                },
+                {
+                    "inputName": "Vertex Pharmaceuticals",
+                    "resolvedName": "Vertex Pharmaceuticals",
+                    "neid": null
+                },
+                {
+                    "inputName": "Vertiv",
+                    "resolvedName": "Vertiv",
+                    "neid": null
+                },
+                {
+                    "inputName": "Viatris",
+                    "resolvedName": "Viatris",
+                    "neid": null
+                },
+                {
+                    "inputName": "Vici Properties",
+                    "resolvedName": "Vici Properties",
+                    "neid": null
+                },
+                {
+                    "inputName": "Visa Inc.",
+                    "resolvedName": "Visa Inc.",
+                    "neid": null
+                },
+                {
+                    "inputName": "Vistra Corp",
+                    "resolvedName": "Vistra Corp",
+                    "neid": null
+                },
+                {
+                    "inputName": "Vulcan Materials Company",
+                    "resolvedName": "Vulcan Materials Company",
+                    "neid": null
+                },
+                {
+                    "inputName": "W. R. Berkley Corporation",
+                    "resolvedName": "W. R. Berkley Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "W. W. Grainger",
+                    "resolvedName": "W. W. Grainger",
+                    "neid": null
+                },
+                {
+                    "inputName": "Wabtec",
+                    "resolvedName": "Wabtec",
+                    "neid": null
+                },
+                {
+                    "inputName": "Walmart",
+                    "resolvedName": "Walmart",
+                    "neid": null
+                },
+                {
+                    "inputName": "Walt Disney Company",
+                    "resolvedName": "Walt Disney Company",
+                    "neid": null
+                },
+                {
+                    "inputName": "Warner Bros. Discovery",
+                    "resolvedName": "Warner Bros. Discovery",
+                    "neid": null
+                },
+                {
+                    "inputName": "Waste Management",
+                    "resolvedName": "Waste Management",
+                    "neid": null
+                },
+                {
+                    "inputName": "Waters Corporation",
+                    "resolvedName": "Waters Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "WEC Energy Group",
+                    "resolvedName": "WEC Energy Group",
+                    "neid": null
+                },
+                {
+                    "inputName": "Wells Fargo",
+                    "resolvedName": "Wells Fargo",
+                    "neid": null
+                },
+                {
+                    "inputName": "Welltower",
+                    "resolvedName": "Welltower",
+                    "neid": null
+                },
+                {
+                    "inputName": "West Pharmaceutical Services",
+                    "resolvedName": "West Pharmaceutical Services",
+                    "neid": null
+                },
+                {
+                    "inputName": "Western Digital",
+                    "resolvedName": "Western Digital",
+                    "neid": null
+                },
+                {
+                    "inputName": "Weyerhaeuser",
+                    "resolvedName": "Weyerhaeuser",
+                    "neid": null
+                },
+                {
+                    "inputName": "Williams-Sonoma, Inc.",
+                    "resolvedName": "Williams-Sonoma, Inc.",
+                    "neid": null
+                },
+                {
+                    "inputName": "Williams Companies",
+                    "resolvedName": "Williams Companies",
+                    "neid": null
+                },
+                {
+                    "inputName": "Willis Towers Watson",
+                    "resolvedName": "Willis Towers Watson",
+                    "neid": null
+                },
+                {
+                    "inputName": "Workday, Inc.",
+                    "resolvedName": "Workday, Inc.",
+                    "neid": null
+                },
+                {
+                    "inputName": "Wynn Resorts",
+                    "resolvedName": "Wynn Resorts",
+                    "neid": null
+                },
+                {
+                    "inputName": "Xcel Energy",
+                    "resolvedName": "Xcel Energy",
+                    "neid": null
+                },
+                {
+                    "inputName": "Xylem Inc.",
+                    "resolvedName": "Xylem Inc.",
+                    "neid": null
+                },
+                {
+                    "inputName": "Yum! Brands",
+                    "resolvedName": "Yum! Brands",
+                    "neid": null
+                },
+                {
+                    "inputName": "Zebra Technologies",
+                    "resolvedName": "Zebra Technologies",
+                    "neid": null
+                },
+                {
+                    "inputName": "Zimmer Biomet",
+                    "resolvedName": "Zimmer Biomet",
+                    "neid": null
+                },
+                {
+                    "inputName": "Zoetis",
+                    "resolvedName": "Zoetis",
+                    "neid": null
+                }
+            ]
         }
-      ]
-    },
-    {
-      "id": "tech-growth",
-      "name": "Tech Growth",
-      "description": "High-growth tech with governance-heavy signal profile.",
-      "entities": [
-        {
-          "inputName": "Snowflake",
-          "resolvedName": "Snowflake",
-          "neid": null
-        },
-        {
-          "inputName": "Datadog",
-          "resolvedName": "Datadog",
-          "neid": null
-        },
-        {
-          "inputName": "Cloudflare",
-          "resolvedName": "Cloudflare",
-          "neid": null
-        },
-        {
-          "inputName": "MongoDB",
-          "resolvedName": "MongoDB",
-          "neid": null
-        },
-        {
-          "inputName": "CrowdStrike",
-          "resolvedName": "CrowdStrike",
-          "neid": null
-        },
-        {
-          "inputName": "Palantir Technologies",
-          "resolvedName": "Palantir Technologies",
-          "neid": null
-        },
-        {
-          "inputName": "Coinbase",
-          "resolvedName": "Coinbase",
-          "neid": null
-        },
-        {
-          "inputName": "Robinhood",
-          "resolvedName": "Robinhood",
-          "neid": null
-        },
-        {
-          "inputName": "Shopify",
-          "resolvedName": "Shopify",
-          "neid": null
-        },
-        {
-          "inputName": "Roblox",
-          "resolvedName": "Roblox",
-          "neid": null
-        },
-        {
-          "inputName": "Unity Software",
-          "resolvedName": "Unity Software",
-          "neid": null
-        },
-        {
-          "inputName": "DoorDash",
-          "resolvedName": "DoorDash",
-          "neid": null
-        },
-        {
-          "inputName": "Airbnb",
-          "resolvedName": "Airbnb",
-          "neid": null
-        },
-        {
-          "inputName": "Lyft",
-          "resolvedName": "Lyft",
-          "neid": null
-        },
-        {
-          "inputName": "Pinterest",
-          "resolvedName": "Pinterest",
-          "neid": null
-        }
-      ]
-    },
-    {
-      "id": "distressed-watchlist",
-      "name": "Distressed Watchlist",
-      "description": "Names with known recent distress signals.",
-      "entities": [
-        {
-          "inputName": "WeWork",
-          "resolvedName": "WeWork",
-          "neid": null
-        },
-        {
-          "inputName": "Bed Bath & Beyond",
-          "resolvedName": "Bed Bath & Beyond",
-          "neid": null
-        },
-        {
-          "inputName": "Rite Aid",
-          "resolvedName": "Rite Aid",
-          "neid": null
-        },
-        {
-          "inputName": "Yellow Corporation",
-          "resolvedName": "Yellow Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "SVB Financial Group",
-          "resolvedName": "SVB Financial Group",
-          "neid": null
-        },
-        {
-          "inputName": "Signature Bank",
-          "resolvedName": "Signature Bank",
-          "neid": null
-        },
-        {
-          "inputName": "First Republic Bank",
-          "resolvedName": "First Republic Bank",
-          "neid": null
-        },
-        {
-          "inputName": "Lordstown Motors",
-          "resolvedName": "Lordstown Motors",
-          "neid": null
-        },
-        {
-          "inputName": "Mullen Automotive",
-          "resolvedName": "Mullen Automotive",
-          "neid": null
-        },
-        {
-          "inputName": "Tupperware Brands",
-          "resolvedName": "Tupperware Brands",
-          "neid": null
-        }
-      ]
-    },
-    {
-      "id": "sp-500",
-      "name": "S&P 500",
-      "description": "Preloaded list of S&P 500 constituents.",
-      "entities": [
-        {
-          "inputName": "3M",
-          "resolvedName": "3M",
-          "neid": null
-        },
-        {
-          "inputName": "A. O. Smith",
-          "resolvedName": "A. O. Smith",
-          "neid": null
-        },
-        {
-          "inputName": "Abbott Laboratories",
-          "resolvedName": "Abbott Laboratories",
-          "neid": null
-        },
-        {
-          "inputName": "AbbVie",
-          "resolvedName": "AbbVie",
-          "neid": null
-        },
-        {
-          "inputName": "Accenture",
-          "resolvedName": "Accenture",
-          "neid": null
-        },
-        {
-          "inputName": "Adobe Inc.",
-          "resolvedName": "Adobe Inc.",
-          "neid": null
-        },
-        {
-          "inputName": "Advanced Micro Devices",
-          "resolvedName": "Advanced Micro Devices",
-          "neid": null
-        },
-        {
-          "inputName": "AES Corporation",
-          "resolvedName": "AES Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "Aflac",
-          "resolvedName": "Aflac",
-          "neid": null
-        },
-        {
-          "inputName": "Agilent Technologies",
-          "resolvedName": "Agilent Technologies",
-          "neid": null
-        },
-        {
-          "inputName": "Air Products",
-          "resolvedName": "Air Products",
-          "neid": null
-        },
-        {
-          "inputName": "Airbnb",
-          "resolvedName": "Airbnb",
-          "neid": null
-        },
-        {
-          "inputName": "Akamai Technologies",
-          "resolvedName": "Akamai Technologies",
-          "neid": null
-        },
-        {
-          "inputName": "Albemarle Corporation",
-          "resolvedName": "Albemarle Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "Alexandria Real Estate Equities",
-          "resolvedName": "Alexandria Real Estate Equities",
-          "neid": null
-        },
-        {
-          "inputName": "Align Technology",
-          "resolvedName": "Align Technology",
-          "neid": null
-        },
-        {
-          "inputName": "Allegion",
-          "resolvedName": "Allegion",
-          "neid": null
-        },
-        {
-          "inputName": "Alliant Energy",
-          "resolvedName": "Alliant Energy",
-          "neid": null
-        },
-        {
-          "inputName": "Allstate",
-          "resolvedName": "Allstate",
-          "neid": null
-        },
-        {
-          "inputName": "Alphabet Inc.",
-          "resolvedName": "Alphabet Inc.",
-          "neid": null
-        },
-        {
-          "inputName": "Altria",
-          "resolvedName": "Altria",
-          "neid": null
-        },
-        {
-          "inputName": "Amazon",
-          "resolvedName": "Amazon",
-          "neid": null
-        },
-        {
-          "inputName": "Amcor",
-          "resolvedName": "Amcor",
-          "neid": null
-        },
-        {
-          "inputName": "Ameren",
-          "resolvedName": "Ameren",
-          "neid": null
-        },
-        {
-          "inputName": "American Electric Power",
-          "resolvedName": "American Electric Power",
-          "neid": null
-        },
-        {
-          "inputName": "American Express",
-          "resolvedName": "American Express",
-          "neid": null
-        },
-        {
-          "inputName": "American International Group",
-          "resolvedName": "American International Group",
-          "neid": null
-        },
-        {
-          "inputName": "American Tower",
-          "resolvedName": "American Tower",
-          "neid": null
-        },
-        {
-          "inputName": "American Water Works",
-          "resolvedName": "American Water Works",
-          "neid": null
-        },
-        {
-          "inputName": "Ameriprise Financial",
-          "resolvedName": "Ameriprise Financial",
-          "neid": null
-        },
-        {
-          "inputName": "Ametek",
-          "resolvedName": "Ametek",
-          "neid": null
-        },
-        {
-          "inputName": "Amgen",
-          "resolvedName": "Amgen",
-          "neid": null
-        },
-        {
-          "inputName": "Amphenol",
-          "resolvedName": "Amphenol",
-          "neid": null
-        },
-        {
-          "inputName": "Analog Devices",
-          "resolvedName": "Analog Devices",
-          "neid": null
-        },
-        {
-          "inputName": "Aon plc",
-          "resolvedName": "Aon plc",
-          "neid": null
-        },
-        {
-          "inputName": "APA Corporation",
-          "resolvedName": "APA Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "Apollo Global Management",
-          "resolvedName": "Apollo Global Management",
-          "neid": null
-        },
-        {
-          "inputName": "Apple Inc.",
-          "resolvedName": "Apple Inc.",
-          "neid": null
-        },
-        {
-          "inputName": "Applied Materials",
-          "resolvedName": "Applied Materials",
-          "neid": null
-        },
-        {
-          "inputName": "AppLovin",
-          "resolvedName": "AppLovin",
-          "neid": null
-        },
-        {
-          "inputName": "Aptiv",
-          "resolvedName": "Aptiv",
-          "neid": null
-        },
-        {
-          "inputName": "Arch Capital Group",
-          "resolvedName": "Arch Capital Group",
-          "neid": null
-        },
-        {
-          "inputName": "Archer Daniels Midland",
-          "resolvedName": "Archer Daniels Midland",
-          "neid": null
-        },
-        {
-          "inputName": "Ares Management",
-          "resolvedName": "Ares Management",
-          "neid": null
-        },
-        {
-          "inputName": "Arista Networks",
-          "resolvedName": "Arista Networks",
-          "neid": null
-        },
-        {
-          "inputName": "Arthur J. Gallagher & Co.",
-          "resolvedName": "Arthur J. Gallagher & Co.",
-          "neid": null
-        },
-        {
-          "inputName": "Assurant",
-          "resolvedName": "Assurant",
-          "neid": null
-        },
-        {
-          "inputName": "AT&T",
-          "resolvedName": "AT&T",
-          "neid": null
-        },
-        {
-          "inputName": "Atmos Energy",
-          "resolvedName": "Atmos Energy",
-          "neid": null
-        },
-        {
-          "inputName": "Autodesk",
-          "resolvedName": "Autodesk",
-          "neid": null
-        },
-        {
-          "inputName": "Automatic Data Processing",
-          "resolvedName": "Automatic Data Processing",
-          "neid": null
-        },
-        {
-          "inputName": "AutoZone",
-          "resolvedName": "AutoZone",
-          "neid": null
-        },
-        {
-          "inputName": "AvalonBay Communities",
-          "resolvedName": "AvalonBay Communities",
-          "neid": null
-        },
-        {
-          "inputName": "Avery Dennison",
-          "resolvedName": "Avery Dennison",
-          "neid": null
-        },
-        {
-          "inputName": "Axon Enterprise",
-          "resolvedName": "Axon Enterprise",
-          "neid": null
-        },
-        {
-          "inputName": "Baker Hughes",
-          "resolvedName": "Baker Hughes",
-          "neid": null
-        },
-        {
-          "inputName": "Ball Corporation",
-          "resolvedName": "Ball Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "Bank of America",
-          "resolvedName": "Bank of America",
-          "neid": null
-        },
-        {
-          "inputName": "Baxter International",
-          "resolvedName": "Baxter International",
-          "neid": null
-        },
-        {
-          "inputName": "Becton Dickinson",
-          "resolvedName": "Becton Dickinson",
-          "neid": null
-        },
-        {
-          "inputName": "Berkshire Hathaway",
-          "resolvedName": "Berkshire Hathaway",
-          "neid": null
-        },
-        {
-          "inputName": "Best Buy",
-          "resolvedName": "Best Buy",
-          "neid": null
-        },
-        {
-          "inputName": "Bio-Techne",
-          "resolvedName": "Bio-Techne",
-          "neid": null
-        },
-        {
-          "inputName": "Biogen",
-          "resolvedName": "Biogen",
-          "neid": null
-        },
-        {
-          "inputName": "BlackRock",
-          "resolvedName": "BlackRock",
-          "neid": null
-        },
-        {
-          "inputName": "Blackstone Inc.",
-          "resolvedName": "Blackstone Inc.",
-          "neid": null
-        },
-        {
-          "inputName": "Block, Inc.",
-          "resolvedName": "Block, Inc.",
-          "neid": null
-        },
-        {
-          "inputName": "BNY Mellon",
-          "resolvedName": "BNY Mellon",
-          "neid": null
-        },
-        {
-          "inputName": "Boeing",
-          "resolvedName": "Boeing",
-          "neid": null
-        },
-        {
-          "inputName": "Booking Holdings",
-          "resolvedName": "Booking Holdings",
-          "neid": null
-        },
-        {
-          "inputName": "Boston Scientific",
-          "resolvedName": "Boston Scientific",
-          "neid": null
-        },
-        {
-          "inputName": "Bristol Myers Squibb",
-          "resolvedName": "Bristol Myers Squibb",
-          "neid": null
-        },
-        {
-          "inputName": "Broadcom",
-          "resolvedName": "Broadcom",
-          "neid": null
-        },
-        {
-          "inputName": "Broadridge Financial Solutions",
-          "resolvedName": "Broadridge Financial Solutions",
-          "neid": null
-        },
-        {
-          "inputName": "Brown & Brown",
-          "resolvedName": "Brown & Brown",
-          "neid": null
-        },
-        {
-          "inputName": "Brown–Forman",
-          "resolvedName": "Brown–Forman",
-          "neid": null
-        },
-        {
-          "inputName": "Builders FirstSource",
-          "resolvedName": "Builders FirstSource",
-          "neid": null
-        },
-        {
-          "inputName": "Bunge Global",
-          "resolvedName": "Bunge Global",
-          "neid": null
-        },
-        {
-          "inputName": "BXP, Inc.",
-          "resolvedName": "BXP, Inc.",
-          "neid": null
-        },
-        {
-          "inputName": "C.H. Robinson",
-          "resolvedName": "C.H. Robinson",
-          "neid": null
-        },
-        {
-          "inputName": "Cadence Design Systems",
-          "resolvedName": "Cadence Design Systems",
-          "neid": null
-        },
-        {
-          "inputName": "Camden Property Trust",
-          "resolvedName": "Camden Property Trust",
-          "neid": null
-        },
-        {
-          "inputName": "Campbell's Company",
-          "resolvedName": "Campbell's Company",
-          "neid": null
-        },
-        {
-          "inputName": "Capital One",
-          "resolvedName": "Capital One",
-          "neid": null
-        },
-        {
-          "inputName": "Cardinal Health",
-          "resolvedName": "Cardinal Health",
-          "neid": null
-        },
-        {
-          "inputName": "Carnival Corporation",
-          "resolvedName": "Carnival Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "Carrier Global",
-          "resolvedName": "Carrier Global",
-          "neid": null
-        },
-        {
-          "inputName": "Carvana",
-          "resolvedName": "Carvana",
-          "neid": null
-        },
-        {
-          "inputName": "Casey's",
-          "resolvedName": "Casey's",
-          "neid": null
-        },
-        {
-          "inputName": "Caterpillar Inc.",
-          "resolvedName": "Caterpillar Inc.",
-          "neid": null
-        },
-        {
-          "inputName": "Cboe Global Markets",
-          "resolvedName": "Cboe Global Markets",
-          "neid": null
-        },
-        {
-          "inputName": "CBRE Group",
-          "resolvedName": "CBRE Group",
-          "neid": null
-        },
-        {
-          "inputName": "CDW Corporation",
-          "resolvedName": "CDW Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "Cencora",
-          "resolvedName": "Cencora",
-          "neid": null
-        },
-        {
-          "inputName": "Centene Corporation",
-          "resolvedName": "Centene Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "CenterPoint Energy",
-          "resolvedName": "CenterPoint Energy",
-          "neid": null
-        },
-        {
-          "inputName": "CF Industries",
-          "resolvedName": "CF Industries",
-          "neid": null
-        },
-        {
-          "inputName": "Charles River Laboratories",
-          "resolvedName": "Charles River Laboratories",
-          "neid": null
-        },
-        {
-          "inputName": "Charles Schwab Corporation",
-          "resolvedName": "Charles Schwab Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "Charter Communications",
-          "resolvedName": "Charter Communications",
-          "neid": null
-        },
-        {
-          "inputName": "Chevron Corporation",
-          "resolvedName": "Chevron Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "Chipotle Mexican Grill",
-          "resolvedName": "Chipotle Mexican Grill",
-          "neid": null
-        },
-        {
-          "inputName": "Chubb Limited",
-          "resolvedName": "Chubb Limited",
-          "neid": null
-        },
-        {
-          "inputName": "Church & Dwight",
-          "resolvedName": "Church & Dwight",
-          "neid": null
-        },
-        {
-          "inputName": "Ciena",
-          "resolvedName": "Ciena",
-          "neid": null
-        },
-        {
-          "inputName": "Cigna",
-          "resolvedName": "Cigna",
-          "neid": null
-        },
-        {
-          "inputName": "Cincinnati Financial",
-          "resolvedName": "Cincinnati Financial",
-          "neid": null
-        },
-        {
-          "inputName": "Cintas",
-          "resolvedName": "Cintas",
-          "neid": null
-        },
-        {
-          "inputName": "Cisco",
-          "resolvedName": "Cisco",
-          "neid": null
-        },
-        {
-          "inputName": "Citigroup",
-          "resolvedName": "Citigroup",
-          "neid": null
-        },
-        {
-          "inputName": "Citizens Financial Group",
-          "resolvedName": "Citizens Financial Group",
-          "neid": null
-        },
-        {
-          "inputName": "Clorox",
-          "resolvedName": "Clorox",
-          "neid": null
-        },
-        {
-          "inputName": "CME Group",
-          "resolvedName": "CME Group",
-          "neid": null
-        },
-        {
-          "inputName": "CMS Energy",
-          "resolvedName": "CMS Energy",
-          "neid": null
-        },
-        {
-          "inputName": "Coca-Cola Company",
-          "resolvedName": "Coca-Cola Company",
-          "neid": null
-        },
-        {
-          "inputName": "Cognizant",
-          "resolvedName": "Cognizant",
-          "neid": null
-        },
-        {
-          "inputName": "Coherent Corp.",
-          "resolvedName": "Coherent Corp.",
-          "neid": null
-        },
-        {
-          "inputName": "Coinbase",
-          "resolvedName": "Coinbase",
-          "neid": null
-        },
-        {
-          "inputName": "Colgate-Palmolive",
-          "resolvedName": "Colgate-Palmolive",
-          "neid": null
-        },
-        {
-          "inputName": "Comcast",
-          "resolvedName": "Comcast",
-          "neid": null
-        },
-        {
-          "inputName": "Comfort Systems USA",
-          "resolvedName": "Comfort Systems USA",
-          "neid": null
-        },
-        {
-          "inputName": "Conagra Brands",
-          "resolvedName": "Conagra Brands",
-          "neid": null
-        },
-        {
-          "inputName": "ConocoPhillips",
-          "resolvedName": "ConocoPhillips",
-          "neid": null
-        },
-        {
-          "inputName": "Consolidated Edison",
-          "resolvedName": "Consolidated Edison",
-          "neid": null
-        },
-        {
-          "inputName": "Constellation Brands",
-          "resolvedName": "Constellation Brands",
-          "neid": null
-        },
-        {
-          "inputName": "Constellation Energy",
-          "resolvedName": "Constellation Energy",
-          "neid": null
-        },
-        {
-          "inputName": "Cooper Companies",
-          "resolvedName": "Cooper Companies",
-          "neid": null
-        },
-        {
-          "inputName": "Copart",
-          "resolvedName": "Copart",
-          "neid": null
-        },
-        {
-          "inputName": "Corning Inc.",
-          "resolvedName": "Corning Inc.",
-          "neid": null
-        },
-        {
-          "inputName": "Corpay",
-          "resolvedName": "Corpay",
-          "neid": null
-        },
-        {
-          "inputName": "Corteva",
-          "resolvedName": "Corteva",
-          "neid": null
-        },
-        {
-          "inputName": "CoStar Group",
-          "resolvedName": "CoStar Group",
-          "neid": null
-        },
-        {
-          "inputName": "Costco",
-          "resolvedName": "Costco",
-          "neid": null
-        },
-        {
-          "inputName": "CRH plc",
-          "resolvedName": "CRH plc",
-          "neid": null
-        },
-        {
-          "inputName": "CrowdStrike",
-          "resolvedName": "CrowdStrike",
-          "neid": null
-        },
-        {
-          "inputName": "Crown Castle",
-          "resolvedName": "Crown Castle",
-          "neid": null
-        },
-        {
-          "inputName": "CSX Corporation",
-          "resolvedName": "CSX Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "Cummins",
-          "resolvedName": "Cummins",
-          "neid": null
-        },
-        {
-          "inputName": "CVS Health",
-          "resolvedName": "CVS Health",
-          "neid": null
-        },
-        {
-          "inputName": "Danaher Corporation",
-          "resolvedName": "Danaher Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "Darden Restaurants",
-          "resolvedName": "Darden Restaurants",
-          "neid": null
-        },
-        {
-          "inputName": "Datadog",
-          "resolvedName": "Datadog",
-          "neid": null
-        },
-        {
-          "inputName": "DaVita",
-          "resolvedName": "DaVita",
-          "neid": null
-        },
-        {
-          "inputName": "Deckers Brands",
-          "resolvedName": "Deckers Brands",
-          "neid": null
-        },
-        {
-          "inputName": "Deere & Company",
-          "resolvedName": "Deere & Company",
-          "neid": null
-        },
-        {
-          "inputName": "Dell Technologies",
-          "resolvedName": "Dell Technologies",
-          "neid": null
-        },
-        {
-          "inputName": "Delta Air Lines",
-          "resolvedName": "Delta Air Lines",
-          "neid": null
-        },
-        {
-          "inputName": "Devon Energy",
-          "resolvedName": "Devon Energy",
-          "neid": null
-        },
-        {
-          "inputName": "Dexcom",
-          "resolvedName": "Dexcom",
-          "neid": null
-        },
-        {
-          "inputName": "Diamondback Energy",
-          "resolvedName": "Diamondback Energy",
-          "neid": null
-        },
-        {
-          "inputName": "Digital Realty",
-          "resolvedName": "Digital Realty",
-          "neid": null
-        },
-        {
-          "inputName": "Dollar General",
-          "resolvedName": "Dollar General",
-          "neid": null
-        },
-        {
-          "inputName": "Dollar Tree",
-          "resolvedName": "Dollar Tree",
-          "neid": null
-        },
-        {
-          "inputName": "Dominion Energy",
-          "resolvedName": "Dominion Energy",
-          "neid": null
-        },
-        {
-          "inputName": "Domino's",
-          "resolvedName": "Domino's",
-          "neid": null
-        },
-        {
-          "inputName": "DoorDash",
-          "resolvedName": "DoorDash",
-          "neid": null
-        },
-        {
-          "inputName": "Dover Corporation",
-          "resolvedName": "Dover Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "Dow Inc.",
-          "resolvedName": "Dow Inc.",
-          "neid": null
-        },
-        {
-          "inputName": "D. R. Horton",
-          "resolvedName": "D. R. Horton",
-          "neid": null
-        },
-        {
-          "inputName": "DTE Energy",
-          "resolvedName": "DTE Energy",
-          "neid": null
-        },
-        {
-          "inputName": "Duke Energy",
-          "resolvedName": "Duke Energy",
-          "neid": null
-        },
-        {
-          "inputName": "DuPont",
-          "resolvedName": "DuPont",
-          "neid": null
-        },
-        {
-          "inputName": "Eaton Corporation",
-          "resolvedName": "Eaton Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "eBay Inc.",
-          "resolvedName": "eBay Inc.",
-          "neid": null
-        },
-        {
-          "inputName": "EchoStar",
-          "resolvedName": "EchoStar",
-          "neid": null
-        },
-        {
-          "inputName": "Ecolab",
-          "resolvedName": "Ecolab",
-          "neid": null
-        },
-        {
-          "inputName": "Edison International",
-          "resolvedName": "Edison International",
-          "neid": null
-        },
-        {
-          "inputName": "Edwards Lifesciences",
-          "resolvedName": "Edwards Lifesciences",
-          "neid": null
-        },
-        {
-          "inputName": "Electronic Arts",
-          "resolvedName": "Electronic Arts",
-          "neid": null
-        },
-        {
-          "inputName": "Elevance Health",
-          "resolvedName": "Elevance Health",
-          "neid": null
-        },
-        {
-          "inputName": "Emcor",
-          "resolvedName": "Emcor",
-          "neid": null
-        },
-        {
-          "inputName": "Emerson Electric",
-          "resolvedName": "Emerson Electric",
-          "neid": null
-        },
-        {
-          "inputName": "Entergy",
-          "resolvedName": "Entergy",
-          "neid": null
-        },
-        {
-          "inputName": "EOG Resources",
-          "resolvedName": "EOG Resources",
-          "neid": null
-        },
-        {
-          "inputName": "EQT Corporation",
-          "resolvedName": "EQT Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "Equifax",
-          "resolvedName": "Equifax",
-          "neid": null
-        },
-        {
-          "inputName": "Equinix",
-          "resolvedName": "Equinix",
-          "neid": null
-        },
-        {
-          "inputName": "Equity Residential",
-          "resolvedName": "Equity Residential",
-          "neid": null
-        },
-        {
-          "inputName": "Erie Indemnity",
-          "resolvedName": "Erie Indemnity",
-          "neid": null
-        },
-        {
-          "inputName": "Essex Property Trust",
-          "resolvedName": "Essex Property Trust",
-          "neid": null
-        },
-        {
-          "inputName": "Estée Lauder Companies",
-          "resolvedName": "Estée Lauder Companies",
-          "neid": null
-        },
-        {
-          "inputName": "Everest Group",
-          "resolvedName": "Everest Group",
-          "neid": null
-        },
-        {
-          "inputName": "Evergy",
-          "resolvedName": "Evergy",
-          "neid": null
-        },
-        {
-          "inputName": "Eversource Energy",
-          "resolvedName": "Eversource Energy",
-          "neid": null
-        },
-        {
-          "inputName": "Exelon",
-          "resolvedName": "Exelon",
-          "neid": null
-        },
-        {
-          "inputName": "Expand Energy",
-          "resolvedName": "Expand Energy",
-          "neid": null
-        },
-        {
-          "inputName": "Expedia Group",
-          "resolvedName": "Expedia Group",
-          "neid": null
-        },
-        {
-          "inputName": "Expeditors International",
-          "resolvedName": "Expeditors International",
-          "neid": null
-        },
-        {
-          "inputName": "Extra Space Storage",
-          "resolvedName": "Extra Space Storage",
-          "neid": null
-        },
-        {
-          "inputName": "ExxonMobil",
-          "resolvedName": "ExxonMobil",
-          "neid": null
-        },
-        {
-          "inputName": "F5, Inc.",
-          "resolvedName": "F5, Inc.",
-          "neid": null
-        },
-        {
-          "inputName": "FactSet",
-          "resolvedName": "FactSet",
-          "neid": null
-        },
-        {
-          "inputName": "Fair Isaac",
-          "resolvedName": "Fair Isaac",
-          "neid": null
-        },
-        {
-          "inputName": "Fastenal",
-          "resolvedName": "Fastenal",
-          "neid": null
-        },
-        {
-          "inputName": "Federal Realty Investment Trust",
-          "resolvedName": "Federal Realty Investment Trust",
-          "neid": null
-        },
-        {
-          "inputName": "FedEx",
-          "resolvedName": "FedEx",
-          "neid": null
-        },
-        {
-          "inputName": "Fidelity National Information Services",
-          "resolvedName": "Fidelity National Information Services",
-          "neid": null
-        },
-        {
-          "inputName": "Fifth Third Bancorp",
-          "resolvedName": "Fifth Third Bancorp",
-          "neid": null
-        },
-        {
-          "inputName": "First Solar",
-          "resolvedName": "First Solar",
-          "neid": null
-        },
-        {
-          "inputName": "FirstEnergy",
-          "resolvedName": "FirstEnergy",
-          "neid": null
-        },
-        {
-          "inputName": "Fiserv",
-          "resolvedName": "Fiserv",
-          "neid": null
-        },
-        {
-          "inputName": "Ford Motor Company",
-          "resolvedName": "Ford Motor Company",
-          "neid": null
-        },
-        {
-          "inputName": "Fortinet",
-          "resolvedName": "Fortinet",
-          "neid": null
-        },
-        {
-          "inputName": "Fortive",
-          "resolvedName": "Fortive",
-          "neid": null
-        },
-        {
-          "inputName": "Fox Corporation",
-          "resolvedName": "Fox Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "Franklin Resources",
-          "resolvedName": "Franklin Resources",
-          "neid": null
-        },
-        {
-          "inputName": "Freeport-McMoRan",
-          "resolvedName": "Freeport-McMoRan",
-          "neid": null
-        },
-        {
-          "inputName": "Garmin",
-          "resolvedName": "Garmin",
-          "neid": null
-        },
-        {
-          "inputName": "Gartner",
-          "resolvedName": "Gartner",
-          "neid": null
-        },
-        {
-          "inputName": "GE Aerospace",
-          "resolvedName": "GE Aerospace",
-          "neid": null
-        },
-        {
-          "inputName": "GE HealthCare",
-          "resolvedName": "GE HealthCare",
-          "neid": null
-        },
-        {
-          "inputName": "GE Vernova",
-          "resolvedName": "GE Vernova",
-          "neid": null
-        },
-        {
-          "inputName": "Gen Digital",
-          "resolvedName": "Gen Digital",
-          "neid": null
-        },
-        {
-          "inputName": "Generac",
-          "resolvedName": "Generac",
-          "neid": null
-        },
-        {
-          "inputName": "General Dynamics",
-          "resolvedName": "General Dynamics",
-          "neid": null
-        },
-        {
-          "inputName": "General Mills",
-          "resolvedName": "General Mills",
-          "neid": null
-        },
-        {
-          "inputName": "General Motors",
-          "resolvedName": "General Motors",
-          "neid": null
-        },
-        {
-          "inputName": "Genuine Parts Company",
-          "resolvedName": "Genuine Parts Company",
-          "neid": null
-        },
-        {
-          "inputName": "Gilead Sciences",
-          "resolvedName": "Gilead Sciences",
-          "neid": null
-        },
-        {
-          "inputName": "Global Payments",
-          "resolvedName": "Global Payments",
-          "neid": null
-        },
-        {
-          "inputName": "Globe Life",
-          "resolvedName": "Globe Life",
-          "neid": null
-        },
-        {
-          "inputName": "GoDaddy",
-          "resolvedName": "GoDaddy",
-          "neid": null
-        },
-        {
-          "inputName": "Goldman Sachs",
-          "resolvedName": "Goldman Sachs",
-          "neid": null
-        },
-        {
-          "inputName": "Halliburton",
-          "resolvedName": "Halliburton",
-          "neid": null
-        },
-        {
-          "inputName": "Hartford",
-          "resolvedName": "Hartford",
-          "neid": null
-        },
-        {
-          "inputName": "Hasbro",
-          "resolvedName": "Hasbro",
-          "neid": null
-        },
-        {
-          "inputName": "HCA Healthcare",
-          "resolvedName": "HCA Healthcare",
-          "neid": null
-        },
-        {
-          "inputName": "Healthpeak Properties",
-          "resolvedName": "Healthpeak Properties",
-          "neid": null
-        },
-        {
-          "inputName": "Henry Schein",
-          "resolvedName": "Henry Schein",
-          "neid": null
-        },
-        {
-          "inputName": "Hershey Company",
-          "resolvedName": "Hershey Company",
-          "neid": null
-        },
-        {
-          "inputName": "Hewlett Packard Enterprise",
-          "resolvedName": "Hewlett Packard Enterprise",
-          "neid": null
-        },
-        {
-          "inputName": "Hilton Worldwide",
-          "resolvedName": "Hilton Worldwide",
-          "neid": null
-        },
-        {
-          "inputName": "Home Depot",
-          "resolvedName": "Home Depot",
-          "neid": null
-        },
-        {
-          "inputName": "Honeywell",
-          "resolvedName": "Honeywell",
-          "neid": null
-        },
-        {
-          "inputName": "Hormel Foods",
-          "resolvedName": "Hormel Foods",
-          "neid": null
-        },
-        {
-          "inputName": "Host Hotels & Resorts",
-          "resolvedName": "Host Hotels & Resorts",
-          "neid": null
-        },
-        {
-          "inputName": "Howmet Aerospace",
-          "resolvedName": "Howmet Aerospace",
-          "neid": null
-        },
-        {
-          "inputName": "HP Inc.",
-          "resolvedName": "HP Inc.",
-          "neid": null
-        },
-        {
-          "inputName": "Hubbell Incorporated",
-          "resolvedName": "Hubbell Incorporated",
-          "neid": null
-        },
-        {
-          "inputName": "Humana",
-          "resolvedName": "Humana",
-          "neid": null
-        },
-        {
-          "inputName": "Huntington Bancshares",
-          "resolvedName": "Huntington Bancshares",
-          "neid": null
-        },
-        {
-          "inputName": "Huntington Ingalls Industries",
-          "resolvedName": "Huntington Ingalls Industries",
-          "neid": null
-        },
-        {
-          "inputName": "IBM",
-          "resolvedName": "IBM",
-          "neid": null
-        },
-        {
-          "inputName": "IDEX Corporation",
-          "resolvedName": "IDEX Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "Idexx Laboratories",
-          "resolvedName": "Idexx Laboratories",
-          "neid": null
-        },
-        {
-          "inputName": "Illinois Tool Works",
-          "resolvedName": "Illinois Tool Works",
-          "neid": null
-        },
-        {
-          "inputName": "Incyte",
-          "resolvedName": "Incyte",
-          "neid": null
-        },
-        {
-          "inputName": "Ingersoll Rand",
-          "resolvedName": "Ingersoll Rand",
-          "neid": null
-        },
-        {
-          "inputName": "Insulet Corporation",
-          "resolvedName": "Insulet Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "Intel",
-          "resolvedName": "Intel",
-          "neid": null
-        },
-        {
-          "inputName": "Interactive Brokers",
-          "resolvedName": "Interactive Brokers",
-          "neid": null
-        },
-        {
-          "inputName": "Intercontinental Exchange",
-          "resolvedName": "Intercontinental Exchange",
-          "neid": null
-        },
-        {
-          "inputName": "International Flavors & Fragrances",
-          "resolvedName": "International Flavors & Fragrances",
-          "neid": null
-        },
-        {
-          "inputName": "International Paper",
-          "resolvedName": "International Paper",
-          "neid": null
-        },
-        {
-          "inputName": "Intuit",
-          "resolvedName": "Intuit",
-          "neid": null
-        },
-        {
-          "inputName": "Intuitive Surgical",
-          "resolvedName": "Intuitive Surgical",
-          "neid": null
-        },
-        {
-          "inputName": "Invesco",
-          "resolvedName": "Invesco",
-          "neid": null
-        },
-        {
-          "inputName": "Invitation Homes",
-          "resolvedName": "Invitation Homes",
-          "neid": null
-        },
-        {
-          "inputName": "IQVIA",
-          "resolvedName": "IQVIA",
-          "neid": null
-        },
-        {
-          "inputName": "Iron Mountain",
-          "resolvedName": "Iron Mountain",
-          "neid": null
-        },
-        {
-          "inputName": "J.B. Hunt",
-          "resolvedName": "J.B. Hunt",
-          "neid": null
-        },
-        {
-          "inputName": "Jabil",
-          "resolvedName": "Jabil",
-          "neid": null
-        },
-        {
-          "inputName": "Jack Henry & Associates",
-          "resolvedName": "Jack Henry & Associates",
-          "neid": null
-        },
-        {
-          "inputName": "Jacobs Solutions",
-          "resolvedName": "Jacobs Solutions",
-          "neid": null
-        },
-        {
-          "inputName": "Johnson & Johnson",
-          "resolvedName": "Johnson & Johnson",
-          "neid": null
-        },
-        {
-          "inputName": "Johnson Controls",
-          "resolvedName": "Johnson Controls",
-          "neid": null
-        },
-        {
-          "inputName": "JPMorgan Chase",
-          "resolvedName": "JPMorgan Chase",
-          "neid": null
-        },
-        {
-          "inputName": "Kenvue",
-          "resolvedName": "Kenvue",
-          "neid": null
-        },
-        {
-          "inputName": "Keurig Dr Pepper",
-          "resolvedName": "Keurig Dr Pepper",
-          "neid": null
-        },
-        {
-          "inputName": "KeyCorp",
-          "resolvedName": "KeyCorp",
-          "neid": null
-        },
-        {
-          "inputName": "Keysight Technologies",
-          "resolvedName": "Keysight Technologies",
-          "neid": null
-        },
-        {
-          "inputName": "Kimberly-Clark",
-          "resolvedName": "Kimberly-Clark",
-          "neid": null
-        },
-        {
-          "inputName": "Kimco Realty",
-          "resolvedName": "Kimco Realty",
-          "neid": null
-        },
-        {
-          "inputName": "Kinder Morgan",
-          "resolvedName": "Kinder Morgan",
-          "neid": null
-        },
-        {
-          "inputName": "KKR & Co.",
-          "resolvedName": "KKR & Co.",
-          "neid": null
-        },
-        {
-          "inputName": "KLA Corporation",
-          "resolvedName": "KLA Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "Kraft Heinz",
-          "resolvedName": "Kraft Heinz",
-          "neid": null
-        },
-        {
-          "inputName": "Kroger",
-          "resolvedName": "Kroger",
-          "neid": null
-        },
-        {
-          "inputName": "L3Harris",
-          "resolvedName": "L3Harris",
-          "neid": null
-        },
-        {
-          "inputName": "Labcorp",
-          "resolvedName": "Labcorp",
-          "neid": null
-        },
-        {
-          "inputName": "Lam Research",
-          "resolvedName": "Lam Research",
-          "neid": null
-        },
-        {
-          "inputName": "Las Vegas Sands",
-          "resolvedName": "Las Vegas Sands",
-          "neid": null
-        },
-        {
-          "inputName": "Leidos",
-          "resolvedName": "Leidos",
-          "neid": null
-        },
-        {
-          "inputName": "Lennar",
-          "resolvedName": "Lennar",
-          "neid": null
-        },
-        {
-          "inputName": "Lennox International",
-          "resolvedName": "Lennox International",
-          "neid": null
-        },
-        {
-          "inputName": "Lilly (Eli)",
-          "resolvedName": "Lilly (Eli)",
-          "neid": null
-        },
-        {
-          "inputName": "Linde plc",
-          "resolvedName": "Linde plc",
-          "neid": null
-        },
-        {
-          "inputName": "Live Nation Entertainment",
-          "resolvedName": "Live Nation Entertainment",
-          "neid": null
-        },
-        {
-          "inputName": "Lockheed Martin",
-          "resolvedName": "Lockheed Martin",
-          "neid": null
-        },
-        {
-          "inputName": "Loews Corporation",
-          "resolvedName": "Loews Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "Lowe's",
-          "resolvedName": "Lowe's",
-          "neid": null
-        },
-        {
-          "inputName": "Lululemon Athletica",
-          "resolvedName": "Lululemon Athletica",
-          "neid": null
-        },
-        {
-          "inputName": "Lumentum",
-          "resolvedName": "Lumentum",
-          "neid": null
-        },
-        {
-          "inputName": "LyondellBasell",
-          "resolvedName": "LyondellBasell",
-          "neid": null
-        },
-        {
-          "inputName": "M&T Bank",
-          "resolvedName": "M&T Bank",
-          "neid": null
-        },
-        {
-          "inputName": "Marathon Petroleum",
-          "resolvedName": "Marathon Petroleum",
-          "neid": null
-        },
-        {
-          "inputName": "Marriott International",
-          "resolvedName": "Marriott International",
-          "neid": null
-        },
-        {
-          "inputName": "Marsh McLennan",
-          "resolvedName": "Marsh McLennan",
-          "neid": null
-        },
-        {
-          "inputName": "Martin Marietta Materials",
-          "resolvedName": "Martin Marietta Materials",
-          "neid": null
-        },
-        {
-          "inputName": "Masco",
-          "resolvedName": "Masco",
-          "neid": null
-        },
-        {
-          "inputName": "Mastercard",
-          "resolvedName": "Mastercard",
-          "neid": null
-        },
-        {
-          "inputName": "McCormick & Company",
-          "resolvedName": "McCormick & Company",
-          "neid": null
-        },
-        {
-          "inputName": "McDonald's",
-          "resolvedName": "McDonald's",
-          "neid": null
-        },
-        {
-          "inputName": "McKesson Corporation",
-          "resolvedName": "McKesson Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "Medtronic",
-          "resolvedName": "Medtronic",
-          "neid": null
-        },
-        {
-          "inputName": "Merck & Co.",
-          "resolvedName": "Merck & Co.",
-          "neid": null
-        },
-        {
-          "inputName": "Meta Platforms",
-          "resolvedName": "Meta Platforms",
-          "neid": null
-        },
-        {
-          "inputName": "MetLife",
-          "resolvedName": "MetLife",
-          "neid": null
-        },
-        {
-          "inputName": "Mettler Toledo",
-          "resolvedName": "Mettler Toledo",
-          "neid": null
-        },
-        {
-          "inputName": "MGM Resorts",
-          "resolvedName": "MGM Resorts",
-          "neid": null
-        },
-        {
-          "inputName": "Microchip Technology",
-          "resolvedName": "Microchip Technology",
-          "neid": null
-        },
-        {
-          "inputName": "Micron Technology",
-          "resolvedName": "Micron Technology",
-          "neid": null
-        },
-        {
-          "inputName": "Microsoft",
-          "resolvedName": "Microsoft",
-          "neid": null
-        },
-        {
-          "inputName": "Mid-America Apartment Communities",
-          "resolvedName": "Mid-America Apartment Communities",
-          "neid": null
-        },
-        {
-          "inputName": "Moderna",
-          "resolvedName": "Moderna",
-          "neid": null
-        },
-        {
-          "inputName": "Molson Coors Beverage Company",
-          "resolvedName": "Molson Coors Beverage Company",
-          "neid": null
-        },
-        {
-          "inputName": "Mondelez International",
-          "resolvedName": "Mondelez International",
-          "neid": null
-        },
-        {
-          "inputName": "Monolithic Power Systems",
-          "resolvedName": "Monolithic Power Systems",
-          "neid": null
-        },
-        {
-          "inputName": "Monster Beverage",
-          "resolvedName": "Monster Beverage",
-          "neid": null
-        },
-        {
-          "inputName": "Moody's Corporation",
-          "resolvedName": "Moody's Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "Morgan Stanley",
-          "resolvedName": "Morgan Stanley",
-          "neid": null
-        },
-        {
-          "inputName": "Mosaic Company",
-          "resolvedName": "Mosaic Company",
-          "neid": null
-        },
-        {
-          "inputName": "Motorola Solutions",
-          "resolvedName": "Motorola Solutions",
-          "neid": null
-        },
-        {
-          "inputName": "MSCI Inc.",
-          "resolvedName": "MSCI Inc.",
-          "neid": null
-        },
-        {
-          "inputName": "Nasdaq, Inc.",
-          "resolvedName": "Nasdaq, Inc.",
-          "neid": null
-        },
-        {
-          "inputName": "NetApp",
-          "resolvedName": "NetApp",
-          "neid": null
-        },
-        {
-          "inputName": "Netflix",
-          "resolvedName": "Netflix",
-          "neid": null
-        },
-        {
-          "inputName": "Newmont",
-          "resolvedName": "Newmont",
-          "neid": null
-        },
-        {
-          "inputName": "News Corp",
-          "resolvedName": "News Corp",
-          "neid": null
-        },
-        {
-          "inputName": "NextEra Energy",
-          "resolvedName": "NextEra Energy",
-          "neid": null
-        },
-        {
-          "inputName": "Nike, Inc.",
-          "resolvedName": "Nike, Inc.",
-          "neid": null
-        },
-        {
-          "inputName": "NiSource",
-          "resolvedName": "NiSource",
-          "neid": null
-        },
-        {
-          "inputName": "Nordson Corporation",
-          "resolvedName": "Nordson Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "Norfolk Southern",
-          "resolvedName": "Norfolk Southern",
-          "neid": null
-        },
-        {
-          "inputName": "Northern Trust",
-          "resolvedName": "Northern Trust",
-          "neid": null
-        },
-        {
-          "inputName": "Northrop Grumman",
-          "resolvedName": "Northrop Grumman",
-          "neid": null
-        },
-        {
-          "inputName": "Norwegian Cruise Line Holdings",
-          "resolvedName": "Norwegian Cruise Line Holdings",
-          "neid": null
-        },
-        {
-          "inputName": "NRG Energy",
-          "resolvedName": "NRG Energy",
-          "neid": null
-        },
-        {
-          "inputName": "Nucor",
-          "resolvedName": "Nucor",
-          "neid": null
-        },
-        {
-          "inputName": "Nvidia",
-          "resolvedName": "Nvidia",
-          "neid": null
-        },
-        {
-          "inputName": "NVR, Inc.",
-          "resolvedName": "NVR, Inc.",
-          "neid": null
-        },
-        {
-          "inputName": "NXP Semiconductors",
-          "resolvedName": "NXP Semiconductors",
-          "neid": null
-        },
-        {
-          "inputName": "O’Reilly Automotive",
-          "resolvedName": "O’Reilly Automotive",
-          "neid": null
-        },
-        {
-          "inputName": "Occidental Petroleum",
-          "resolvedName": "Occidental Petroleum",
-          "neid": null
-        },
-        {
-          "inputName": "Old Dominion",
-          "resolvedName": "Old Dominion",
-          "neid": null
-        },
-        {
-          "inputName": "Omnicom Group",
-          "resolvedName": "Omnicom Group",
-          "neid": null
-        },
-        {
-          "inputName": "ON Semiconductor",
-          "resolvedName": "ON Semiconductor",
-          "neid": null
-        },
-        {
-          "inputName": "Oneok",
-          "resolvedName": "Oneok",
-          "neid": null
-        },
-        {
-          "inputName": "Oracle Corporation",
-          "resolvedName": "Oracle Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "Otis Worldwide",
-          "resolvedName": "Otis Worldwide",
-          "neid": null
-        },
-        {
-          "inputName": "Paccar",
-          "resolvedName": "Paccar",
-          "neid": null
-        },
-        {
-          "inputName": "Packaging Corporation of America",
-          "resolvedName": "Packaging Corporation of America",
-          "neid": null
-        },
-        {
-          "inputName": "Palantir Technologies",
-          "resolvedName": "Palantir Technologies",
-          "neid": null
-        },
-        {
-          "inputName": "Palo Alto Networks",
-          "resolvedName": "Palo Alto Networks",
-          "neid": null
-        },
-        {
-          "inputName": "Paramount Skydance Corporation",
-          "resolvedName": "Paramount Skydance Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "Parker Hannifin",
-          "resolvedName": "Parker Hannifin",
-          "neid": null
-        },
-        {
-          "inputName": "Paychex",
-          "resolvedName": "Paychex",
-          "neid": null
-        },
-        {
-          "inputName": "PayPal",
-          "resolvedName": "PayPal",
-          "neid": null
-        },
-        {
-          "inputName": "Pentair",
-          "resolvedName": "Pentair",
-          "neid": null
-        },
-        {
-          "inputName": "PepsiCo",
-          "resolvedName": "PepsiCo",
-          "neid": null
-        },
-        {
-          "inputName": "Pfizer",
-          "resolvedName": "Pfizer",
-          "neid": null
-        },
-        {
-          "inputName": "PG&E Corporation",
-          "resolvedName": "PG&E Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "Philip Morris International",
-          "resolvedName": "Philip Morris International",
-          "neid": null
-        },
-        {
-          "inputName": "Phillips 66",
-          "resolvedName": "Phillips 66",
-          "neid": null
-        },
-        {
-          "inputName": "Pinnacle West Capital",
-          "resolvedName": "Pinnacle West Capital",
-          "neid": null
-        },
-        {
-          "inputName": "PNC Financial Services",
-          "resolvedName": "PNC Financial Services",
-          "neid": null
-        },
-        {
-          "inputName": "Pool Corporation",
-          "resolvedName": "Pool Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "PPG Industries",
-          "resolvedName": "PPG Industries",
-          "neid": null
-        },
-        {
-          "inputName": "PPL Corporation",
-          "resolvedName": "PPL Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "Principal Financial Group",
-          "resolvedName": "Principal Financial Group",
-          "neid": null
-        },
-        {
-          "inputName": "Procter & Gamble",
-          "resolvedName": "Procter & Gamble",
-          "neid": null
-        },
-        {
-          "inputName": "Progressive Corporation",
-          "resolvedName": "Progressive Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "Prologis",
-          "resolvedName": "Prologis",
-          "neid": null
-        },
-        {
-          "inputName": "Prudential Financial",
-          "resolvedName": "Prudential Financial",
-          "neid": null
-        },
-        {
-          "inputName": "Public Service Enterprise Group",
-          "resolvedName": "Public Service Enterprise Group",
-          "neid": null
-        },
-        {
-          "inputName": "PTC Inc.",
-          "resolvedName": "PTC Inc.",
-          "neid": null
-        },
-        {
-          "inputName": "Public Storage",
-          "resolvedName": "Public Storage",
-          "neid": null
-        },
-        {
-          "inputName": "PulteGroup",
-          "resolvedName": "PulteGroup",
-          "neid": null
-        },
-        {
-          "inputName": "Quanta Services",
-          "resolvedName": "Quanta Services",
-          "neid": null
-        },
-        {
-          "inputName": "Qualcomm",
-          "resolvedName": "Qualcomm",
-          "neid": null
-        },
-        {
-          "inputName": "Quest Diagnostics",
-          "resolvedName": "Quest Diagnostics",
-          "neid": null
-        },
-        {
-          "inputName": "Qnity Electronics",
-          "resolvedName": "Qnity Electronics",
-          "neid": null
-        },
-        {
-          "inputName": "Ralph Lauren Corporation",
-          "resolvedName": "Ralph Lauren Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "Raymond James Financial",
-          "resolvedName": "Raymond James Financial",
-          "neid": null
-        },
-        {
-          "inputName": "RTX Corporation",
-          "resolvedName": "RTX Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "Realty Income",
-          "resolvedName": "Realty Income",
-          "neid": null
-        },
-        {
-          "inputName": "Regency Centers",
-          "resolvedName": "Regency Centers",
-          "neid": null
-        },
-        {
-          "inputName": "Regeneron Pharmaceuticals",
-          "resolvedName": "Regeneron Pharmaceuticals",
-          "neid": null
-        },
-        {
-          "inputName": "Regions Financial Corporation",
-          "resolvedName": "Regions Financial Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "Republic Services",
-          "resolvedName": "Republic Services",
-          "neid": null
-        },
-        {
-          "inputName": "ResMed",
-          "resolvedName": "ResMed",
-          "neid": null
-        },
-        {
-          "inputName": "Revvity",
-          "resolvedName": "Revvity",
-          "neid": null
-        },
-        {
-          "inputName": "Robinhood Markets",
-          "resolvedName": "Robinhood Markets",
-          "neid": null
-        },
-        {
-          "inputName": "Rockwell Automation",
-          "resolvedName": "Rockwell Automation",
-          "neid": null
-        },
-        {
-          "inputName": "Rollins, Inc.",
-          "resolvedName": "Rollins, Inc.",
-          "neid": null
-        },
-        {
-          "inputName": "Roper Technologies",
-          "resolvedName": "Roper Technologies",
-          "neid": null
-        },
-        {
-          "inputName": "Ross Stores",
-          "resolvedName": "Ross Stores",
-          "neid": null
-        },
-        {
-          "inputName": "Royal Caribbean Group",
-          "resolvedName": "Royal Caribbean Group",
-          "neid": null
-        },
-        {
-          "inputName": "S&P Global",
-          "resolvedName": "S&P Global",
-          "neid": null
-        },
-        {
-          "inputName": "Salesforce",
-          "resolvedName": "Salesforce",
-          "neid": null
-        },
-        {
-          "inputName": "Sandisk",
-          "resolvedName": "Sandisk",
-          "neid": null
-        },
-        {
-          "inputName": "SBA Communications",
-          "resolvedName": "SBA Communications",
-          "neid": null
-        },
-        {
-          "inputName": "Schlumberger",
-          "resolvedName": "Schlumberger",
-          "neid": null
-        },
-        {
-          "inputName": "Seagate Technology",
-          "resolvedName": "Seagate Technology",
-          "neid": null
-        },
-        {
-          "inputName": "Sempra",
-          "resolvedName": "Sempra",
-          "neid": null
-        },
-        {
-          "inputName": "ServiceNow",
-          "resolvedName": "ServiceNow",
-          "neid": null
-        },
-        {
-          "inputName": "Sherwin-Williams",
-          "resolvedName": "Sherwin-Williams",
-          "neid": null
-        },
-        {
-          "inputName": "Simon Property Group",
-          "resolvedName": "Simon Property Group",
-          "neid": null
-        },
-        {
-          "inputName": "Skyworks Solutions",
-          "resolvedName": "Skyworks Solutions",
-          "neid": null
-        },
-        {
-          "inputName": "J.M. Smucker Company",
-          "resolvedName": "J.M. Smucker Company",
-          "neid": null
-        },
-        {
-          "inputName": "Smurfit Westrock",
-          "resolvedName": "Smurfit Westrock",
-          "neid": null
-        },
-        {
-          "inputName": "Snap-on",
-          "resolvedName": "Snap-on",
-          "neid": null
-        },
-        {
-          "inputName": "Solventum",
-          "resolvedName": "Solventum",
-          "neid": null
-        },
-        {
-          "inputName": "Southern Company",
-          "resolvedName": "Southern Company",
-          "neid": null
-        },
-        {
-          "inputName": "Southwest Airlines",
-          "resolvedName": "Southwest Airlines",
-          "neid": null
-        },
-        {
-          "inputName": "Stanley Black & Decker",
-          "resolvedName": "Stanley Black & Decker",
-          "neid": null
-        },
-        {
-          "inputName": "Starbucks",
-          "resolvedName": "Starbucks",
-          "neid": null
-        },
-        {
-          "inputName": "State Street Corporation",
-          "resolvedName": "State Street Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "Steel Dynamics",
-          "resolvedName": "Steel Dynamics",
-          "neid": null
-        },
-        {
-          "inputName": "Steris",
-          "resolvedName": "Steris",
-          "neid": null
-        },
-        {
-          "inputName": "Stryker Corporation",
-          "resolvedName": "Stryker Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "Supermicro",
-          "resolvedName": "Supermicro",
-          "neid": null
-        },
-        {
-          "inputName": "Synchrony Financial",
-          "resolvedName": "Synchrony Financial",
-          "neid": null
-        },
-        {
-          "inputName": "Synopsys",
-          "resolvedName": "Synopsys",
-          "neid": null
-        },
-        {
-          "inputName": "Sysco",
-          "resolvedName": "Sysco",
-          "neid": null
-        },
-        {
-          "inputName": "T-Mobile US",
-          "resolvedName": "T-Mobile US",
-          "neid": null
-        },
-        {
-          "inputName": "T. Rowe Price",
-          "resolvedName": "T. Rowe Price",
-          "neid": null
-        },
-        {
-          "inputName": "Take-Two Interactive",
-          "resolvedName": "Take-Two Interactive",
-          "neid": null
-        },
-        {
-          "inputName": "Tapestry, Inc.",
-          "resolvedName": "Tapestry, Inc.",
-          "neid": null
-        },
-        {
-          "inputName": "Targa Resources",
-          "resolvedName": "Targa Resources",
-          "neid": null
-        },
-        {
-          "inputName": "Target Corporation",
-          "resolvedName": "Target Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "TE Connectivity",
-          "resolvedName": "TE Connectivity",
-          "neid": null
-        },
-        {
-          "inputName": "Teledyne Technologies",
-          "resolvedName": "Teledyne Technologies",
-          "neid": null
-        },
-        {
-          "inputName": "Teradyne",
-          "resolvedName": "Teradyne",
-          "neid": null
-        },
-        {
-          "inputName": "Tesla, Inc.",
-          "resolvedName": "Tesla, Inc.",
-          "neid": null
-        },
-        {
-          "inputName": "Texas Instruments",
-          "resolvedName": "Texas Instruments",
-          "neid": null
-        },
-        {
-          "inputName": "Texas Pacific Land Corporation",
-          "resolvedName": "Texas Pacific Land Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "Textron",
-          "resolvedName": "Textron",
-          "neid": null
-        },
-        {
-          "inputName": "Thermo Fisher Scientific",
-          "resolvedName": "Thermo Fisher Scientific",
-          "neid": null
-        },
-        {
-          "inputName": "TJX Companies",
-          "resolvedName": "TJX Companies",
-          "neid": null
-        },
-        {
-          "inputName": "TKO Group Holdings",
-          "resolvedName": "TKO Group Holdings",
-          "neid": null
-        },
-        {
-          "inputName": "Trade Desk",
-          "resolvedName": "Trade Desk",
-          "neid": null
-        },
-        {
-          "inputName": "Tractor Supply",
-          "resolvedName": "Tractor Supply",
-          "neid": null
-        },
-        {
-          "inputName": "Trane Technologies",
-          "resolvedName": "Trane Technologies",
-          "neid": null
-        },
-        {
-          "inputName": "TransDigm Group",
-          "resolvedName": "TransDigm Group",
-          "neid": null
-        },
-        {
-          "inputName": "Travelers Companies",
-          "resolvedName": "Travelers Companies",
-          "neid": null
-        },
-        {
-          "inputName": "Trimble Inc.",
-          "resolvedName": "Trimble Inc.",
-          "neid": null
-        },
-        {
-          "inputName": "Truist Financial",
-          "resolvedName": "Truist Financial",
-          "neid": null
-        },
-        {
-          "inputName": "Tyler Technologies",
-          "resolvedName": "Tyler Technologies",
-          "neid": null
-        },
-        {
-          "inputName": "Tyson Foods",
-          "resolvedName": "Tyson Foods",
-          "neid": null
-        },
-        {
-          "inputName": "U.S. Bancorp",
-          "resolvedName": "U.S. Bancorp",
-          "neid": null
-        },
-        {
-          "inputName": "Uber",
-          "resolvedName": "Uber",
-          "neid": null
-        },
-        {
-          "inputName": "UDR, Inc.",
-          "resolvedName": "UDR, Inc.",
-          "neid": null
-        },
-        {
-          "inputName": "Ulta Beauty",
-          "resolvedName": "Ulta Beauty",
-          "neid": null
-        },
-        {
-          "inputName": "Union Pacific Corporation",
-          "resolvedName": "Union Pacific Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "United Airlines Holdings",
-          "resolvedName": "United Airlines Holdings",
-          "neid": null
-        },
-        {
-          "inputName": "United Parcel Service",
-          "resolvedName": "United Parcel Service",
-          "neid": null
-        },
-        {
-          "inputName": "United Rentals",
-          "resolvedName": "United Rentals",
-          "neid": null
-        },
-        {
-          "inputName": "UnitedHealth Group",
-          "resolvedName": "UnitedHealth Group",
-          "neid": null
-        },
-        {
-          "inputName": "Universal Health Services",
-          "resolvedName": "Universal Health Services",
-          "neid": null
-        },
-        {
-          "inputName": "Valero Energy",
-          "resolvedName": "Valero Energy",
-          "neid": null
-        },
-        {
-          "inputName": "Veeva Systems",
-          "resolvedName": "Veeva Systems",
-          "neid": null
-        },
-        {
-          "inputName": "Ventas",
-          "resolvedName": "Ventas",
-          "neid": null
-        },
-        {
-          "inputName": "Veralto",
-          "resolvedName": "Veralto",
-          "neid": null
-        },
-        {
-          "inputName": "Verisign",
-          "resolvedName": "Verisign",
-          "neid": null
-        },
-        {
-          "inputName": "Verisk Analytics",
-          "resolvedName": "Verisk Analytics",
-          "neid": null
-        },
-        {
-          "inputName": "Verizon",
-          "resolvedName": "Verizon",
-          "neid": null
-        },
-        {
-          "inputName": "Vertex Pharmaceuticals",
-          "resolvedName": "Vertex Pharmaceuticals",
-          "neid": null
-        },
-        {
-          "inputName": "Vertiv",
-          "resolvedName": "Vertiv",
-          "neid": null
-        },
-        {
-          "inputName": "Viatris",
-          "resolvedName": "Viatris",
-          "neid": null
-        },
-        {
-          "inputName": "Vici Properties",
-          "resolvedName": "Vici Properties",
-          "neid": null
-        },
-        {
-          "inputName": "Visa Inc.",
-          "resolvedName": "Visa Inc.",
-          "neid": null
-        },
-        {
-          "inputName": "Vistra Corp",
-          "resolvedName": "Vistra Corp",
-          "neid": null
-        },
-        {
-          "inputName": "Vulcan Materials Company",
-          "resolvedName": "Vulcan Materials Company",
-          "neid": null
-        },
-        {
-          "inputName": "W. R. Berkley Corporation",
-          "resolvedName": "W. R. Berkley Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "W. W. Grainger",
-          "resolvedName": "W. W. Grainger",
-          "neid": null
-        },
-        {
-          "inputName": "Wabtec",
-          "resolvedName": "Wabtec",
-          "neid": null
-        },
-        {
-          "inputName": "Walmart",
-          "resolvedName": "Walmart",
-          "neid": null
-        },
-        {
-          "inputName": "Walt Disney Company",
-          "resolvedName": "Walt Disney Company",
-          "neid": null
-        },
-        {
-          "inputName": "Warner Bros. Discovery",
-          "resolvedName": "Warner Bros. Discovery",
-          "neid": null
-        },
-        {
-          "inputName": "Waste Management",
-          "resolvedName": "Waste Management",
-          "neid": null
-        },
-        {
-          "inputName": "Waters Corporation",
-          "resolvedName": "Waters Corporation",
-          "neid": null
-        },
-        {
-          "inputName": "WEC Energy Group",
-          "resolvedName": "WEC Energy Group",
-          "neid": null
-        },
-        {
-          "inputName": "Wells Fargo",
-          "resolvedName": "Wells Fargo",
-          "neid": null
-        },
-        {
-          "inputName": "Welltower",
-          "resolvedName": "Welltower",
-          "neid": null
-        },
-        {
-          "inputName": "West Pharmaceutical Services",
-          "resolvedName": "West Pharmaceutical Services",
-          "neid": null
-        },
-        {
-          "inputName": "Western Digital",
-          "resolvedName": "Western Digital",
-          "neid": null
-        },
-        {
-          "inputName": "Weyerhaeuser",
-          "resolvedName": "Weyerhaeuser",
-          "neid": null
-        },
-        {
-          "inputName": "Williams-Sonoma, Inc.",
-          "resolvedName": "Williams-Sonoma, Inc.",
-          "neid": null
-        },
-        {
-          "inputName": "Williams Companies",
-          "resolvedName": "Williams Companies",
-          "neid": null
-        },
-        {
-          "inputName": "Willis Towers Watson",
-          "resolvedName": "Willis Towers Watson",
-          "neid": null
-        },
-        {
-          "inputName": "Workday, Inc.",
-          "resolvedName": "Workday, Inc.",
-          "neid": null
-        },
-        {
-          "inputName": "Wynn Resorts",
-          "resolvedName": "Wynn Resorts",
-          "neid": null
-        },
-        {
-          "inputName": "Xcel Energy",
-          "resolvedName": "Xcel Energy",
-          "neid": null
-        },
-        {
-          "inputName": "Xylem Inc.",
-          "resolvedName": "Xylem Inc.",
-          "neid": null
-        },
-        {
-          "inputName": "Yum! Brands",
-          "resolvedName": "Yum! Brands",
-          "neid": null
-        },
-        {
-          "inputName": "Zebra Technologies",
-          "resolvedName": "Zebra Technologies",
-          "neid": null
-        },
-        {
-          "inputName": "Zimmer Biomet",
-          "resolvedName": "Zimmer Biomet",
-          "neid": null
-        },
-        {
-          "inputName": "Zoetis",
-          "resolvedName": "Zoetis",
-          "neid": null
-        }
-      ]
-    }
-  ]
+    ]
 }

@@ -5,12 +5,12 @@ import { deriveDrivers, detectConflicts, confidence } from './fuse';
 import { findEntities, getEntityName, getSchema, normalizePidMap } from './elemental';
 import { scoreEntity } from './scoreEntity';
 
-async function resolveNeighborNames(eids: string[], limit = 10): Promise<string[]> {
+async function resolveNeighborNames(event: H3Event, eids: string[], limit = 10): Promise<string[]> {
     const trimmed = eids.slice(0, limit);
     return Promise.all(
         trimmed.map(async (eid) => {
             try {
-                return await getEntityName(eid);
+                return await getEntityName(eid, event);
             } catch {
                 return eid;
             }
@@ -18,8 +18,8 @@ async function resolveNeighborNames(eids: string[], limit = 10): Promise<string[
     );
 }
 
-async function getRelationships(neid: string) {
-    const schema = await getSchema().catch(() => ({ flavors: [], properties: [] }));
+async function getRelationships(event: H3Event, neid: string) {
+    const schema = await getSchema(event).catch(() => ({ flavors: [], properties: [] }));
     const pid = normalizePidMap(schema);
     const links = {
         companies: [] as any[],
@@ -28,18 +28,26 @@ async function getRelationships(neid: string) {
         locations: [] as any[],
     };
 
-    async function linkedBy(propertyPid?: number, relationship = 'related_to', bucket?: keyof typeof links) {
+    async function linkedBy(
+        propertyPid?: number,
+        relationship = 'related_to',
+        bucket?: keyof typeof links
+    ) {
         if (!propertyPid || !bucket) return;
         try {
-            const eids = await findEntities({
-                type: 'linked',
-                linked: {
-                    expression: { type: 'is_entity', is_entity: { eid: neid } },
-                    pid: propertyPid,
-                    direction: 'outgoing',
+            const eids = await findEntities(
+                {
+                    type: 'linked',
+                    linked: {
+                        expression: { type: 'is_entity', is_entity: { eid: neid } },
+                        pid: propertyPid,
+                        direction: 'outgoing',
+                    },
                 },
-            });
-            const names = await resolveNeighborNames(eids, 8);
+                50,
+                event
+            );
+            const names = await resolveNeighborNames(event, eids, 8);
             names.forEach((name, index) => {
                 links[bucket].push({
                     neid: eids[index],
@@ -67,8 +75,8 @@ export async function getEntityProfile(event: H3Event, portfolioId: string, neid
     const cached = await readScoringCache<any>(event, cacheKey);
     if (cached) return cached;
 
-    const name = await getEntityName(neid).catch(() => neid);
-    const relationships = await getRelationships(neid).catch(() => ({
+    const name = await getEntityName(neid, event).catch(() => neid);
+    const relationships = await getRelationships(event, neid).catch(() => ({
         companies: [],
         people: [],
         instruments: [],
@@ -159,4 +167,3 @@ export async function getEntityEvents(event: H3Event, portfolioId: string, neid:
     const profile = await getEntityProfile(event, portfolioId, neid);
     return profile.events;
 }
-

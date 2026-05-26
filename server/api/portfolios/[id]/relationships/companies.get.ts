@@ -25,4 +25,3 @@ export default defineEventHandler(async (event) => {
         relationshipCount: node.connectsTo.length,
     }));
 });
-

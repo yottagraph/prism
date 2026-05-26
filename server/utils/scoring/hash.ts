@@ -10,4 +10,3 @@ export function hash32(input: string): number {
 export function clampScore(v: number): number {
     return Math.max(0, Math.min(100, Math.round(v)));
 }
-

@@ -20,4 +20,3 @@ export default defineEventHandler(async (event) => {
     const universe = await buildRelationshipUniverse(event, entities);
     return { nodes: universe.nodes, edges: universe.edges };
 });
-

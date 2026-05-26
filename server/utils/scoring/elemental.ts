@@ -22,6 +22,30 @@ export interface ElementalSchema {
 const SCHEMA_TTL_MS = 5 * 60_000;
 let schemaCache: { schema: ElementalSchema; expiresAt: number } | null = null;
 
+type DiagnosticCall = {
+    endpoint: string;
+    method: 'GET' | 'POST';
+    at: number;
+    details?: Record<string, unknown>;
+};
+
+function recordElementalCall(
+    event: H3Event | undefined,
+    endpoint: string,
+    method: 'GET' | 'POST',
+    details?: Record<string, unknown>
+) {
+    const diagnostics = (event?.context as any)?.scanDiagnostics;
+    if (!diagnostics) return;
+    diagnostics.endpoints = diagnostics.endpoints || {};
+    diagnostics.endpoints[endpoint] = (diagnostics.endpoints[endpoint] || 0) + 1;
+    diagnostics.calls = diagnostics.calls || [];
+    if (diagnostics.calls.length < 400) {
+        const entry: DiagnosticCall = { endpoint, method, at: Date.now(), details };
+        diagnostics.calls.push(entry);
+    }
+}
+
 function getGatewayConfig() {
     const { public: config } = useRuntimeConfig();
     const gatewayUrl = (config as any).gatewayUrl as string;
@@ -46,7 +70,12 @@ function headers() {
     };
 }
 
-export async function searchEntitiesByName(query: string, maxResults = 3): Promise<ElementalSearchMatch[]> {
+export async function searchEntitiesByName(
+    query: string,
+    maxResults = 3,
+    event?: H3Event
+): Promise<ElementalSearchMatch[]> {
+    recordElementalCall(event, 'entities/search', 'POST', { queries: 1, maxResults });
     const res = await $fetch<any>(buildUrl('entities/search'), {
         method: 'POST',
         headers: headers(),
@@ -60,19 +89,54 @@ export async function searchEntitiesByName(query: string, maxResults = 3): Promi
     return matches.map((m) => ({ neid: m.neid, name: m.name || m.neid, score: m.score }));
 }
 
-export async function getEntityName(neid: string): Promise<string> {
+export async function searchEntitiesByNames(
+    queries: string[],
+    maxResults = 1,
+    event?: H3Event
+): Promise<Record<string, ElementalSearchMatch[]>> {
+    if (!queries.length) return {};
+    const payloadQueries = queries.map((query, index) => ({ queryId: index + 1, query }));
+    recordElementalCall(event, 'entities/search', 'POST', {
+        queries: payloadQueries.length,
+        maxResults,
+        mode: 'batch',
+    });
+    const res = await $fetch<any>(buildUrl('entities/search'), {
+        method: 'POST',
+        headers: headers(),
+        body: {
+            queries: payloadQueries,
+            includeNames: true,
+            maxResults,
+        },
+    });
+    const out: Record<string, ElementalSearchMatch[]> = {};
+    const results: any[] = Array.isArray(res?.results) ? res.results : [];
+    results.forEach((row, index) => {
+        const query = queries[index];
+        if (!query) return;
+        const matches: any[] = row?.matches ?? [];
+        out[query] = matches.map((m) => ({ neid: m.neid, name: m.name || m.neid, score: m.score }));
+    });
+    return out;
+}
+
+export async function getEntityName(neid: string, event?: H3Event): Promise<string> {
+    recordElementalCall(event, `entities/${neid}/name`, 'GET');
     const res = await $fetch<{ name?: string }>(buildUrl(`entities/${neid}/name`), {
         headers: headers(),
     });
     return res?.name || neid;
 }
 
-export async function getSchema(): Promise<ElementalSchema> {
+export async function getSchema(event?: H3Event): Promise<ElementalSchema> {
     if (schemaCache && schemaCache.expiresAt > Date.now()) {
+        recordElementalCall(event, 'elemental/metadata/schema', 'GET', { cache: 'hit' });
         return schemaCache.schema;
     }
 
     try {
+        recordElementalCall(event, 'elemental/metadata/schema', 'GET', { cache: 'miss' });
         const res = await $fetch<any>(buildUrl('elemental/metadata/schema'), {
             headers: headers(),
         });
@@ -93,7 +157,12 @@ export async function getSchema(): Promise<ElementalSchema> {
     }
 }
 
-export async function findEntities(expression: object, limit = 50): Promise<string[]> {
+export async function findEntities(
+    expression: object,
+    limit = 50,
+    event?: H3Event
+): Promise<string[]> {
+    recordElementalCall(event, 'elemental/find', 'POST', { limit });
     const res = await $fetch<any>(buildUrl('elemental/find'), {
         method: 'POST',
         headers: headers(),
@@ -108,8 +177,14 @@ export async function findEntities(expression: object, limit = 50): Promise<stri
 export async function getPropertyValues(
     eids: string[],
     pids: number[],
-    includeAttributes = true
+    includeAttributes = true,
+    event?: H3Event
 ): Promise<ElementalPropertyValue[]> {
+    recordElementalCall(event, 'elemental/entities/properties', 'POST', {
+        eids: eids.length,
+        pids: pids.length,
+        includeAttributes,
+    });
     const res = await $fetch<any>(buildUrl('elemental/entities/properties'), {
         method: 'POST',
         headers: headers(),
@@ -166,4 +241,3 @@ export function extractDates(values: ElementalPropertyValue[], pid: number): Dat
     }
     return out;
 }
-

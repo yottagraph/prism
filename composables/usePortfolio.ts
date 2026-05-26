@@ -11,11 +11,7 @@ import { computed, ref } from 'vue';
 
 import portfolioFixture from '~/assets/portfolios-fixture.json';
 import { searchEntities } from '~/utils/elementalHelpers';
-import {
-    type EntityRiskScore,
-    type RiskTier,
-    type SourceFusionWeights,
-} from './useFusedScoring';
+import { type EntityRiskScore, type RiskTier, type SourceFusionWeights } from './useFusedScoring';
 
 export interface PortfolioEntity {
     /** Name as provided by the user (before resolution). */
@@ -378,6 +374,9 @@ export function usePortfolio() {
                 } else if (event === 'done') {
                     if (data?.coverage) {
                         lastScanCoverage.value = data.coverage;
+                    }
+                    if (data?.diagnostics) {
+                        console.info('[scan diagnostics]', data.diagnostics);
                     }
                     const entitiesOut = Array.isArray(data?.entities) ? data.entities : [];
                     entitiesOut.forEach((entityOut: any, entityIndex: number) => {

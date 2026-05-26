@@ -12,7 +12,9 @@ export default defineEventHandler(async (event) => {
     const stream = new ReadableStream({
         start(controller) {
             const emit = (type: string, payload: unknown) => {
-                controller.enqueue(encoder.encode(`event: ${type}\ndata: ${JSON.stringify(payload)}\n\n`));
+                controller.enqueue(
+                    encoder.encode(`event: ${type}\ndata: ${JSON.stringify(payload)}\n\n`)
+                );
             };
 
             for (const entry of getActivityHistory(portfolioId).slice(0, 40).reverse()) {
@@ -35,4 +37,3 @@ export default defineEventHandler(async (event) => {
 
     return sendStream(event, stream);
 });
-
