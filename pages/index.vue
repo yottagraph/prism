@@ -1,52 +1,52 @@
 <template>
     <div class="d-flex flex-column fill-height">
         <div class="flex-shrink-0 pa-4 page-header">
-            <PageHeader title="Portfolio Overview" icon="mdi-briefcase-variant-outline" class="mb-2">
-                <template #actions>
-                    <v-select
-                        v-model="activeId"
-                        :items="portfolioOptions"
-                        label="Portfolio"
-                        density="comfortable"
-                        hide-details
-                        style="max-width: 280px"
-                        class="mr-3"
-                    />
-                    <v-btn
-                        color="primary"
-                        :loading="scanning"
-                        :disabled="!active"
-                        prepend-icon="mdi-play-circle-outline"
-                        @click="onScan"
-                    >
-                        {{ allResolved ? 'Re-scan' : 'Run scan' }}
-                    </v-btn>
-                    <v-btn
-                        icon="mdi-plus"
-                        variant="text"
-                        class="ml-1"
-                        @click="newPortfolioOpen = true"
-                    />
-                </template>
-            </PageHeader>
-            <div v-if="active" class="d-flex align-center text-caption text-medium-emphasis">
-                <span>{{ active.description }}</span>
+            <div class="d-flex align-center">
+                <v-icon size="large" color="primary" class="mr-3">
+                    mdi-briefcase-variant-outline
+                </v-icon>
+
+                <v-select
+                    v-model="activeId"
+                    :items="portfolioOptions"
+                    variant="plain"
+                    density="comfortable"
+                    hide-details
+                    class="portfolio-title-select mr-2"
+                    style="max-width: 320px"
+                />
+
+                <v-btn
+                    color="primary"
+                    :loading="scanning"
+                    :disabled="!active"
+                    prepend-icon="mdi-play-circle-outline"
+                    @click="onScan"
+                >
+                    {{ allResolved ? 'Re-scan' : 'Run scan' }}
+                </v-btn>
+                <v-btn
+                    icon="mdi-plus"
+                    variant="text"
+                    class="ml-1"
+                    @click="newPortfolioOpen = true"
+                />
+
                 <v-spacer />
-                <span class="mr-3">
+
+                <span v-if="active" class="text-caption text-medium-emphasis mr-3">
                     <strong>{{ active.entities.length }}</strong> entities
                 </span>
-                <span v-if="scanning">
+                <span v-if="scanning" class="text-caption text-medium-emphasis">
                     Scanning {{ scanProgress.done }}/{{ scanProgress.total }}…
                 </span>
-                <span v-else-if="allResolved" class="text-success">
+                <span v-else-if="allResolved" class="text-caption text-success">
                     <v-icon size="x-small" class="mr-1">mdi-check-circle</v-icon>
                     All entities scored
                 </span>
-                <span v-else>
-                    <v-icon size="x-small" color="warning" class="mr-1"
-                        >mdi-information-outline</v-icon
-                    >
-                    Click "Run scan" to resolve + score
+                <span v-else class="text-caption text-medium-emphasis">
+                    <v-icon size="x-small" color="warning" class="mr-1">mdi-information-outline</v-icon>
+                    Run scan to resolve + score
                 </span>
             </div>
         </div>
@@ -232,5 +232,21 @@
     .page-header {
         border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         background: rgba(0, 0, 0, 0.3);
+    }
+
+    .portfolio-title-select :deep(.v-field) {
+        background: transparent;
+        padding-inline: 0;
+    }
+
+    .portfolio-title-select :deep(.v-field__input) {
+        font-size: 1.25rem;
+        font-weight: 600;
+        min-height: 32px;
+        padding: 0;
+    }
+
+    .portfolio-title-select :deep(.v-field__outline) {
+        display: none;
     }
 </style>
