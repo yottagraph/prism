@@ -364,7 +364,7 @@ export function usePortfolio() {
                 throw new Error(`Scan request failed (${response.status})`);
             }
 
-            for await (const { event, data } of readSSE(response)) {
+            for await (const { event, data } of readScanSSE(response)) {
                 if (event === 'entity') {
                     const payload = data as ScanEntityEventPayload;
                     const current = ents[payload.index];
@@ -471,7 +471,7 @@ function slugify(name: string): string {
     );
 }
 
-async function* readSSE(response: Response): AsyncGenerator<AgentStreamEvent> {
+async function* readScanSSE(response: Response): AsyncGenerator<AgentStreamEvent> {
     const reader = response.body!.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
@@ -483,7 +483,7 @@ async function* readSSE(response: Response): AsyncGenerator<AgentStreamEvent> {
             const blocks = buffer.split('\n\n');
             buffer = blocks.pop() || '';
             for (const block of blocks) {
-                const parsed = parseSSEBlock(block);
+                const parsed = parseScanSSEBlock(block);
                 if (parsed) yield parsed;
             }
         }
@@ -492,7 +492,7 @@ async function* readSSE(response: Response): AsyncGenerator<AgentStreamEvent> {
     }
 }
 
-function parseSSEBlock(block: string): AgentStreamEvent | null {
+function parseScanSSEBlock(block: string): AgentStreamEvent | null {
     let eventType = 'message';
     let dataLine = '';
     for (const line of block.split('\n')) {
