@@ -19,6 +19,7 @@ interface ScanRequest {
     portfolioId: string;
     entities: ScanEntityInput[];
     force?: boolean;
+    debugLogs?: boolean;
     weights?: SourceFusionWeights;
 }
 
@@ -62,7 +63,7 @@ function summarizeDiagnostics(diag: ScanDiagnostics, total: number, done: number
 async function resolveEntitiesBatch(
     event: H3Event,
     entities: ScanEntityInput[],
-    diagnostics: ScanDiagnostics
+    diagnostics?: ScanDiagnostics
 ) {
     const unresolvedNames = Array.from(
         new Set(
@@ -72,7 +73,7 @@ async function resolveEntitiesBatch(
                 .filter(Boolean)
         )
     );
-    diagnostics.resolution.queriedNames = unresolvedNames.length;
+    if (diagnostics) diagnostics.resolution.queriedNames = unresolvedNames.length;
     if (!unresolvedNames.length) {
         return new Map<
             string,
@@ -94,7 +95,7 @@ async function resolveEntitiesBatch(
                     neid: matches[0].neid,
                     resolvedName: matches[0].name || name,
                 });
-                diagnostics.resolution.resolvedViaBatch += 1;
+                if (diagnostics) diagnostics.resolution.resolvedViaBatch += 1;
             } else {
                 resolvedByName.set(name, {
                     neid: null,
@@ -105,7 +106,7 @@ async function resolveEntitiesBatch(
         });
         return resolvedByName;
     } catch (error) {
-        diagnostics.resolution.mode = 'per_entity_fallback';
+        if (diagnostics) diagnostics.resolution.mode = 'per_entity_fallback';
         console.warn('[scan] batch entity resolution failed, falling back per entity', error);
         return resolvedByName;
     }
@@ -150,6 +151,7 @@ export default defineEventHandler(async (event) => {
     setHeader(event, 'Content-Type', 'text/event-stream');
     setHeader(event, 'Cache-Control', 'no-cache');
     setHeader(event, 'Connection', 'keep-alive');
+    const diagnosticsEnabled = !!body.debugLogs;
 
     const encoder = new TextEncoder();
 
@@ -167,19 +169,23 @@ export default defineEventHandler(async (event) => {
                 let done = 0;
                 const output: any[] = Array.from({ length: total }).map(() => null);
                 const coverage = { sec: 0, news: 0, stock: 0, poly: 0 };
-                const diagnostics: ScanDiagnostics = {
-                    traceId: makeTraceId(),
-                    startedAt: Date.now(),
-                    resolution: {
-                        mode: 'batch',
-                        queriedNames: 0,
-                        resolvedViaBatch: 0,
-                        resolvedViaFallback: 0,
-                    },
-                    endpoints: {},
-                    calls: [],
-                };
-                (event.context as any).scanDiagnostics = diagnostics;
+                const diagnostics: ScanDiagnostics | null = diagnosticsEnabled
+                    ? {
+                          traceId: makeTraceId(),
+                          startedAt: Date.now(),
+                          resolution: {
+                              mode: 'batch',
+                              queriedNames: 0,
+                              resolvedViaBatch: 0,
+                              resolvedViaFallback: 0,
+                          },
+                          endpoints: {},
+                          calls: [],
+                      }
+                    : null;
+                if (diagnostics) {
+                    (event.context as any).scanDiagnostics = diagnostics;
+                }
 
                 pushActivity({
                     portfolioId: body.portfolioId,
@@ -188,7 +194,11 @@ export default defineEventHandler(async (event) => {
                     detail: `Scan requested for ${total} entities`,
                 });
 
-                const batchResolutions = await resolveEntitiesBatch(event, entities, diagnostics);
+                const batchResolutions = await resolveEntitiesBatch(
+                    event,
+                    entities,
+                    diagnostics || undefined
+                );
 
                 let cursor = 0;
                 const workers = Math.min(8, Math.max(1, total));
@@ -214,7 +224,8 @@ export default defineEventHandler(async (event) => {
                                             resolutionError: batchResolved.resolutionError,
                                         };
                                     } else {
-                                        diagnostics.resolution.resolvedViaFallback += 1;
+                                        if (diagnostics)
+                                            diagnostics.resolution.resolvedViaFallback += 1;
                                         resolved = await resolveEntity(event, entity);
                                     }
                                 }
@@ -293,12 +304,16 @@ export default defineEventHandler(async (event) => {
                 emit('done', {
                     entities: output,
                     coverage,
-                    diagnostics: summarizeDiagnostics(diagnostics, total, done),
+                    ...(diagnostics
+                        ? { diagnostics: summarizeDiagnostics(diagnostics, total, done) }
+                        : {}),
                 });
-                console.info(
-                    '[scan diagnostics]',
-                    JSON.stringify(summarizeDiagnostics(diagnostics, total, done))
-                );
+                if (diagnostics) {
+                    console.info(
+                        '[scan diagnostics]',
+                        JSON.stringify(summarizeDiagnostics(diagnostics, total, done))
+                    );
+                }
             } catch (error: any) {
                 emit('error', { message: error?.message || 'Scan failed' });
             } finally {

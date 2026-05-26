@@ -31,10 +31,10 @@
     --lv-finance-blue-dim: #0230d0;
 
     /* Typography */
-    --font-primary: 'FK Grotesk', 'Inter', system-ui, -apple-system, sans-serif;
-    --font-headline: 'FK Grotesk Mono', 'Inter', system-ui, sans-serif;
-    --font-brand: 'Inter', system-ui, -apple-system, sans-serif;
-    --font-mono: 'FK Grotesk Mono', 'JetBrains Mono', 'Fira Code', monospace;
+    --font-primary: 'Space Grotesk', 'Inter', system-ui, -apple-system, sans-serif;
+    --font-headline: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+    --font-brand: 'Space Grotesk', 'Inter', system-ui, -apple-system, sans-serif;
+    --font-mono: 'Space Mono', 'JetBrains Mono', 'Fira Code', monospace;
 }
 
 * {

@@ -7,7 +7,7 @@ Quick-start guide for implementing Lovelace visual identity.
 - **Dark-first**: Jet Black (#0A0A0A) backgrounds, white text
 - **Green accents**: Cyber Green (#3FEA00) for interactive elements, CTAs, success states
 - **WCAG AA accessibility**: All color pairings meet minimum contrast requirements
-- **Monospace for emphasis**: FK Grotesk Mono for headlines, buttons, code
+- **Monospace for emphasis**: Space Mono for buttons and code
 - **Minimal decoration**: Clean surfaces, subtle borders, purposeful color
 
 ## Quick Start
@@ -27,9 +27,9 @@ Minimal CSS variable setup to get started:
     --lv-surface-light: #1E1E1E;
 
     /* Typography */
-    --font-primary: 'FK Grotesk', 'Inter', system-ui, sans-serif;
-    --font-headline: 'FK Grotesk Mono', 'Inter', system-ui, sans-serif;
-    --font-mono: 'FK Grotesk Mono', 'JetBrains Mono', monospace;
+    --font-primary: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+    --font-headline: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+    --font-mono: 'Space Mono', 'JetBrains Mono', monospace;
 }
 ```
 
@@ -73,20 +73,20 @@ Minimal CSS variable setup to get started:
 
 | Role | Font | CSS Variable |
 |------|------|--------------|
-| Body / Primary | FK Grotesk | `--font-primary` |
-| Headlines | FK Grotesk Mono | `--font-headline` |
-| Buttons / Code | FK Grotesk Mono | `--font-mono` |
-| Brand wordmark | Inter | `--font-brand` |
+| Body / Primary | Space Grotesk | `--font-primary` |
+| Headlines | Space Grotesk | `--font-headline` |
+| Buttons / Code | Space Mono | `--font-mono` |
+| Brand wordmark | Space Grotesk | `--font-brand` |
 
 ### Type Hierarchy
 
 | Level | Font | Weight | Style |
 |-------|------|--------|-------|
-| Headlines (h1) | FK Grotesk Mono | Regular | Normal |
-| Subheaders (h2, h3) | FK Grotesk Mono | Regular | Normal |
-| Body Copy | FK Grotesk | Regular | Normal |
-| Body Strong | FK Grotesk | Bold (700) | Normal |
-| Buttons & UI | FK Grotesk Mono | Regular | UPPERCASE, letter-spacing 0.05em |
+| Headlines (h1) | Space Grotesk | Regular | Normal |
+| Subheaders (h2, h3) | Space Grotesk | Regular | Normal |
+| Body Copy | Space Grotesk | Regular | Normal |
+| Body Strong | Space Grotesk | Bold (700) | Normal |
+| Buttons & UI | Space Mono | Regular | UPPERCASE, letter-spacing 0.05em |
 
 ## Full CSS Variables
 
@@ -118,10 +118,10 @@ Complete `:root` block for all brand variables:
     --lv-finance-blue: #003BFF;
 
     /* Typography */
-    --font-primary: 'FK Grotesk', 'Inter', system-ui, -apple-system, sans-serif;
-    --font-headline: 'FK Grotesk Mono', 'Inter', system-ui, sans-serif;
-    --font-brand: 'Inter', system-ui, -apple-system, sans-serif;
-    --font-mono: 'FK Grotesk Mono', 'JetBrains Mono', 'Fira Code', monospace;
+    --font-primary: 'Space Grotesk', 'Inter', system-ui, -apple-system, sans-serif;
+    --font-headline: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+    --font-brand: 'Space Grotesk', 'Inter', system-ui, -apple-system, sans-serif;
+    --font-mono: 'Space Mono', 'JetBrains Mono', 'Fira Code', monospace;
 }
 ```
 

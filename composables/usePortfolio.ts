@@ -79,6 +79,10 @@ const DEFAULT_WEIGHTS: SourceFusionWeights = {
     market: 0.15,
 };
 
+const debugPrefs = useAppFeaturePrefs('debug-settings', {
+    scanDiagnosticsLogs: false,
+});
+
 // Preloaded demo portfolios. Names are real, well-known issuers so entity
 // resolution against Elemental returns hits.
 function defaultPortfolios(): PortfolioDoc[] {
@@ -344,6 +348,7 @@ export function usePortfolio() {
                 body: JSON.stringify({
                     portfolioId,
                     force: !!opts.force,
+                    debugLogs: !!debugPrefs.scanDiagnosticsLogs,
                     weights: weights.value,
                     entities: ents.map((entity) => ({
                         inputName: entity.inputName,

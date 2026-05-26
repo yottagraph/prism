@@ -1,14 +1,6 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 
-import {
-    copyFileSync,
-    existsSync,
-    mkdirSync,
-    readFileSync,
-    readdirSync,
-    writeFileSync,
-} from 'node:fs';
-import path from 'node:path';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
 // Read tenant config from broadchurch.yaml (committed by tenant-init) so the
 // runtime config has correct defaults even when .env is missing or stale.
@@ -65,7 +57,6 @@ function readBroadchurchYaml() {
 }
 
 const bcYaml = readBroadchurchYaml();
-
 export default defineNuxtConfig({
     devtools: { enabled: false },
 

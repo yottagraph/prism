@@ -54,9 +54,7 @@ export default defineEventHandler(async (event) => {
         return imageBuffer;
     } catch (error) {
         console.error('Failed to fetch avatar:', error);
-        throw createError({
-            statusCode: 500,
-            statusMessage: 'Failed to fetch avatar',
-        });
+        // Fall back to direct fetch by the browser to avoid noisy proxy 500s.
+        return sendRedirect(event, url, 302);
     }
 });

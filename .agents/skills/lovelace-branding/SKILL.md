@@ -21,5 +21,5 @@ Lovelace brand guidelines for implementing consistent visual identity across any
 | [overview.md](overview.md) | Quick reference: colors, fonts, CSS variables, key principles |
 | [BRANDING.md](BRANDING.md) | Full brand guidelines with rationale and color ramps |
 | [patterns.md](patterns.md) | Framework-agnostic CSS patterns (cards, buttons, tables) |
-| [fonts.md](fonts.md) | FK Grotesk font setup and fallbacks |
+| [fonts.md](fonts.md) | Space Grotesk/Space Mono setup and fallbacks |
 | [assets/](assets/) | Logo SVGs, icons, and other brand assets |

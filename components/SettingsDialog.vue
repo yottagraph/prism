@@ -26,6 +26,19 @@
                             Server address, or update it in the Broadchurch Portal.
                         </div>
                     </v-col>
+                    <v-col cols="12">
+                        <h3 class="text-h6 mb-2">Diagnostics</h3>
+                        <v-switch
+                            v-model="debugPrefs.scanDiagnosticsLogs"
+                            color="primary"
+                            inset
+                            label="Enable scan diagnostics logging"
+                        />
+                        <div class="text-caption text-medium-emphasis">
+                            When enabled, scan emits detailed API-call diagnostics to the browser
+                            console and scan SSE payload.
+                        </div>
+                    </v-col>
                 </v-row>
             </v-container>
         </v-card-text>
@@ -44,6 +57,9 @@
 
     const config = useRuntimeConfig();
     const currentQueryServer = computed(() => config.public.queryServerAddress as string);
+    const debugPrefs = useAppFeaturePrefs('debug-settings', {
+        scanDiagnosticsLogs: false,
+    });
 </script>
 
 <style scoped>
