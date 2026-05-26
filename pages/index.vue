@@ -1,34 +1,34 @@
 <template>
     <div class="d-flex flex-column fill-height">
         <div class="flex-shrink-0 pa-4 page-header">
-            <div class="d-flex align-center mb-2">
-                <PageHeader title="Portfolio Overview" icon="mdi-briefcase-variant-outline" />
-                <v-spacer />
-                <v-select
-                    v-model="activeId"
-                    :items="portfolioOptions"
-                    label="Portfolio"
-                    density="comfortable"
-                    hide-details
-                    style="max-width: 280px"
-                    class="mr-3"
-                />
-                <v-btn
-                    color="primary"
-                    :loading="scanning"
-                    :disabled="!active"
-                    prepend-icon="mdi-play-circle-outline"
-                    @click="onScan"
-                >
-                    {{ allResolved ? 'Re-scan' : 'Run scan' }}
-                </v-btn>
-                <v-btn
-                    icon="mdi-plus"
-                    variant="text"
-                    class="ml-1"
-                    @click="newPortfolioOpen = true"
-                />
-            </div>
+            <PageHeader title="Portfolio Overview" icon="mdi-briefcase-variant-outline" class="mb-2">
+                <template #actions>
+                    <v-select
+                        v-model="activeId"
+                        :items="portfolioOptions"
+                        label="Portfolio"
+                        density="comfortable"
+                        hide-details
+                        style="max-width: 280px"
+                        class="mr-3"
+                    />
+                    <v-btn
+                        color="primary"
+                        :loading="scanning"
+                        :disabled="!active"
+                        prepend-icon="mdi-play-circle-outline"
+                        @click="onScan"
+                    >
+                        {{ allResolved ? 'Re-scan' : 'Run scan' }}
+                    </v-btn>
+                    <v-btn
+                        icon="mdi-plus"
+                        variant="text"
+                        class="ml-1"
+                        @click="newPortfolioOpen = true"
+                    />
+                </template>
+            </PageHeader>
             <div v-if="active" class="d-flex align-center text-caption text-medium-emphasis">
                 <span>{{ active.description }}</span>
                 <v-spacer />
@@ -122,7 +122,7 @@
     import type { RiskTier } from '~/composables/useFusedScoring';
     import { usePortfolio } from '~/composables/usePortfolio';
     import { useAgentPipeline } from '~/composables/useAgentPipeline';
-    import { getMacroContext } from '~/composables/useRelationships';
+    import { useMacroContext } from '~/composables/useRelationships';
 
     const router = useRouter();
 
@@ -134,6 +134,7 @@
         scanning,
         scanProgress,
         lastScanError: scanError,
+        lastScanCoverage,
         createPortfolio,
     } = usePortfolio();
 
@@ -181,10 +182,11 @@
 
     const coverage = computed(() => {
         if (!active.value) return { sec: 0, news: 0, stock: 0, poly: 0 };
-        // Coverage proxies: SEC = entities with neid; news/stock = entities scored.
-        // Polymarket = portfolio-level, treat as binary (0 or total).
-        const resolved = active.value.entities.filter((e) => e.neid).length;
-        const scored = active.value.entities.filter((e) => e.scores).length;
+        if (lastScanCoverage.value.poly > 0) {
+            return lastScanCoverage.value;
+        }
+        const resolved = active.value.entities.filter((entity) => entity.neid).length;
+        const scored = active.value.entities.filter((entity) => entity.scores).length;
         return {
             sec: resolved,
             news: scored,
@@ -193,7 +195,7 @@
         };
     });
 
-    const macroSignals = getMacroContext();
+    const { signals: macroSignals } = useMacroContext();
 
     async function onScan() {
         if (!active.value) return;

@@ -15,6 +15,18 @@
                     <div class="text-caption text-medium-emphasis font-mono">{{ neid }}</div>
                 </div>
                 <v-spacer />
+                <v-chip v-if="data?.ticker" size="small" variant="tonal" class="mr-2">
+                    {{ data.ticker }}
+                </v-chip>
+                <v-chip v-if="data?.cik" size="small" variant="tonal" class="mr-2">
+                    CIK {{ data.cik }}
+                </v-chip>
+                <v-chip v-if="data?.sector" size="small" variant="tonal" class="mr-2">
+                    {{ data.sector }}
+                </v-chip>
+                <v-chip v-if="data?.entityType" size="small" variant="tonal" class="mr-2">
+                    {{ data.entityType }}
+                </v-chip>
                 <v-chip v-if="data?.scores" :color="tierColor(data.scores.tier)" label class="mr-2">
                     {{ tierLabel(data.scores.tier) }} risk · {{ data.scores.fused }}
                 </v-chip>
@@ -61,7 +73,24 @@
                     <v-col cols="12" md="7">
                         <v-card class="pa-4 mb-3">
                             <div class="text-subtitle-2 mb-3">Lens Detail</div>
-                            <LensDetailPanel :scores="data.scores" :seed="data.neid" />
+                            <LensDetailPanel
+                                :scores="data.scores"
+                                :seed="data.neid"
+                                :lens-details="data.lensDetails"
+                            />
+                        </v-card>
+
+                        <v-card class="pa-4 mb-3">
+                            <div class="text-subtitle-2 mb-3">Macro Context</div>
+                            <v-row dense>
+                                <v-col v-for="signal in macroSignals" :key="signal.label" cols="12" sm="6">
+                                    <v-sheet class="pa-3 relation-card">
+                                        <div class="text-caption text-medium-emphasis">{{ signal.label }}</div>
+                                        <div class="text-h6 font-mono">{{ signal.value }}%</div>
+                                        <div class="text-caption">{{ signal.note }}</div>
+                                    </v-sheet>
+                                </v-col>
+                            </v-row>
                         </v-card>
 
                         <v-card class="pa-4 mb-3">
@@ -151,6 +180,7 @@
     import { useEntityProfile } from '~/composables/useEntityProfile';
     import { usePortfolio } from '~/composables/usePortfolio';
     import { tierColor, tierLabel } from '~/composables/useFusedScoring';
+    import { useMacroContext } from '~/composables/useRelationships';
 
     const route = useRoute();
     const neid = computed(() => route.params.neid as string);
@@ -164,6 +194,7 @@
     const neidRef = ref(neid.value);
     watch(neid, (v) => (neidRef.value = v));
     const { data, loading, error, refresh } = useEntityProfile(neidRef);
+    const { signals: macroSignals } = useMacroContext();
 
     function severityColor(s: 'low' | 'medium' | 'high') {
         return s === 'high' ? 'error' : s === 'medium' ? 'warning' : 'info';

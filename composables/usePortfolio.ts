@@ -9,6 +9,7 @@
 
 import { computed, ref } from 'vue';
 
+import seededPortfolioFixture from '~/assets/seeded-portfolios.json';
 import { searchEntities } from '~/utils/elementalHelpers';
 import {
     type EntityRiskScore,
@@ -56,6 +57,28 @@ interface PortfolioPrefsShape {
     weights: SourceFusionWeights;
 }
 
+interface ScanEntityEventPayload {
+    index: number;
+    entity: {
+        inputName: string;
+        resolvedName: string;
+        neid: string | null;
+        scores: EntityRiskScore | null;
+        drivers?: Array<{
+            lens: string;
+            source: string;
+            score: number;
+            label: string;
+            explanation: string;
+            evidence: string;
+        }>;
+        conflicts?: Array<{ lens: string; delta: number }>;
+        confidenceLevel?: 'High' | 'Medium' | 'Low';
+        coverage?: { sec: boolean; news: boolean; stock: boolean; poly: boolean };
+        resolutionError?: string;
+    };
+}
+
 const DEFAULT_WEIGHTS: SourceFusionWeights = {
     solvency: 0.4,
     executive: 0.25,
@@ -68,6 +91,22 @@ const DEFAULT_WEIGHTS: SourceFusionWeights = {
 // by NEID) so the demo is reproducible without live agent runs.
 function defaultPortfolios(): PortfolioDoc[] {
     const now = Date.now();
+    const seeded = (seededPortfolioFixture as any)?.portfolios;
+    if (Array.isArray(seeded) && seeded.length > 0) {
+        return seeded.map((portfolio: any) => ({
+            id: portfolio.id,
+            name: portfolio.name,
+            description: portfolio.description || '',
+            createdAt: now,
+            entities: (portfolio.entities || []).map((entity: any) => ({
+                inputName: entity.inputName,
+                resolvedName: entity.resolvedName || entity.inputName,
+                neid: entity.neid || null,
+                addedAt: now,
+                scores: null,
+            })),
+        }));
+    }
     return [
         {
             id: 'clo-mid-market',
@@ -175,6 +214,17 @@ const prefs = ref<ReturnType<typeof useAppFeaturePrefs<PortfolioPrefsShape>> | n
 const scanning = ref(false);
 const scanProgress = ref<{ done: number; total: number }>({ done: 0, total: 0 });
 const lastScanError = ref<string | null>(null);
+const lastScanCoverage = ref<{ sec: number; news: number; stock: number; poly: number }>({
+    sec: 0,
+    news: 0,
+    stock: 0,
+    poly: 0,
+});
+
+interface AgentStreamEvent {
+    event: string;
+    data: any;
+}
 
 function ensurePrefs() {
     if (!prefs.value) {
@@ -284,8 +334,8 @@ export function usePortfolio() {
     }
 
     /**
-     * Resolve unresolved entities via the gateway's entity search and compute
-     * deterministic agent scores. Updates portfolio entities in place.
+     * Resolve entities and compute multi-source scores through the server-side
+     * scan pipeline (`POST /api/agents/scan`) using SSE updates.
      */
     async function scanPortfolio(portfolioId: string, opts: { force?: boolean } = {}) {
         const idx = p.portfolios.findIndex((pp) => pp.id === portfolioId);
@@ -295,20 +345,64 @@ export function usePortfolio() {
         const ents = p.portfolios[idx].entities;
         scanProgress.value = { done: 0, total: ents.length };
 
-        const w = weights.value;
+        try {
+            const response = await fetch('/api/agents/scan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    portfolioId,
+                    force: !!opts.force,
+                    weights: weights.value,
+                    entities: ents.map((entity) => ({
+                        inputName: entity.inputName,
+                        resolvedName: entity.resolvedName,
+                        neid: entity.neid,
+                    })),
+                }),
+            });
+            if (!response.ok || !response.body) {
+                throw new Error(`Scan request failed (${response.status})`);
+            }
 
-        // Bounded concurrency — keep within History Agent fan-out budget.
-        const CONCURRENCY = 6;
-        let cursor = 0;
-
-        async function worker() {
-            while (cursor < ents.length) {
-                const i = cursor++;
-                const entity = ents[i];
-                if (!opts.force && entity.neid && entity.scores) {
-                    scanProgress.value.done++;
-                    continue;
+            for await (const { event, data } of readSSE(response)) {
+                if (event === 'entity') {
+                    const payload = data as ScanEntityEventPayload;
+                    const current = ents[payload.index];
+                    if (!current) continue;
+                    current.neid = payload.entity.neid;
+                    current.resolvedName = payload.entity.resolvedName || current.resolvedName;
+                    current.resolutionError = payload.entity.resolutionError;
+                    current.scores = payload.entity.scores;
+                    p.portfolios[idx].entities = [...ents];
+                } else if (event === 'progress') {
+                    scanProgress.value = {
+                        done: data?.done ?? scanProgress.value.done,
+                        total: data?.total ?? scanProgress.value.total,
+                    };
+                } else if (event === 'done') {
+                    if (data?.coverage) {
+                        lastScanCoverage.value = data.coverage;
+                    }
+                    const entitiesOut = Array.isArray(data?.entities) ? data.entities : [];
+                    entitiesOut.forEach((entityOut: any, entityIndex: number) => {
+                        const current = ents[entityIndex];
+                        if (!current) return;
+                        current.neid = entityOut.neid;
+                        current.resolvedName = entityOut.resolvedName || current.resolvedName;
+                        current.resolutionError = entityOut.resolutionError;
+                        current.scores = entityOut.scores ?? current.scores;
+                    });
+                    p.portfolios[idx].entities = [...ents];
+                } else if (event === 'error') {
+                    throw new Error(data?.message || 'Scan pipeline failed');
                 }
+            }
+        } catch (e: any) {
+            lastScanError.value = e?.message || 'Scan failed';
+            // Keep the old deterministic flow as a fallback so demo scans still work
+            // when the server-side route is unavailable.
+            for (const entity of ents) {
+                if (!opts.force && entity.neid && entity.scores) continue;
                 try {
                     if (!entity.neid || opts.force) {
                         const matches = await searchEntities(entity.inputName, {
@@ -319,23 +413,20 @@ export function usePortfolio() {
                             entity.neid = matches[0].neid;
                             entity.resolvedName = matches[0].name || entity.inputName;
                             entity.resolutionError = undefined;
-                        } else {
-                            entity.resolutionError = 'No match in knowledge graph';
                         }
                     }
                     const seed = entity.neid || entity.inputName;
                     const subs = seededEntityScore(seed);
-                    const fused = fuseScore(subs, w);
+                    const fused = fuseScore(subs, weights.value);
                     entity.scores = {
                         ...subs,
                         fused,
                         tier: deriveTier(fused),
                         updatedAt: Date.now(),
                     };
-                } catch (e: any) {
-                    entity.resolutionError = e?.message || 'Resolution failed';
+                } catch {
                     const subs = seededEntityScore(entity.inputName);
-                    const fused = fuseScore(subs, w);
+                    const fused = fuseScore(subs, weights.value);
                     entity.scores = {
                         ...subs,
                         fused,
@@ -344,15 +435,9 @@ export function usePortfolio() {
                     };
                 } finally {
                     scanProgress.value.done++;
-                    p.portfolios[idx].entities = [...ents];
                 }
             }
-        }
-
-        try {
-            await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
-        } catch (e: any) {
-            lastScanError.value = e?.message || 'Scan failed';
+            p.portfolios[idx].entities = [...ents];
         } finally {
             scanning.value = false;
         }
@@ -365,6 +450,7 @@ export function usePortfolio() {
         scanning: computed(() => scanning.value),
         scanProgress: computed(() => scanProgress.value),
         lastScanError: computed(() => lastScanError.value),
+        lastScanCoverage: computed(() => lastScanCoverage.value),
         setActivePortfolio,
         createPortfolio,
         deletePortfolio,
@@ -383,4 +469,40 @@ function slugify(name: string): string {
             .replace(/^-+|-+$/g, '')
             .slice(0, 40) || 'portfolio'
     );
+}
+
+async function* readSSE(response: Response): AsyncGenerator<AgentStreamEvent> {
+    const reader = response.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const blocks = buffer.split('\n\n');
+            buffer = blocks.pop() || '';
+            for (const block of blocks) {
+                const parsed = parseSSEBlock(block);
+                if (parsed) yield parsed;
+            }
+        }
+    } finally {
+        reader.releaseLock();
+    }
+}
+
+function parseSSEBlock(block: string): AgentStreamEvent | null {
+    let eventType = 'message';
+    let dataLine = '';
+    for (const line of block.split('\n')) {
+        if (line.startsWith('event: ')) eventType = line.slice(7).trim();
+        else if (line.startsWith('data: ')) dataLine = line.slice(6);
+    }
+    if (!dataLine) return null;
+    try {
+        return { event: eventType, data: JSON.parse(dataLine) };
+    } catch {
+        return { event: eventType, data: dataLine };
+    }
 }

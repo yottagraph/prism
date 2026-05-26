@@ -22,6 +22,7 @@ export interface EntityRiskScore extends SubScores {
     fused: number;
     tier: RiskTier;
     updatedAt: number;
+    previousFused?: number;
 }
 
 export interface SourceFusionWeights {
@@ -138,6 +139,7 @@ export interface RiskDriver {
     label: string;
     explanation: string;
     evidence: string;
+    href?: string;
 }
 
 const LENS_SOURCE: Record<keyof SubScores, RiskDriver['source']> = {

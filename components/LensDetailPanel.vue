@@ -48,6 +48,7 @@
     const props = defineProps<{
         scores: EntityRiskScore;
         seed: string;
+        lensDetails?: Record<string, { metrics: Array<{ label: string; value: string }>; evidence: string[] }>;
     }>();
 
     function h(s: string, salt: string) {
@@ -82,7 +83,7 @@
         const vol = (15 + (h(seed, 'vol') % 60)).toFixed(0);
         const rsi = 20 + (h(seed, 'rsi') % 60);
 
-        return [
+        const generated = [
             {
                 key: 'solvency' as const,
                 label: 'Solvency (SEC)',
@@ -159,6 +160,15 @@
                 ],
             },
         ];
+        return generated.map((lens) => {
+            const override = props.lensDetails?.[lens.key];
+            if (!override) return lens;
+            return {
+                ...lens,
+                metrics: override.metrics?.length ? override.metrics : lens.metrics,
+                evidence: override.evidence?.length ? override.evidence : lens.evidence,
+            };
+        });
     });
 </script>
 

@@ -1,0 +1,39 @@
+{
+  "generatedAt": "2026-05-26T00:00:00.000Z",
+  "portfolios": [
+    {
+      "id": "clo-mid-market",
+      "name": "CLO Mid-Market",
+      "description": "Mid-cap industrial and service issuers typical of a CLO.",
+      "entities": [
+        { "inputName": "Ford Motor Company", "resolvedName": "Ford Motor Company", "neid": null },
+        { "inputName": "General Motors", "resolvedName": "General Motors", "neid": null },
+        { "inputName": "Carnival Corporation", "resolvedName": "Carnival Corporation", "neid": null },
+        { "inputName": "Macy's", "resolvedName": "Macy's", "neid": null }
+      ]
+    },
+    {
+      "id": "tech-growth",
+      "name": "Tech Growth",
+      "description": "High-growth tech with governance-heavy signal profile.",
+      "entities": [
+        { "inputName": "Snowflake", "resolvedName": "Snowflake", "neid": null },
+        { "inputName": "Datadog", "resolvedName": "Datadog", "neid": null },
+        { "inputName": "Cloudflare", "resolvedName": "Cloudflare", "neid": null },
+        { "inputName": "MongoDB", "resolvedName": "MongoDB", "neid": null }
+      ]
+    },
+    {
+      "id": "distressed-watchlist",
+      "name": "Distressed Watchlist",
+      "description": "Names with known recent distress signals.",
+      "entities": [
+        { "inputName": "WeWork", "resolvedName": "WeWork", "neid": null },
+        { "inputName": "Rite Aid", "resolvedName": "Rite Aid", "neid": null },
+        { "inputName": "SVB Financial Group", "resolvedName": "SVB Financial Group", "neid": null },
+        { "inputName": "First Republic Bank", "resolvedName": "First Republic Bank", "neid": null }
+      ]
+    }
+  ]
+}
+

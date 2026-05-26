@@ -157,6 +157,55 @@
                         </v-row>
                     </v-card>
 
+                    <v-card class="pa-3 mb-3">
+                        <div class="d-flex align-center mb-2">
+                            <v-icon size="small" class="mr-2">mdi-tune-variant</v-icon>
+                            <span class="text-subtitle-2">Fusion Weights</span>
+                        </div>
+                        <div class="text-caption text-medium-emphasis mb-2">
+                            Adjust lens weighting; values auto-normalize to sum to 1.0.
+                        </div>
+                        <v-slider
+                            v-model="weights.solvency"
+                            min="0"
+                            max="1"
+                            step="0.01"
+                            label="Solvency"
+                            hide-details
+                            class="mb-1"
+                            @change="normalizeWeights"
+                        />
+                        <v-slider
+                            v-model="weights.executive"
+                            min="0"
+                            max="1"
+                            step="0.01"
+                            label="Executive"
+                            hide-details
+                            class="mb-1"
+                            @change="normalizeWeights"
+                        />
+                        <v-slider
+                            v-model="weights.news"
+                            min="0"
+                            max="1"
+                            step="0.01"
+                            label="News"
+                            hide-details
+                            class="mb-1"
+                            @change="normalizeWeights"
+                        />
+                        <v-slider
+                            v-model="weights.market"
+                            min="0"
+                            max="1"
+                            step="0.01"
+                            label="Market"
+                            hide-details
+                            @change="normalizeWeights"
+                        />
+                    </v-card>
+
                     <AgentActivityFeed :entries="activity" />
                 </v-col>
             </v-row>
@@ -169,6 +218,9 @@
                 <v-data-table
                     :headers="sessionHeaders"
                     :items="sessions"
+                    v-model:expanded="expandedSessions"
+                    item-value="id"
+                    show-expand
                     density="comfortable"
                     no-data-text="No completed sessions yet."
                 >
@@ -193,6 +245,37 @@
                     <template v-slot:item.timestamp="{ item }">
                         {{ new Date(item.timestamp).toLocaleString() }}
                     </template>
+                    <template v-slot:expanded-row="{ columns, item }">
+                        <tr>
+                            <td :colspan="columns.length">
+                                <div class="pa-3">
+                                    <div class="text-caption text-medium-emphasis mb-2">Agent trace</div>
+                                    <v-row dense>
+                                        <v-col
+                                            v-for="step in item.steps"
+                                            :key="step.name"
+                                            cols="12"
+                                            md="6"
+                                            lg="3"
+                                        >
+                                            <v-sheet class="pa-2 trace-card">
+                                                <div class="text-subtitle-2">{{ step.label }}</div>
+                                                <div class="text-caption text-medium-emphasis">
+                                                    {{ step.description }}
+                                                </div>
+                                                <div class="text-caption mt-1">
+                                                    Status: <strong>{{ step.status }}</strong>
+                                                </div>
+                                                <div class="text-caption">
+                                                    Evidence: {{ step.evidenceCount ?? 0 }}
+                                                </div>
+                                            </v-sheet>
+                                        </v-col>
+                                    </v-row>
+                                </div>
+                            </td>
+                        </tr>
+                    </template>
                 </v-data-table>
             </v-card>
         </div>
@@ -200,25 +283,36 @@
 </template>
 
 <script setup lang="ts">
-    import { computed, defineComponent, h, ref } from 'vue';
+    import { computed, defineComponent, h, onMounted, ref, watch } from 'vue';
 
+    import { useAgentChat } from '~/composables/useAgentChat';
     import { useAgentPipeline } from '~/composables/useAgentPipeline';
     import { usePortfolio } from '~/composables/usePortfolio';
 
-    const { activePortfolio: active } = usePortfolio();
+    const { activePortfolio: active, weights } = usePortfolio();
     const { runPipeline, currentPipeline, sessions, activity, costSummary, pushActivity } =
         useAgentPipeline();
+    const {
+        messages,
+        loading,
+        streamEvents,
+        selectAgent,
+        sendMessage,
+        clearChat: clearAgentChat,
+    } = useAgentChat();
 
-    interface ChatMessage {
-        id: string;
-        role: 'user' | 'agent';
-        text: string;
-        evidence?: string[];
-    }
-    const chat = ref<ChatMessage[]>([]);
+    const chat = computed(() =>
+        messages.value.map((message) => ({
+            id: message.id,
+            role: message.role,
+            text: message.text,
+            evidence: [] as string[],
+        }))
+    );
     const draft = ref('');
-    const thinking = ref(false);
+    const thinking = computed(() => loading.value);
     const chatBody = ref<HTMLElement | null>(null);
+    const expandedSessions = ref<string[]>([]);
 
     const suggestions = [
         'Which 3 companies in my portfolio have the highest fused risk and why?',
@@ -227,25 +321,38 @@
         'What macro signals should I worry about right now?',
     ];
 
+    onMounted(() => {
+        selectAgent('prism');
+    });
+
+    watch(
+        streamEvents,
+        (events) => {
+            const latest = events[events.length - 1];
+            if (!latest) return;
+            if (latest.event === 'function_call') {
+                pushActivity('History Agent', active.value?.name ?? 'portfolio', latest.data?.name ?? 'tool call');
+            } else if (latest.event === 'function_response') {
+                pushActivity(
+                    'Query Agent',
+                    active.value?.name ?? 'portfolio',
+                    `${latest.data?.name ?? 'tool'} response received`
+                );
+            } else if (latest.event === 'text') {
+                pushActivity('Composition Agent', active.value?.name ?? 'portfolio', 'Narrative updated');
+            }
+        },
+        { deep: true }
+    );
+
     async function sendChat(text: string) {
-        if (!text.trim() || thinking.value) return;
-        const user: ChatMessage = { id: crypto.randomUUID(), role: 'user', text };
-        chat.value.push(user);
+        if (!text.trim() || loading.value) return;
         draft.value = '';
-        thinking.value = true;
-        await runPipeline({
+        void runPipeline({
             trigger: active.value?.name ?? 'portfolio',
             entityCount: active.value?.entities.length ?? 1,
         });
-        const reply = composeReply(text);
-        chat.value.push({
-            id: crypto.randomUUID(),
-            role: 'agent',
-            text: reply.text,
-            evidence: reply.evidence,
-        });
-        thinking.value = false;
-        pushActivity('Composition Agent', active.value?.name ?? 'portfolio', 'Response composed');
+        await sendMessage(text);
         scrollToBottom();
     }
 
@@ -255,77 +362,12 @@
         });
     }
 
-    function composeReply(question: string): { text: string; evidence: string[] } {
-        const p = active.value;
-        if (!p) {
-            return {
-                text: 'No active portfolio. Load one from the Portfolio page first.',
-                evidence: [],
-            };
-        }
-        const scored = p.entities.filter((e) => e.scores);
-        if (!scored.length) {
-            return {
-                text: 'No scored entities yet. Run a scan from the Portfolio page first — agents need to resolve and score entities before I can answer.',
-                evidence: [],
-            };
-        }
-        const top = [...scored]
-            .sort((a, b) => (b.scores!.fused ?? 0) - (a.scores!.fused ?? 0))
-            .slice(0, 3);
-        const lower = question.toLowerCase();
-
-        if (lower.includes('highest') || lower.includes('top') || lower.includes('riskiest')) {
-            const lines = top.map(
-                (e, i) =>
-                    `<strong>${i + 1}. ${e.resolvedName}</strong> — fused ${e.scores!.fused} (${e.scores!.tier}). Drivers: solvency ${e.scores!.solvency}, executive ${e.scores!.executive}, news ${e.scores!.news}, market ${e.scores!.market}.`
-            );
-            return {
-                text:
-                    `The three highest-risk names in <strong>${p.name}</strong>:<br><br>` +
-                    lines.join('<br><br>') +
-                    `<br><br>Each score traces back to source-level signals — open the entity from the Portfolio table to inspect the evidence chain.`,
-                evidence: top.map((e) => `${e.resolvedName} score breakdown`),
-            };
-        }
-        if (
-            lower.includes('governance') ||
-            lower.includes('interlock') ||
-            lower.includes('director')
-        ) {
-            return {
-                text: `Across <strong>${p.name}</strong> I detect potential governance interlocks where multiple portfolio entities share officers or directors. Open the <strong>Relationship Explorer</strong> and switch to the <em>People</em> tab — any person with more than one company served is flagged in warning color. The "Cross-Portfolio Patterns" panel surfaces the most material interlocks with the affected entities listed.`,
-                evidence: ['Relationship Explorer · People tab', 'Cross-portfolio patterns panel'],
-            };
-        }
-        if (lower.includes('lender') || lower.includes('credit')) {
-            return {
-                text: `The Instruments tab in the Relationship Explorer groups credit facilities by lender. When the same institution shows up as <em>lender_of</em> for 3+ portfolio companies, that's flagged as a <strong>common-lender concentration</strong> pattern in the patterns panel — covenant tightening from that lender would correlate defaults across your holdings.`,
-                evidence: ['Relationship Explorer · Instruments', 'Common-lender pattern detector'],
-            };
-        }
-        if (
-            lower.includes('macro') ||
-            lower.includes('polymarket') ||
-            lower.includes('recession')
-        ) {
-            return {
-                text: `Macro overlay on the Portfolio Overview shows recession probability, credit-stress index, rate-cut probability, and sector outlook. These are sourced from prediction-market signals via the lovelace-polymarket MCP server and serve as portfolio-level context (not per-entity scores). Pair them with the source fusion bar to see if any per-entity signals are corroborated by macro stress.`,
-                evidence: ['Macro Context · Polymarket'],
-            };
-        }
-        return {
-            text: `Looking at <strong>${p.name}</strong> (${scored.length} scored entities), the top names by fused risk are: <strong>${top.map((t) => t.resolvedName).join(', ')}</strong>. Ask me about governance, common lenders, or macro signals for a more specific narrative — or open any entity from the Portfolio table for the full evidence chain.`,
-            evidence: [`${scored.length} entity scores`, 'Portfolio-level analytics'],
-        };
-    }
-
     function formatText(t: string): string {
         return t;
     }
 
     function clearChat() {
-        chat.value = [];
+        clearAgentChat();
     }
 
     const sessionHeaders = [
@@ -334,6 +376,7 @@
         { title: 'Entities', key: 'entityCount', align: 'end' as const },
         { title: 'Duration', key: 'duration', align: 'end' as const },
         { title: 'Timestamp', key: 'timestamp' },
+        { title: '', key: 'data-table-expand' },
     ];
 
     const cacheHitRate = computed(() => {
@@ -341,6 +384,17 @@
         if (!total) return 0;
         return Math.round((costSummary.value.cacheHits / total) * 100);
     });
+
+    function normalizeWeights() {
+        const sum = weights.value.solvency + weights.value.executive + weights.value.news + weights.value.market;
+        if (sum <= 0) return;
+        weights.value = {
+            solvency: Number((weights.value.solvency / sum).toFixed(3)),
+            executive: Number((weights.value.executive / sum).toFixed(3)),
+            news: Number((weights.value.news / sum).toFixed(3)),
+            market: Number((weights.value.market / sum).toFixed(3)),
+        };
+    }
 
     const CostMetric = defineComponent({
         props: { label: String, value: [String, Number], suffix: String },
@@ -419,5 +473,11 @@
 
     .font-mono {
         font-family: var(--font-mono, ui-monospace, monospace);
+    }
+
+    .trace-card {
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.02);
     }
 </style>

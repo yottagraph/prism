@@ -27,6 +27,27 @@
                 </v-col>
             </v-row>
 
+            <v-card v-if="selectedNode" class="mt-3 pa-3">
+                <div class="d-flex align-center mb-2">
+                    <v-icon size="small" class="mr-2">mdi-information-outline</v-icon>
+                    <span class="text-subtitle-2">Node Detail</span>
+                </div>
+                <div class="text-body-1 font-weight-medium">{{ selectedNode.label }}</div>
+                <div class="text-caption text-medium-emphasis mb-2">
+                    {{ selectedNode.kind }} · connected to {{ selectedNode.connectsTo.length }} portfolio
+                    entit{{ selectedNode.connectsTo.length === 1 ? 'y' : 'ies' }}
+                </div>
+                <v-chip
+                    v-for="nodeId in selectedNode.connectsTo"
+                    :key="nodeId"
+                    size="x-small"
+                    variant="outlined"
+                    class="mr-1 mb-1"
+                >
+                    {{ portfolioName(nodeId) }}
+                </v-chip>
+            </v-card>
+
             <v-card class="mt-3">
                 <v-tabs v-model="tab" color="primary" align-tabs="start">
                     <v-tab value="companies">
@@ -47,11 +68,35 @@
                     </v-tab>
                 </v-tabs>
                 <v-divider />
+                <div class="px-4 pt-3">
+                    <v-row dense>
+                        <v-col cols="12" md="6">
+                            <v-text-field
+                                v-model="tableSearch"
+                                density="compact"
+                                hide-details
+                                clearable
+                                label="Filter by name or relationship"
+                            />
+                        </v-col>
+                        <v-col cols="12" md="6" class="d-flex justify-end">
+                            <v-btn-toggle
+                                v-if="tab === 'locations'"
+                                v-model="locationView"
+                                mandatory
+                                density="comfortable"
+                            >
+                                <v-btn value="table" size="small">Table</v-btn>
+                                <v-btn value="map" size="small">Map</v-btn>
+                            </v-btn-toggle>
+                        </v-col>
+                    </v-row>
+                </div>
                 <v-window v-model="tab">
                     <v-window-item value="companies">
                         <v-data-table
                             :headers="companyHeaders"
-                            :items="companies"
+                            :items="filteredCompanies"
                             density="comfortable"
                             class="rel-table"
                         >
@@ -63,7 +108,7 @@
                     <v-window-item value="people">
                         <v-data-table
                             :headers="peopleHeaders"
-                            :items="people"
+                            :items="filteredPeople"
                             density="comfortable"
                             class="rel-table"
                         >
@@ -106,15 +151,16 @@
                     <v-window-item value="instruments">
                         <v-data-table
                             :headers="instrumentHeaders"
-                            :items="instruments"
+                            :items="filteredInstruments"
                             density="comfortable"
                             class="rel-table"
                         />
                     </v-window-item>
                     <v-window-item value="locations">
                         <v-data-table
+                            v-if="locationView === 'table'"
                             :headers="locationHeaders"
-                            :items="locations"
+                            :items="filteredLocations"
                             density="comfortable"
                             class="rel-table"
                         >
@@ -131,6 +177,19 @@
                                 </span>
                             </template>
                         </v-data-table>
+                        <v-row v-else dense class="pa-3">
+                            <v-col v-for="loc in filteredLocations" :key="loc.name" cols="12" md="6">
+                                <v-sheet class="pa-3 map-node">
+                                    <div class="text-subtitle-2">{{ loc.name }}</div>
+                                    <div class="text-caption text-medium-emphasis">
+                                        {{ loc.entitiesPresent.length }} entities present
+                                    </div>
+                                    <div class="text-caption mt-2">
+                                        {{ loc.entitiesPresent.join(', ') }}
+                                    </div>
+                                </v-sheet>
+                            </v-col>
+                        </v-row>
                     </v-window-item>
                 </v-window>
             </v-card>
@@ -149,6 +208,8 @@
     const { graph, companies, people, instruments, locations, patterns } = useRelationships(active);
 
     const tab = ref('companies');
+    const locationView = ref<'table' | 'map'>('table');
+    const tableSearch = ref('');
 
     const companyHeaders = [
         { title: 'Name', key: 'name', sortable: true },
@@ -180,6 +241,41 @@
     function onSelectNode(n: GraphNode) {
         selectedNode.value = n;
     }
+
+    function portfolioName(nodeId: string) {
+        if (!active.value) return nodeId;
+        const neid = nodeId.startsWith('p-') ? nodeId.slice(2) : nodeId;
+        return active.value.entities.find((entity) => entity.neid === neid)?.resolvedName ?? nodeId;
+    }
+
+    const filteredCompanies = computed(() =>
+        companies.value.filter((row) =>
+            `${row.name} ${row.connectionType} ${(row.connectedTo || []).join(' ')}`
+                .toLowerCase()
+                .includes(tableSearch.value.toLowerCase())
+        )
+    );
+    const filteredPeople = computed(() =>
+        people.value.filter((row) =>
+            `${row.name} ${(row.roles || []).join(' ')} ${(row.companiesServed || []).join(' ')}`
+                .toLowerCase()
+                .includes(tableSearch.value.toLowerCase())
+        )
+    );
+    const filteredInstruments = computed(() =>
+        instruments.value.filter((row) =>
+            `${row.name} ${row.type} ${row.issuer} ${row.lender}`
+                .toLowerCase()
+                .includes(tableSearch.value.toLowerCase())
+        )
+    );
+    const filteredLocations = computed(() =>
+        locations.value.filter((row) =>
+            `${row.name} ${(row.entitiesPresent || []).join(' ')}`
+                .toLowerCase()
+                .includes(tableSearch.value.toLowerCase())
+        )
+    );
 </script>
 
 <style scoped>
@@ -190,5 +286,11 @@
 
     .rel-table :deep(.v-data-table__wrapper) {
         max-height: 420px;
+    }
+
+    .map-node {
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.02);
     }
 </style>

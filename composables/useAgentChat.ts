@@ -19,6 +19,7 @@ const messages = ref<ChatMessage[]>([]);
 const loading = ref(false);
 const sessionId = ref<string | null>(null);
 const currentAgentId = ref<string | null>(null);
+const streamEvents = ref<AgentStreamEvent[]>([]);
 
 /**
  * Composable for the agent chat UI. Manages conversation state and sends
@@ -76,6 +77,7 @@ export function useAgentChat() {
         const agentMsgIdx = messages.value.length - 1;
 
         loading.value = true;
+        streamEvents.value = [];
 
         const reqHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
         if (accessToken.value) {
@@ -107,6 +109,7 @@ export function useAgentChat() {
             }
 
             for await (const { event, data } of readSSE(response)) {
+                streamEvents.value.push({ event, data });
                 if (event === 'text') {
                     updateAgent({ text: data.text });
                 } else if (event === 'done') {
@@ -150,6 +153,7 @@ export function useAgentChat() {
         sessionId: computed(() => sessionId.value),
         currentAgentId: computed(() => currentAgentId.value),
         hasMessages,
+        streamEvents: computed(() => streamEvents.value),
         selectAgent,
         sendMessage,
         clearChat,

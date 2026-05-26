@@ -8,7 +8,7 @@
  * something to render and the cross-portfolio patterns are reproducible.
  */
 
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import type { PortfolioDoc } from './usePortfolio';
 
@@ -124,12 +124,69 @@ function pickN<T>(arr: T[], n: number, salt: string): T[] {
 }
 
 export function useRelationships(portfolio: import('vue').Ref<PortfolioDoc | null>) {
-    const graph = computed(() => buildGraph(portfolio.value));
-    const companies = computed(() => buildCompanies(portfolio.value));
-    const people = computed(() => buildPeople(portfolio.value));
-    const instruments = computed(() => buildInstruments(portfolio.value));
-    const locations = computed(() => buildLocations(portfolio.value));
-    const patterns = computed(() => buildPatterns(portfolio.value));
+    const remoteGraph = ref<{ nodes: GraphNode[]; edges: GraphEdge[] } | null>(null);
+    const remoteCompanies = ref<RelatedCompanyRow[] | null>(null);
+    const remotePeople = ref<PersonRow[] | null>(null);
+    const remoteInstruments = ref<InstrumentRow[] | null>(null);
+    const remoteLocations = ref<LocationRow[] | null>(null);
+    const remotePatterns = ref<PortfolioPattern[] | null>(null);
+
+    watch(
+        portfolio,
+        async (value) => {
+            if (!value?.id) {
+                remoteGraph.value = null;
+                remoteCompanies.value = null;
+                remotePeople.value = null;
+                remoteInstruments.value = null;
+                remoteLocations.value = null;
+                remotePatterns.value = null;
+                return;
+            }
+            const entities = value.entities
+                .filter((entity) => entity.neid)
+                .map((entity) => ({ neid: entity.neid!, name: entity.resolvedName }))
+                .slice(0, 20);
+            if (!entities.length) return;
+            const encoded = encodeURIComponent(JSON.stringify(entities));
+            const base = `/api/portfolios/${value.id}/relationships`;
+            try {
+                const [graphRes, companiesRes, peopleRes, instrumentsRes, locationsRes, patternsRes] =
+                    await Promise.all([
+                        $fetch<{ nodes: GraphNode[]; edges: GraphEdge[] }>(
+                            `${base}/graph?entities=${encoded}`
+                        ),
+                        $fetch<RelatedCompanyRow[]>(`${base}/companies?entities=${encoded}`),
+                        $fetch<PersonRow[]>(`${base}/people?entities=${encoded}`),
+                        $fetch<InstrumentRow[]>(`${base}/instruments?entities=${encoded}`),
+                        $fetch<LocationRow[]>(`${base}/locations?entities=${encoded}`),
+                        $fetch<PortfolioPattern[]>(`${base}/patterns?entities=${encoded}`),
+                    ]);
+                remoteGraph.value = graphRes;
+                remoteCompanies.value = companiesRes;
+                remotePeople.value = peopleRes;
+                remoteInstruments.value = instrumentsRes;
+                remoteLocations.value = locationsRes;
+                remotePatterns.value = patternsRes;
+            } catch (error) {
+                console.warn('[useRelationships] falling back to local synthetic graph', error);
+                remoteGraph.value = null;
+                remoteCompanies.value = null;
+                remotePeople.value = null;
+                remoteInstruments.value = null;
+                remoteLocations.value = null;
+                remotePatterns.value = null;
+            }
+        },
+        { immediate: true, deep: true }
+    );
+
+    const graph = computed(() => remoteGraph.value ?? buildGraph(portfolio.value));
+    const companies = computed(() => remoteCompanies.value ?? buildCompanies(portfolio.value));
+    const people = computed(() => remotePeople.value ?? buildPeople(portfolio.value));
+    const instruments = computed(() => remoteInstruments.value ?? buildInstruments(portfolio.value));
+    const locations = computed(() => remoteLocations.value ?? buildLocations(portfolio.value));
+    const patterns = computed(() => remotePatterns.value ?? buildPatterns(portfolio.value));
 
     return { graph, companies, people, instruments, locations, patterns };
 }
@@ -372,20 +429,34 @@ export interface MacroSignal {
     note: string;
 }
 
-/**
- * Macro overlay (Polymarket-style). Mock values; would be replaced by live
- * prediction-market data via the lovelace-polymarket MCP server.
- */
+export function useMacroContext() {
+    const signals = useState<MacroSignal[]>('macro-context-signals', () => []);
+    const loading = ref(false);
+
+    async function refresh() {
+        loading.value = true;
+        try {
+            const res = await $fetch<MacroSignal[]>('/api/macro/polymarket');
+            signals.value = Array.isArray(res) ? res : [];
+        } catch {
+            // Keep previous signals on transient failures.
+        } finally {
+            loading.value = false;
+        }
+    }
+
+    if (!signals.value.length && !loading.value) {
+        void refresh();
+    }
+
+    return {
+        signals: computed(() => signals.value),
+        loading: computed(() => loading.value),
+        refresh,
+    };
+}
+
 export function getMacroContext(): MacroSignal[] {
-    return [
-        { label: 'Recession probability', value: 18, trend: 'down', note: 'via Polymarket macro' },
-        { label: 'Credit stress index', value: 42, trend: 'up', note: 'sector-weighted' },
-        {
-            label: 'Rate cut probability (next mtg)',
-            value: 64,
-            trend: 'up',
-            note: 'CME / Polymarket fusion',
-        },
-        { label: 'Energy sector outlook', value: 51, trend: 'flat', note: 'mixed signals' },
-    ];
+    const { signals } = useMacroContext();
+    return signals.value;
 }

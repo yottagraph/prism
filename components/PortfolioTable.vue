@@ -56,8 +56,19 @@
             </template>
 
             <template v-slot:item.trend="{ item }">
-                <v-icon :color="item.trend === 'up' ? 'error' : 'success'" size="small">
-                    {{ item.trend === 'up' ? 'mdi-trending-up' : 'mdi-trending-down' }}
+                <v-icon
+                    :color="
+                        item.trend === 'up' ? 'error' : item.trend === 'down' ? 'success' : 'medium-emphasis'
+                    "
+                    size="small"
+                >
+                    {{
+                        item.trend === 'up'
+                            ? 'mdi-trending-up'
+                            : item.trend === 'down'
+                              ? 'mdi-trending-down'
+                              : 'mdi-trending-neutral'
+                    }}
                 </v-icon>
             </template>
 
@@ -112,7 +123,14 @@
             market: e.scores?.market ?? null,
             fused: e.scores?.fused ?? null,
             tier: e.scores?.tier ?? null,
-            trend: (e.scores?.fused ?? 0) >= 60 ? 'up' : 'down',
+            trend:
+                e.scores?.previousFused === undefined
+                    ? 'flat'
+                    : (e.scores?.fused ?? 0) > e.scores.previousFused
+                      ? 'up'
+                      : (e.scores?.fused ?? 0) < e.scores.previousFused
+                        ? 'down'
+                        : 'flat',
         }))
     );
 

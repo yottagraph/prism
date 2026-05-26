@@ -21,7 +21,17 @@
                 </div>
                 <div class="text-body-1 font-weight-medium mb-1">{{ d.label }}</div>
                 <div class="text-body-2 text-medium-emphasis mb-2">{{ d.explanation }}</div>
-                <div class="text-caption text-medium-emphasis">
+                <a
+                    v-if="d.href"
+                    class="text-caption text-medium-emphasis evidence-link"
+                    :href="d.href"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    <v-icon size="x-small" class="mr-1">mdi-file-document-outline</v-icon>
+                    {{ d.evidence }}
+                </a>
+                <div v-else class="text-caption text-medium-emphasis">
                     <v-icon size="x-small" class="mr-1">mdi-file-document-outline</v-icon>
                     {{ d.evidence }}
                 </div>
@@ -70,5 +80,14 @@
 
     .font-mono {
         font-family: var(--font-mono, ui-monospace, monospace);
+    }
+
+    .evidence-link {
+        color: inherit;
+        text-decoration: none;
+    }
+
+    .evidence-link:hover {
+        text-decoration: underline;
     }
 </style>

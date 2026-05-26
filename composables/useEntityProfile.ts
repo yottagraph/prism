@@ -35,6 +35,10 @@ export interface RelatedEntityRef {
 export interface EntityProfileData {
     neid: string;
     name: string;
+    ticker?: string | null;
+    cik?: string | null;
+    sector?: string | null;
+    entityType?: string | null;
     properties: EntityProperty[];
     relationships: {
         companies: RelatedEntityRef[];
@@ -52,6 +56,10 @@ export interface EntityProfileData {
     drivers: ReturnType<typeof deriveDrivers>;
     conflicts: ReturnType<typeof detectConflicts>;
     confidenceLevel: ReturnType<typeof confidence>;
+    lensDetails?: Record<
+        string,
+        { metrics: Array<{ label: string; value: string }>; evidence: string[] }
+    >;
 }
 
 const cache = new Map<string, EntityProfileData>();
@@ -70,56 +78,57 @@ export function useEntityProfile(neid: import('vue').Ref<string | null>) {
         loading.value = true;
         error.value = null;
         try {
-            // Entity name
-            let name = forNeid;
+            const { activePortfolio } = usePortfolio();
+            const activePortfolioId = activePortfolio.value?.id || 'default';
+            let profile: EntityProfileData | null = null;
             try {
-                const nameRes = await $fetch<{ name: string }>(
-                    buildGatewayUrl(`entities/${forNeid}/name`),
-                    {
-                        headers: gatewayHeaders(),
-                    }
+                profile = await $fetch<EntityProfileData>(
+                    `/api/portfolios/${activePortfolioId}/entity/${forNeid}/profile`
                 );
-                name = nameRes?.name || forNeid;
             } catch {
-                // Name lookup is best-effort.
+                // Fallback to direct gateway + deterministic score when route is unavailable.
             }
 
-            const properties: EntityProperty[] = [];
-            const relationships: EntityProfileData['relationships'] = {
-                companies: [],
-                people: [],
-                instruments: [],
-                locations: [],
-            };
-            // Synthesize events + relationship samples from the seed for the
-            // demo. These would otherwise come from the History Agent's
-            // multi-source pull.
-            synthesizeRelationships(forNeid, name, relationships);
-            const events = synthesizeEvents(forNeid);
+            if (!profile) {
+                let name = forNeid;
+                try {
+                    const nameRes = await $fetch<{ name: string }>(buildGatewayUrl(`entities/${forNeid}/name`), {
+                        headers: gatewayHeaders(),
+                    });
+                    name = nameRes?.name || forNeid;
+                } catch {
+                    // Best effort.
+                }
+                const properties: EntityProperty[] = [];
+                const relationships: EntityProfileData['relationships'] = {
+                    companies: [],
+                    people: [],
+                    instruments: [],
+                    locations: [],
+                };
+                synthesizeRelationships(forNeid, name, relationships);
+                const events = synthesizeEvents(forNeid);
 
-            const subs = seededEntityScore(forNeid);
-            const fused = fuseScore(subs, weights);
-            const scores: EntityRiskScore = {
-                ...subs,
-                fused,
-                tier: deriveTier(fused),
-                updatedAt: Date.now(),
-            };
-            const drivers = deriveDrivers(forNeid, subs);
-            const conflicts = detectConflicts(subs);
-            const confidenceLevel = confidence(subs);
-
-            const profile: EntityProfileData = {
-                neid: forNeid,
-                name,
-                properties,
-                relationships,
-                events,
-                scores,
-                drivers,
-                conflicts,
-                confidenceLevel,
-            };
+                const subs = seededEntityScore(forNeid);
+                const fused = fuseScore(subs, weights);
+                const scores: EntityRiskScore = {
+                    ...subs,
+                    fused,
+                    tier: deriveTier(fused),
+                    updatedAt: Date.now(),
+                };
+                profile = {
+                    neid: forNeid,
+                    name,
+                    properties,
+                    relationships,
+                    events,
+                    scores,
+                    drivers: deriveDrivers(forNeid, subs),
+                    conflicts: detectConflicts(subs),
+                    confidenceLevel: confidence(subs),
+                };
+            }
             cache.set(cacheKey, profile);
             data.value = profile;
         } catch (e: any) {
