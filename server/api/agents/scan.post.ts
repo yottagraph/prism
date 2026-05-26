@@ -83,44 +83,59 @@ export default defineEventHandler(async (event) => {
                         while (cursor < total) {
                             const idx = cursor++;
                             const entity = entities[idx];
-                            const resolved = await resolveEntity(entity);
-                            let result: any = {
-                                ...resolved,
-                                scores: null,
-                                drivers: [],
-                                conflicts: [],
-                                confidenceLevel: 'Low',
-                                coverage: { sec: false, news: false, stock: false, poly: false },
-                            };
-                            if (resolved.neid) {
-                                pushActivity({
-                                    portfolioId: body.portfolioId,
-                                    step: 'history',
-                                    entity: resolved.resolvedName,
-                                    detail: 'Fetching multi-source context',
-                                });
-                                const scored = await scoreEntity(
-                                    event,
-                                    body.portfolioId,
-                                    resolved.neid,
-                                    body.weights
-                                );
-                                pushActivity({
-                                    portfolioId: body.portfolioId,
-                                    step: 'query',
-                                    entity: resolved.resolvedName,
-                                    detail: `Scored fused risk ${scored.scores.fused}`,
-                                });
-                                result = { ...resolved, ...scored };
-                                coverage.sec += scored.coverage.sec ? 1 : 0;
-                                coverage.news += scored.coverage.news ? 1 : 0;
-                                coverage.stock += scored.coverage.stock ? 1 : 0;
-                                coverage.poly += scored.coverage.poly ? 1 : 0;
+                            try {
+                                const resolved = await resolveEntity(entity);
+                                let result: any = {
+                                    ...resolved,
+                                    scores: null,
+                                    drivers: [],
+                                    conflicts: [],
+                                    confidenceLevel: 'Low',
+                                    coverage: { sec: false, news: false, stock: false, poly: false },
+                                };
+                                if (resolved.neid) {
+                                    pushActivity({
+                                        portfolioId: body.portfolioId,
+                                        step: 'history',
+                                        entity: resolved.resolvedName,
+                                        detail: 'Fetching multi-source context',
+                                    });
+                                    const scored = await scoreEntity(
+                                        event,
+                                        body.portfolioId,
+                                        resolved.neid,
+                                        body.weights
+                                    );
+                                    pushActivity({
+                                        portfolioId: body.portfolioId,
+                                        step: 'query',
+                                        entity: resolved.resolvedName,
+                                        detail: `Scored fused risk ${scored.scores.fused}`,
+                                    });
+                                    result = { ...resolved, ...scored };
+                                    coverage.sec += scored.coverage.sec ? 1 : 0;
+                                    coverage.news += scored.coverage.news ? 1 : 0;
+                                    coverage.stock += scored.coverage.stock ? 1 : 0;
+                                    coverage.poly += scored.coverage.poly ? 1 : 0;
+                                }
+                                output[idx] = result;
+                                emit('entity', { index: idx, entity: result });
+                            } catch (entityError: any) {
+                                const failed = {
+                                    ...entity,
+                                    scores: null,
+                                    drivers: [],
+                                    conflicts: [],
+                                    confidenceLevel: 'Low',
+                                    coverage: { sec: false, news: false, stock: false, poly: false },
+                                    resolutionError: entityError?.message || 'Scoring failed',
+                                };
+                                output[idx] = failed;
+                                emit('entity', { index: idx, entity: failed });
+                            } finally {
+                                done += 1;
+                                emit('progress', { done, total });
                             }
-                            output[idx] = result;
-                            done += 1;
-                            emit('entity', { index: idx, entity: result });
-                            emit('progress', { done, total });
                         }
                     })
                 );

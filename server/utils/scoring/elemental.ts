@@ -19,6 +19,9 @@ export interface ElementalSchema {
     properties: Array<{ pid?: number; pindex?: number; name: string; type?: string }>;
 }
 
+const SCHEMA_TTL_MS = 5 * 60_000;
+let schemaCache: { schema: ElementalSchema; expiresAt: number } | null = null;
+
 function getGatewayConfig() {
     const { public: config } = useRuntimeConfig();
     const gatewayUrl = (config as any).gatewayUrl as string;
@@ -65,14 +68,29 @@ export async function getEntityName(neid: string): Promise<string> {
 }
 
 export async function getSchema(): Promise<ElementalSchema> {
-    const res = await $fetch<any>(buildUrl('elemental/metadata/schema'), {
-        headers: headers(),
-    });
-    const schema = res?.schema ?? res ?? {};
-    return {
-        flavors: schema.flavors ?? [],
-        properties: schema.properties ?? [],
-    };
+    if (schemaCache && schemaCache.expiresAt > Date.now()) {
+        return schemaCache.schema;
+    }
+
+    try {
+        const res = await $fetch<any>(buildUrl('elemental/metadata/schema'), {
+            headers: headers(),
+        });
+        const schema = res?.schema ?? res ?? {};
+        const normalized: ElementalSchema = {
+            flavors: schema.flavors ?? [],
+            properties: schema.properties ?? [],
+        };
+        schemaCache = { schema: normalized, expiresAt: Date.now() + SCHEMA_TTL_MS };
+        return normalized;
+    } catch (error) {
+        // If schema briefly fails upstream, keep using the last known-good copy.
+        if (schemaCache) {
+            console.warn('[elemental] schema fetch failed, using cached schema', error);
+            return schemaCache.schema;
+        }
+        throw error;
+    }
 }
 
 export async function findEntities(expression: object, limit = 50): Promise<string[]> {

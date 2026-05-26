@@ -19,7 +19,7 @@ async function resolveNeighborNames(eids: string[], limit = 10): Promise<string[
 }
 
 async function getRelationships(neid: string) {
-    const schema = await getSchema();
+    const schema = await getSchema().catch(() => ({ flavors: [], properties: [] }));
     const pid = normalizePidMap(schema);
     const links = {
         companies: [] as any[],
@@ -67,11 +67,14 @@ export async function getEntityProfile(event: H3Event, portfolioId: string, neid
     const cached = await readScoringCache<any>(event, cacheKey);
     if (cached) return cached;
 
-    const [name, scored, relationships] = await Promise.all([
-        getEntityName(neid).catch(() => neid),
-        scoreEntity(event, portfolioId, neid),
-        getRelationships(neid),
-    ]);
+    const name = await getEntityName(neid).catch(() => neid);
+    const relationships = await getRelationships(neid).catch(() => ({
+        companies: [],
+        people: [],
+        instruments: [],
+        locations: [],
+    }));
+    const scored = await scoreEntity(event, portfolioId, neid).catch(() => null);
 
     const profile = {
         neid,
@@ -88,26 +91,42 @@ export async function getEntityProfile(event: H3Event, portfolioId: string, neid
             title: string;
             severity: 'low' | 'medium' | 'high';
         }>,
-        scores: scored.scores,
-        drivers: scored.drivers,
-        conflicts: scored.conflicts,
-        confidenceLevel: scored.confidenceLevel,
+        scores: scored?.scores ?? {
+            solvency: 0,
+            executive: 0,
+            news: 0,
+            market: 0,
+            fused: 0,
+            tier: 'normal',
+            updatedAt: Date.now(),
+        },
+        drivers: scored?.drivers ?? [],
+        conflicts: scored?.conflicts ?? [],
+        confidenceLevel: scored?.confidenceLevel ?? 'Low',
         lensDetails: {
             solvency: {
-                metrics: [{ label: 'Score', value: `${scored.scores.solvency}` }],
-                evidence: ['Elemental fundamentals and filing cadence'],
+                metrics: [{ label: 'Score', value: `${scored?.scores?.solvency ?? 0}` }],
+                evidence: scored
+                    ? ['Elemental fundamentals and filing cadence']
+                    : ['Elemental solvency data unavailable for this entity'],
             },
             executive: {
-                metrics: [{ label: 'Score', value: `${scored.scores.executive}` }],
-                evidence: ['Officer/director relationship graph signals'],
+                metrics: [{ label: 'Score', value: `${scored?.scores?.executive ?? 0}` }],
+                evidence: scored
+                    ? ['Officer/director relationship graph signals']
+                    : ['Elemental governance data unavailable for this entity'],
             },
             news: {
-                metrics: [{ label: 'Score', value: `${scored.scores.news}` }],
-                evidence: ['News sentiment and mention velocity properties'],
+                metrics: [{ label: 'Score', value: `${scored?.scores?.news ?? 0}` }],
+                evidence: scored
+                    ? ['News sentiment and mention velocity properties']
+                    : ['Elemental news data unavailable for this entity'],
             },
             market: {
-                metrics: [{ label: 'Score', value: `${scored.scores.market}` }],
-                evidence: ['Market return/volatility/anomaly features'],
+                metrics: [{ label: 'Score', value: `${scored?.scores?.market ?? 0}` }],
+                evidence: scored
+                    ? ['Market return/volatility/anomaly features']
+                    : ['Elemental market data unavailable for this entity'],
             },
             macro: {
                 metrics: [{ label: 'Status', value: 'Macro signals loaded separately' }],
