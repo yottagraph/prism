@@ -43,7 +43,13 @@
                 v-if="loading || stockLoading"
                 class="d-inline-flex align-center text-caption text-medium-emphasis mt-2"
             >
-                <v-progress-circular size="12" width="2" indeterminate color="primary" class="mr-2" />
+                <v-progress-circular
+                    size="12"
+                    width="2"
+                    indeterminate
+                    color="primary"
+                    class="mr-2"
+                />
                 {{ activeTab === 'stock' ? stockStatusMessage : overviewStatusMessage }}
             </div>
         </div>
@@ -54,11 +60,20 @@
                 <v-tab value="stock">Stock Entity</v-tab>
             </v-tabs>
 
-            <v-progress-linear v-if="loading && activeTab === 'overview'" indeterminate class="mb-4" />
+            <v-progress-linear
+                v-if="loading && activeTab === 'overview'"
+                indeterminate
+                class="mb-4"
+            />
             <v-alert v-if="error" type="error" variant="tonal" class="mb-3">
                 {{ error }}
             </v-alert>
-            <v-alert v-if="stockError && activeTab === 'stock'" type="warning" variant="tonal" class="mb-3">
+            <v-alert
+                v-if="stockError && activeTab === 'stock'"
+                type="warning"
+                variant="tonal"
+                class="mb-3"
+            >
                 {{ stockError }}
             </v-alert>
 
@@ -109,7 +124,9 @@
                                                 <div class="text-caption text-medium-emphasis">
                                                     {{ signal.label }}
                                                 </div>
-                                                <div class="text-h6 font-mono">{{ signal.value }}%</div>
+                                                <div class="text-h6 font-mono">
+                                                    {{ signal.value }}%
+                                                </div>
                                                 <div class="text-caption">{{ signal.note }}</div>
                                             </v-sheet>
                                         </v-col>
@@ -157,7 +174,9 @@
                                                         :key="r.neid"
                                                     >
                                                         {{ r.name }}
-                                                        <span class="text-caption text-medium-emphasis">
+                                                        <span
+                                                            class="text-caption text-medium-emphasis"
+                                                        >
                                                             · {{ r.relationship }}
                                                         </span>
                                                     </li>
@@ -175,7 +194,9 @@
                                             :key="ev.date + ev.title"
                                             class="timeline-row"
                                         >
-                                            <span class="ts font-mono text-caption text-medium-emphasis">
+                                            <span
+                                                class="ts font-mono text-caption text-medium-emphasis"
+                                            >
                                                 {{ ev.date }}
                                             </span>
                                             <v-chip
@@ -186,8 +207,13 @@
                                             >
                                                 {{ ev.category }}
                                             </v-chip>
-                                            <span class="title-text text-body-2">{{ ev.title }}</span>
-                                            <div v-if="ev.citations?.length" class="timeline-citations">
+                                            <span class="title-text text-body-2">{{
+                                                ev.title
+                                            }}</span>
+                                            <div
+                                                v-if="ev.citations?.length"
+                                                class="timeline-citations"
+                                            >
                                                 <CitationChip
                                                     v-for="(citation, idx) in ev.citations"
                                                     :key="`${ev.date}-${ev.title}-${idx}`"
@@ -258,7 +284,12 @@
     async function loadStock(force = false) {
         const portfolioId = activePortfolio.value?.id;
         if (!portfolioId || !neid.value) return;
-        await loadStockProfile(portfolioId, neid.value, force).catch(() => undefined);
+        const hint =
+            data.value?.name ||
+            entityFromPortfolio.value?.resolvedName ||
+            entityFromPortfolio.value?.inputName ||
+            undefined;
+        await loadStockProfile(portfolioId, neid.value, force, hint).catch(() => undefined);
     }
 
     watch(activeTab, async (value) => {

@@ -2,6 +2,7 @@ import { computed, ref } from 'vue';
 
 export interface StockEntityProfileData {
     neid: string;
+    canonicalNeid: string | null;
     entityName: string;
     instrumentNeid: string | null;
     instrumentName: string | null;
@@ -68,7 +69,7 @@ export function useEntityStockProfile() {
         if (finalMessage) statusMessage.value = finalMessage;
     }
 
-    async function load(portfolioId: string, neid: string, force = false) {
+    async function load(portfolioId: string, neid: string, force = false, nameHint?: string) {
         const key = currentKey(portfolioId, neid);
         if (!force && cache.has(key)) {
             data.value = cache.get(key)!;
@@ -86,8 +87,11 @@ export function useEntityStockProfile() {
             'Finalizing stock entity data…',
         ]);
         try {
+            const query: Record<string, string> = {};
+            if (nameHint && nameHint.trim()) query.name = nameHint.trim();
             const profile = await $fetch<StockEntityProfileData>(
-                `/api/portfolios/${portfolioId}/entity/${neid}/stock`
+                `/api/portfolios/${portfolioId}/entity/${neid}/stock`,
+                Object.keys(query).length ? { query } : undefined
             );
             cache.set(key, profile);
             data.value = profile;

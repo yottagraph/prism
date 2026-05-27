@@ -23,6 +23,17 @@
         </v-alert>
 
         <template v-if="stock">
+            <v-alert
+                v-if="stock.canonicalNeid"
+                type="info"
+                variant="tonal"
+                density="compact"
+                class="mb-3"
+            >
+                Stored portfolio NEID was orphaned in Elemental. Re-resolved to canonical
+                <span class="font-mono">{{ stock.canonicalNeid }}</span> via name search. Re-scan
+                the portfolio to update stored NEIDs.
+            </v-alert>
             <v-card class="pa-4 mb-3">
                 <div class="d-flex align-center flex-wrap ga-2">
                     <div class="text-h6">{{ stock.entityName }}</div>

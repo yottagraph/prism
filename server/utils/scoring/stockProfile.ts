@@ -8,6 +8,7 @@ import {
     getPropertyValues,
     getSchema,
     normalizePidMap,
+    searchEntitiesByName,
     type ElementalPropertyFact,
 } from './elemental';
 import { callMcpTool, extractMcpStructuredContent } from './mcpGateway';
@@ -15,6 +16,7 @@ import type { CitationRef } from './types';
 
 export interface StockEntityProfile {
     neid: string;
+    canonicalNeid: string | null;
     entityName: string;
     instrumentNeid: string | null;
     instrumentName: string | null;
@@ -183,17 +185,61 @@ function buildCitation(
 export async function getStockEntityProfile(
     event: H3Event,
     portfolioId: string,
-    neid: string
+    neid: string,
+    nameHint?: string
 ): Promise<StockEntityProfile> {
     const cacheKey = makeCacheKey(portfolioId, neid, 'stock-profile-v2');
     const cached = await readScoringCache<StockEntityProfile>(event, cacheKey);
     if (cached) return cached;
 
-    const entityName = await getEntityName(neid, event).catch(() => neid);
     const dataGaps: string[] = [];
     const citations: CitationRef[] = [];
 
-    const allInstruments = await fetchInstruments(neid, event);
+    // 1) Try to resolve the entity name. For orphan NEIDs the REST endpoint
+    //    returns an empty string — in that case we fall back to the caller's
+    //    nameHint (which the entity page passes in from the portfolio entry).
+    let entityName = '';
+    try {
+        const resolved = await getEntityName(neid, event);
+        entityName = resolved && resolved !== neid ? resolved : '';
+    } catch {
+        entityName = '';
+    }
+    if (!entityName && nameHint) entityName = nameHint;
+    if (!entityName) entityName = neid;
+
+    // 2) Try to fetch related instruments using the stored NEID first.
+    let activeNeid = neid;
+    let canonicalNeid: string | null = null;
+    let allInstruments = await fetchInstruments(activeNeid, event);
+
+    // 3) If the stored NEID is orphaned (no name, no relationships) but we
+    //    have a usable name hint, search for the canonical NEID and retry.
+    //    This recovers portfolios that were seeded by older scans where the
+    //    NEID may have been corrupted by the JS-Number int64 precision bug
+    //    or otherwise pointed at a stub entity.
+    const recoveryName = nameHint || (entityName !== neid ? entityName : '');
+    if (allInstruments.length === 0 && recoveryName) {
+        try {
+            const matches = await searchEntitiesByName(recoveryName, 1, event);
+            const candidate = matches[0]?.neid;
+            if (candidate && candidate !== neid) {
+                const retryInstruments = await fetchInstruments(candidate, event);
+                if (retryInstruments.length > 0) {
+                    canonicalNeid = candidate;
+                    activeNeid = candidate;
+                    allInstruments = retryInstruments;
+                    if (matches[0]?.name) entityName = matches[0].name;
+                    dataGaps.push(
+                        `Stored NEID ${neid} is orphaned in Elemental; using canonical NEID ${candidate} resolved from "${recoveryName}". Re-scan the portfolio to refresh stored NEIDs.`
+                    );
+                }
+            }
+        } catch (error) {
+            console.warn('[stock profile] canonical NEID recovery search failed', error);
+        }
+    }
+
     if (!allInstruments.length) {
         dataGaps.push('No related financial instruments returned by Elemental');
     }
@@ -380,6 +426,7 @@ export async function getStockEntityProfile(
 
     const profile: StockEntityProfile = {
         neid,
+        canonicalNeid,
         entityName,
         instrumentNeid,
         instrumentName,
