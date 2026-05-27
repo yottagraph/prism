@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue';
 import { useUserState } from './useUserState';
+import { beginElementalLog } from '~/utils/elementalLogger';
 
 export interface McpTool {
     name: string;
@@ -53,18 +54,48 @@ export function useMcpExplorer() {
             headers['Mcp-Session-Id'] = existingSessionId;
         }
 
-        const res = await fetch(url, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-                jsonrpc: '2.0',
-                id: Date.now(),
-                method,
-                ...(params ? { params } : {}),
-            }),
+        const tool =
+            method === 'tools/call' && params && typeof params === 'object'
+                ? (params as any).name
+                : undefined;
+        const reqSummary: Record<string, unknown> = {};
+        if (method === 'tools/call' && params?.arguments) {
+            const argKeys = Object.keys(params.arguments);
+            reqSummary.args = argKeys.length;
+            if (argKeys.length) reqSummary.argKeys = argKeys.join(',');
+        }
+        const body = JSON.stringify({
+            jsonrpc: '2.0',
+            id: Date.now(),
+            method,
+            ...(params ? { params } : {}),
+        });
+        const logCtx = beginElementalLog({
+            surface: 'mcp',
+            serverName,
+            rpcMethod: method,
+            tool,
+            caller: tool
+                ? `useMcpExplorer:${serverName}:${tool}`
+                : `useMcpExplorer:${serverName}:${method}`,
+            reqBytes: body.length,
+            reqSummary,
+            reqBody: body,
+            sessionId: existingSessionId,
         });
 
-        // Persist the session ID returned by the MCP server (via the gateway).
+        let res: Response;
+        try {
+            res = await fetch(url, {
+                method: 'POST',
+                headers,
+                body,
+            });
+        } catch (err) {
+            logCtx.finish({ status: 0, ok: false, error: err });
+            throw err;
+        }
+
         const returnedSessionId = res.headers.get('mcp-session-id');
         if (returnedSessionId) {
             sessionIds.value = { ...sessionIds.value, [serverName]: returnedSessionId };
@@ -73,6 +104,11 @@ export function useMcpExplorer() {
         // Stale session — clear it and retry once without the session ID so
         // the upstream MCP server creates a fresh session transparently.
         if (res.status === 404 && existingSessionId) {
+            logCtx.finish({
+                status: 404,
+                ok: false,
+                resSummary: { staleSession: true, retrying: true },
+            });
             const { [serverName]: _, ...rest } = sessionIds.value;
             sessionIds.value = rest;
             return rpc(serverName, method, params);
@@ -80,10 +116,55 @@ export function useMcpExplorer() {
 
         if (!res.ok) {
             const text = await res.text();
+            logCtx.finish({
+                status: res.status,
+                ok: false,
+                resBytes: text.length,
+                resBody: text,
+                error: text,
+            });
             throw new Error(text || `MCP RPC failed (${res.status})`);
         }
 
-        return await res.json();
+        const responseText = await res.text();
+        let parsed: any = null;
+        try {
+            parsed = responseText ? JSON.parse(responseText) : null;
+        } catch (err) {
+            logCtx.finish({
+                status: res.status,
+                ok: false,
+                resBytes: responseText.length,
+                resBody: responseText,
+                error: err,
+            });
+            throw err;
+        }
+
+        const rpcError = parsed?.error;
+        const resSummary: Record<string, unknown> = {};
+        if (rpcError) {
+            resSummary.errorCode = rpcError?.code;
+            resSummary.errorMessage = rpcError?.message;
+        } else if (method === 'tools/list') {
+            resSummary.tools = parsed?.result?.tools?.length ?? 0;
+        } else if (method === 'tools/call') {
+            const result = parsed?.result;
+            if (result?.structuredContent) resSummary.structured = true;
+            if (Array.isArray(result?.content)) resSummary.contentBlocks = result.content.length;
+            if (result?.isError) resSummary.toolError = true;
+        }
+
+        logCtx.finish({
+            status: res.status,
+            ok: !rpcError,
+            resBytes: responseText.length,
+            resBody: responseText,
+            resSummary,
+            error: rpcError || undefined,
+        });
+
+        return parsed;
     }
 
     async function listTools(serverName: string): Promise<McpTool[]> {

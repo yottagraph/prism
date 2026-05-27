@@ -32,6 +32,7 @@ broadchurch.yaml
 # the per-user prefs docs across page refreshes when no Firestore is
 # configured. One JSON file per user per scope.
 .aether-dev-prefs/
+.aether-dev-elemental-logs/
 
 # Python virtual environments (for agents and MCP servers)
 agents/.venv/

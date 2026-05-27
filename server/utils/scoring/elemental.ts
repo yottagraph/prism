@@ -1,4 +1,5 @@
 import type { H3Event } from 'h3';
+import { beginElementalLog } from '../elementalLogger';
 
 export interface ElementalSearchMatch {
     neid: string;
@@ -106,24 +107,75 @@ function parseBigIntSafe<T = unknown>(text: string): T {
     return JSON.parse(sanitised) as T;
 }
 
+interface FetchJsonBigLog {
+    endpoint: string;
+    caller?: string;
+    reqSummary?: Record<string, unknown>;
+    summarizeResponse?: (data: any) => Record<string, unknown> | undefined;
+}
+
 async function fetchJsonBig<T = any>(
     url: string,
-    init?: { method?: 'GET' | 'POST'; headers?: Record<string, string>; body?: string }
-): Promise<T> {
-    const response = await fetch(url, {
-        method: init?.method ?? 'GET',
-        headers: init?.headers,
-        body: init?.body,
-    });
-    const text = await response.text();
-    if (!response.ok) {
-        throw createError({
-            statusCode: response.status,
-            statusMessage: text || `Elemental request failed (${response.status})`,
-        });
+    init?: {
+        method?: 'GET' | 'POST';
+        headers?: Record<string, string>;
+        body?: string;
+        log?: FetchJsonBigLog;
     }
-    if (!text) return undefined as unknown as T;
-    return parseBigIntSafe<T>(text);
+): Promise<T> {
+    const method = init?.method ?? 'GET';
+    const logCtx = init?.log
+        ? beginElementalLog({
+              surface: 'qs-rest',
+              method,
+              endpoint: init.log.endpoint,
+              caller: init.log.caller,
+              reqBytes: init.body ? init.body.length : 0,
+              reqSummary: init.log.reqSummary,
+              reqBody: init.body,
+          })
+        : null;
+    try {
+        const response = await fetch(url, {
+            method,
+            headers: init?.headers,
+            body: init?.body,
+        });
+        const text = await response.text();
+        if (!response.ok) {
+            logCtx?.finish({
+                status: response.status,
+                ok: false,
+                resBytes: text.length,
+                error: text,
+                resBody: text,
+            });
+            throw createError({
+                statusCode: response.status,
+                statusMessage: text || `Elemental request failed (${response.status})`,
+            });
+        }
+        if (!text) {
+            logCtx?.finish({ status: response.status, ok: true, resBytes: 0 });
+            return undefined as unknown as T;
+        }
+        const data = parseBigIntSafe<T>(text);
+        logCtx?.finish({
+            status: response.status,
+            ok: true,
+            resBytes: text.length,
+            resSummary: init?.log?.summarizeResponse?.(data),
+            resBody: text,
+        });
+        return data;
+    } catch (error) {
+        logCtx?.finish({
+            status: (error as any)?.statusCode ?? 0,
+            ok: false,
+            error,
+        });
+        throw error;
+    }
 }
 
 export async function searchEntitiesByName(
@@ -140,6 +192,14 @@ export async function searchEntitiesByName(
             includeNames: true,
             maxResults,
         }),
+        log: {
+            endpoint: 'entities/search',
+            caller: 'searchEntitiesByName',
+            reqSummary: { query, maxResults },
+            summarizeResponse: (data) => ({
+                matches: data?.results?.[0]?.matches?.length ?? 0,
+            }),
+        },
     });
     const matches: any[] = res?.results?.[0]?.matches ?? [];
     return matches.map((m) => ({ neid: m.neid, name: m.name || m.neid, score: m.score }));
@@ -165,6 +225,16 @@ export async function searchEntitiesByNames(
             includeNames: true,
             maxResults,
         }),
+        log: {
+            endpoint: 'entities/search',
+            caller: 'searchEntitiesByNames',
+            reqSummary: { queries: payloadQueries.length, maxResults, mode: 'batch' },
+            summarizeResponse: (data) => {
+                const results: any[] = Array.isArray(data?.results) ? data.results : [];
+                const total = results.reduce((sum, row) => sum + (row?.matches?.length ?? 0), 0);
+                return { results: results.length, totalMatches: total };
+            },
+        },
     });
     const out: Record<string, ElementalSearchMatch[]> = {};
     const results: any[] = Array.isArray(res?.results) ? res.results : [];
@@ -181,6 +251,12 @@ export async function getEntityName(neid: string, event?: H3Event): Promise<stri
     recordElementalCall(event, `entities/${neid}/name`, 'GET');
     const res = await fetchJsonBig<{ name?: string }>(buildUrl(`entities/${neid}/name`), {
         headers: headers(),
+        log: {
+            endpoint: 'entities/{neid}/name',
+            caller: 'getEntityName',
+            reqSummary: { neid },
+            summarizeResponse: (data) => ({ name: data?.name ?? null }),
+        },
     });
     return res?.name || neid;
 }
@@ -188,6 +264,22 @@ export async function getEntityName(neid: string, event?: H3Event): Promise<stri
 export async function getSchema(event?: H3Event): Promise<ElementalSchema> {
     if (schemaCache && schemaCache.expiresAt > Date.now()) {
         recordElementalCall(event, 'elemental/metadata/schema', 'GET', { cache: 'hit' });
+        const ctx = beginElementalLog({
+            surface: 'qs-rest',
+            method: 'GET',
+            endpoint: 'elemental/metadata/schema',
+            caller: 'getSchema',
+            reqSummary: { cache: 'hit' },
+        });
+        ctx.finish({
+            status: 200,
+            ok: true,
+            cache: 'hit',
+            resSummary: {
+                flavors: schemaCache.schema.flavors.length,
+                properties: schemaCache.schema.properties.length,
+            },
+        });
         return schemaCache.schema;
     }
 
@@ -195,6 +287,18 @@ export async function getSchema(event?: H3Event): Promise<ElementalSchema> {
         recordElementalCall(event, 'elemental/metadata/schema', 'GET', { cache: 'miss' });
         const res = await fetchJsonBig<any>(buildUrl('elemental/metadata/schema'), {
             headers: headers(),
+            log: {
+                endpoint: 'elemental/metadata/schema',
+                caller: 'getSchema',
+                reqSummary: { cache: 'miss' },
+                summarizeResponse: (data) => {
+                    const schema = data?.schema ?? data ?? {};
+                    return {
+                        flavors: schema?.flavors?.length ?? 0,
+                        properties: schema?.properties?.length ?? 0,
+                    };
+                },
+            },
         });
         const schema = res?.schema ?? res ?? {};
         const normalized: ElementalSchema = {
@@ -207,6 +311,22 @@ export async function getSchema(event?: H3Event): Promise<ElementalSchema> {
         // If schema briefly fails upstream, keep using the last known-good copy.
         if (schemaCache) {
             console.warn('[elemental] schema fetch failed, using cached schema', error);
+            const ctx = beginElementalLog({
+                surface: 'qs-rest',
+                method: 'GET',
+                endpoint: 'elemental/metadata/schema',
+                caller: 'getSchema',
+                reqSummary: { cache: 'stale-fallback' },
+            });
+            ctx.finish({
+                status: 200,
+                ok: true,
+                cache: 'stale',
+                resSummary: {
+                    flavors: schemaCache.schema.flavors.length,
+                    properties: schemaCache.schema.properties.length,
+                },
+            });
             return schemaCache.schema;
         }
         throw error;
@@ -233,6 +353,7 @@ export async function findEntities(
     form.set('expression', encodeExpressionPreservingBigInts(expression));
     form.set('limit', String(limit));
     const { qsApiKey } = getGatewayConfig();
+    const exprType = (expression as any)?.type ?? 'unknown';
     const res = await fetchJsonBig<any>(buildUrl('elemental/find'), {
         method: 'POST',
         headers: {
@@ -240,8 +361,35 @@ export async function findEntities(
             'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: form.toString(),
+        log: {
+            endpoint: 'elemental/find',
+            caller: 'findEntities',
+            reqSummary: { exprType, limit, ...summarizeFindExpression(expression) },
+            summarizeResponse: (data) => ({ eids: data?.eids?.length ?? 0 }),
+        },
     });
     return (res?.eids ?? []) as string[];
+}
+
+function summarizeFindExpression(expression: any): Record<string, unknown> {
+    if (!expression || typeof expression !== 'object') return {};
+    const out: Record<string, unknown> = {};
+    if (expression.type === 'is_type') {
+        out.fid = expression.is_type?.fid;
+    } else if (expression.type === 'comparison') {
+        out.op = expression.comparison?.operator;
+        out.pid = expression.comparison?.pid;
+    } else if (expression.type === 'linked') {
+        out.to = expression.linked?.to_entity;
+        out.distance = expression.linked?.distance;
+        out.direction = expression.linked?.direction;
+        const pids = expression.linked?.pids;
+        if (Array.isArray(pids)) out.pids = pids.length;
+    } else if (expression.type === 'and' || expression.type === 'or') {
+        const arr = expression[expression.type];
+        if (Array.isArray(arr)) out.children = arr.length;
+    }
+    return out;
 }
 
 // Encode a `linked.pids` style expression where PIDs may be string-form int64
@@ -275,6 +423,16 @@ export async function getPropertyValues(
             'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: form.toString(),
+        log: {
+            endpoint: 'elemental/entities/properties',
+            caller: 'getPropertyValues',
+            reqSummary: {
+                eids: eids.length,
+                pids: pids.length,
+                includeAttributes,
+            },
+            summarizeResponse: (data) => ({ values: data?.values?.length ?? 0 }),
+        },
     });
     return (res?.values ?? []) as ElementalPropertyValue[];
 }

@@ -4,6 +4,7 @@
  * Centralizes gateway URL construction, API key retrieval, and NEID
  * formatting so these don't need to be re-derived in every composable.
  */
+import { beginElementalLog } from './elementalLogger';
 
 /**
  * Build a full gateway URL for a Query Server endpoint.
@@ -64,21 +65,55 @@ export async function searchEntities(
     const queryObj: Record<string, any> = { queryId: 1, query };
     if (options?.flavors?.length) queryObj.flavors = options.flavors;
 
-    const res = await $fetch<any>(url, {
+    const body = {
+        queries: [queryObj],
+        maxResults: options?.maxResults ?? 10,
+        includeNames: options?.includeNames ?? true,
+    };
+    const bodyText = JSON.stringify(body);
+    const logCtx = beginElementalLog({
+        surface: 'qs-rest',
         method: 'POST',
-        headers: gatewayHeaders(),
-        body: {
-            queries: [queryObj],
-            maxResults: options?.maxResults ?? 10,
-            includeNames: options?.includeNames ?? true,
+        endpoint: 'entities/search',
+        caller: 'utils/searchEntities',
+        reqBytes: bodyText.length,
+        reqSummary: {
+            query,
+            maxResults: body.maxResults,
+            flavors: options?.flavors?.length ?? 0,
         },
+        reqBody: bodyText,
     });
-    const matches: any[] = res?.results?.[0]?.matches ?? [];
-    return matches.map((m) => ({
-        neid: m.neid,
-        name: m.name || m.neid,
-        score: m.score,
-    }));
+
+    try {
+        const res = await $fetch<any>(url, {
+            method: 'POST',
+            headers: gatewayHeaders(),
+            body,
+        });
+        const matches: any[] = res?.results?.[0]?.matches ?? [];
+        logCtx.finish({
+            status: 200,
+            ok: true,
+            resSummary: {
+                results: res?.results?.length ?? 0,
+                matches: matches.length,
+            },
+            resBody: tryStringify(res),
+        });
+        return matches.map((m) => ({
+            neid: m.neid,
+            name: m.name || m.neid,
+            score: m.score,
+        }));
+    } catch (err: any) {
+        logCtx.finish({
+            status: err?.statusCode ?? err?.response?.status ?? 0,
+            ok: false,
+            error: err,
+        });
+        throw err;
+    }
 }
 
 /**
@@ -88,8 +123,38 @@ export async function searchEntities(
  */
 export async function getEntityName(neid: string): Promise<string> {
     const url = buildGatewayUrl(`entities/${neid}/name`);
-    const res = await $fetch<{ name: string }>(url, {
-        headers: { 'X-Api-Key': getApiKey() },
+    const logCtx = beginElementalLog({
+        surface: 'qs-rest',
+        method: 'GET',
+        endpoint: 'entities/{neid}/name',
+        caller: 'utils/getEntityName',
+        reqSummary: { neid },
     });
-    return res.name || neid;
+    try {
+        const res = await $fetch<{ name: string }>(url, {
+            headers: { 'X-Api-Key': getApiKey() },
+        });
+        logCtx.finish({
+            status: 200,
+            ok: true,
+            resSummary: { name: res?.name ?? null },
+            resBody: tryStringify(res),
+        });
+        return res.name || neid;
+    } catch (err: any) {
+        logCtx.finish({
+            status: err?.statusCode ?? err?.response?.status ?? 0,
+            ok: false,
+            error: err,
+        });
+        throw err;
+    }
+}
+
+function tryStringify(value: unknown): string | undefined {
+    try {
+        return JSON.stringify(value);
+    } catch {
+        return undefined;
+    }
 }
