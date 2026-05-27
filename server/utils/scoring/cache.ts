@@ -42,6 +42,9 @@ export async function readScoringCache<T = unknown>(
     event: H3Event,
     key: string
 ): Promise<T | null> {
+    if ((event.context as any)?.forceScoring === true) {
+        return null;
+    }
     const entry = inMemoryCache.get(key);
     if (entry && entry.expiresAt > now()) return entry.value as T;
 

@@ -152,6 +152,7 @@ export default defineEventHandler(async (event) => {
     setHeader(event, 'Cache-Control', 'no-cache');
     setHeader(event, 'Connection', 'keep-alive');
     const diagnosticsEnabled = !!body.debugLogs;
+    (event.context as any).forceScoring = !!body.force;
 
     const encoder = new TextEncoder();
 

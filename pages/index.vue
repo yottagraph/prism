@@ -263,7 +263,7 @@
         const id = active.value.id;
         pushActivity('Dialogue Agent', active.value.name, 'Portfolio scan triggered');
         await Promise.all([
-            scanPortfolio(id),
+            scanPortfolio(id, { force: true }),
             runPipeline({ trigger: active.value.name, entityCount: active.value.entities.length }),
         ]);
     }
