@@ -58,7 +58,7 @@
         grid-template-columns: 80px 110px 160px 1fr;
         gap: 12px;
         padding: 4px 0;
-        border-bottom: 1px dashed rgba(255, 255, 255, 0.04);
+        border-bottom: 1px dashed rgba(var(--dynamic-fg-rgb), 0.04);
         align-items: baseline;
     }
 
@@ -66,8 +66,8 @@
         width: 8px;
         height: 8px;
         border-radius: 50%;
-        background: var(--lv-green, #3fea00);
-        box-shadow: 0 0 8px var(--lv-green, #3fea00);
+        background: var(--dynamic-primary);
+        box-shadow: 0 0 8px var(--dynamic-primary);
         animation: pulse 1.4s infinite;
     }
 

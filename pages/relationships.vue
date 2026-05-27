@@ -361,8 +361,8 @@
 
 <style scoped>
     .page-header {
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        background: rgba(0, 0, 0, 0.3);
+        border-bottom: 1px solid rgba(var(--dynamic-fg-rgb), 0.05);
+        background: rgba(var(--dynamic-bg-rgb), 0.3);
     }
 
     .rel-table :deep(.v-data-table__wrapper) {
@@ -370,8 +370,8 @@
     }
 
     .map-node {
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(var(--dynamic-fg-rgb), 0.08);
         border-radius: 10px;
-        background: rgba(255, 255, 255, 0.02);
+        background: rgba(var(--dynamic-fg-rgb), 0.02);
     }
 </style>

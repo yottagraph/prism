@@ -59,8 +59,8 @@
 
 <style scoped>
     .indicator-card {
-        background: rgba(255, 255, 255, 0.02);
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        background: rgba(var(--dynamic-fg-rgb), 0.02);
+        border: 1px solid rgba(var(--dynamic-fg-rgb), 0.05);
     }
     .gauge {
         width: 100%;
@@ -68,7 +68,7 @@
     }
     .track {
         fill: none;
-        stroke: rgba(255, 255, 255, 0.08);
+        stroke: rgba(var(--dynamic-fg-rgb), 0.08);
         stroke-width: 10;
     }
     .zone {
@@ -86,19 +86,19 @@
         stroke: rgba(255, 152, 0, 0.85);
     }
     .needle {
-        stroke: rgba(255, 255, 255, 0.9);
+        stroke: var(--dynamic-text-primary);
         stroke-width: 2;
     }
     .needle-hub {
-        fill: rgba(255, 255, 255, 0.9);
+        fill: var(--dynamic-text-primary);
     }
     .value {
-        fill: rgba(255, 255, 255, 0.9);
+        fill: var(--dynamic-text-primary);
         font-size: 20px;
         font-family: var(--font-mono, ui-monospace, monospace);
     }
     .tick {
-        fill: rgba(255, 255, 255, 0.55);
+        fill: var(--dynamic-text-muted);
         font-size: 10px;
         font-family: var(--font-mono, ui-monospace, monospace);
     }

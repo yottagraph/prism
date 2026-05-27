@@ -77,8 +77,8 @@
         gap: 12px;
         padding: 12px;
         border-radius: 8px;
-        background: rgba(255, 255, 255, 0.02);
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        background: rgba(var(--dynamic-fg-rgb), 0.02);
+        border: 1px solid rgba(var(--dynamic-fg-rgb), 0.05);
     }
 
     .step-num {
@@ -86,13 +86,13 @@
         width: 24px;
         height: 24px;
         border-radius: 50%;
-        background: rgba(255, 255, 255, 0.05);
+        background: rgba(var(--dynamic-fg-rgb), 0.05);
         display: flex;
         align-items: center;
         justify-content: center;
         font-family: var(--font-mono, ui-monospace, monospace);
         font-size: 0.75rem;
-        color: rgba(255, 255, 255, 0.6);
+        color: var(--dynamic-text-secondary);
     }
 
     .step-content {
@@ -101,12 +101,12 @@
     }
 
     .status-working {
-        border-color: rgba(63, 234, 0, 0.4);
-        background: rgba(63, 234, 0, 0.04);
+        border-color: rgba(var(--dynamic-primary-rgb), 0.4);
+        background: rgba(var(--dynamic-primary-rgb), 0.04);
     }
 
     .status-completed {
-        border-color: rgba(63, 234, 0, 0.2);
+        border-color: rgba(var(--dynamic-primary-rgb), 0.2);
     }
 
     .status-error {
@@ -117,7 +117,7 @@
     .step-connector {
         height: 16px;
         width: 2px;
-        background: rgba(255, 255, 255, 0.08);
+        background: rgba(var(--dynamic-fg-rgb), 0.08);
         margin-left: 24px;
     }
 </style>

@@ -29,7 +29,7 @@
                 :y1="positionFor(e.source).y"
                 :x2="positionFor(e.target).x"
                 :y2="positionFor(e.target).y"
-                stroke="rgba(255,255,255,0.12)"
+                class="graph-edge"
                 stroke-width="1"
             />
             <g
@@ -49,7 +49,9 @@
                     :y="nodeRadius(n.kind) + 12"
                     text-anchor="middle"
                     class="node-label"
-                    :fill="n.kind === 'portfolio' ? '#ffffff' : 'rgba(255,255,255,0.6)'"
+                    :class="
+                        n.kind === 'portfolio' ? 'node-label--primary' : 'node-label--secondary'
+                    "
                 >
                     {{ n.label }}
                 </text>
@@ -112,7 +114,7 @@
         }
     }
     function nodeStroke(kind: GraphNode['kind']) {
-        return kind === 'portfolio' ? '#3fea00' : 'rgba(255,255,255,0.25)';
+        return kind === 'portfolio' ? 'var(--dynamic-primary)' : 'rgba(var(--dynamic-fg-rgb),0.25)';
     }
     function legendIcon(kind: string) {
         switch (kind) {
@@ -200,13 +202,17 @@
     }
 
     .graph-toolbar {
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        border-bottom: 1px solid rgba(var(--dynamic-fg-rgb), 0.05);
     }
 
     .graph-svg {
         flex: 1 1 auto;
         width: 100%;
-        background: radial-gradient(circle at center, rgba(63, 234, 0, 0.05), transparent 70%);
+        background: radial-gradient(
+            circle at center,
+            rgba(var(--dynamic-primary-rgb), 0.05),
+            transparent 70%
+        );
     }
 
     .node-group {
@@ -218,9 +224,21 @@
         opacity: 0.85;
     }
 
+    .graph-edge {
+        stroke: rgba(var(--dynamic-fg-rgb), 0.12);
+    }
+
     .node-label {
         font-size: 11px;
         font-family: var(--font-mono, ui-monospace, monospace);
         pointer-events: none;
+    }
+
+    .node-label--primary {
+        fill: var(--dynamic-text-primary);
+    }
+
+    .node-label--secondary {
+        fill: var(--dynamic-text-secondary);
     }
 </style>

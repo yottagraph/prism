@@ -229,6 +229,36 @@ Framework-agnostic CSS patterns for implementing Lovelace brand styling. These p
 | `--dynamic-*` | JS-set runtime values | `--dynamic-primary`, `--dynamic-surface` |
 | `--font-*` | Typography | `--font-primary`, `--font-mono` |
 
+## Forbidden Patterns
+
+These patterns produce a broken or theme-incorrect appearance and **must not** be
+used on any surface that should follow the active preset:
+
+| Pattern | Replace with |
+|---------|-------------|
+| `color: #fff`, `color: white` | `color: var(--dynamic-text-primary)` |
+| `color: rgba(255,255,255,0.6)` | `color: var(--dynamic-text-secondary)` |
+| `color: rgba(255,255,255,0.45)` | `color: var(--dynamic-text-muted)` |
+| `background: rgba(255,255,255,0.0X)` (inset) | `background: rgba(var(--dynamic-fg-rgb), 0.0X)` |
+| `background: rgba(255,255,255,0.0X)` (card) | `background: var(--dynamic-card-background)` + `border` + `box-shadow` tokens |
+| `border: 1px solid rgba(255,255,255,X)` | `border: 1px solid rgba(var(--dynamic-fg-rgb), X)` |
+| `rgba(63, 234, 0, X)` on themed surfaces | `rgba(var(--dynamic-primary-rgb), X)` |
+| `hsl(140 90% ...)` as brand label | `var(--dynamic-primary-strong)` |
+| `background: #0a0a0a` (hardcoded bg) | `background: var(--dynamic-background)` |
+| `background: #141414` (hardcoded surface) | `background: var(--dynamic-surface)` |
+
+**Exceptions:** Brand-emphasis SVGs (logo defaults), categorical chart node
+colours (per-kind, not per-theme), and Material Design severity colours
+(error red, warning amber) are intentionally fixed.
+
+## Prism-Specific Deviation: No Always-Dark Anchor
+
+Unlike some other Lovelace apps, Prism does **not** keep the sidebar or header
+always dark. All chrome surfaces—sidebar, header, cards, tooltips, menus—follow
+the active preset. Light themes (Lovelace Light, Paper) produce a fully light
+app. The PRD's "always-dark anchor surface" rule (Step 8) and open question #2
+are explicitly answered "no" in Prism.
+
 ## Framework Adaptation Notes
 
 ### React

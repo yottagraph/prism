@@ -405,8 +405,8 @@
 
 <style scoped>
     .page-header {
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        background: rgba(0, 0, 0, 0.3);
+        border-bottom: 1px solid rgba(var(--dynamic-fg-rgb), 0.05);
+        background: rgba(var(--dynamic-bg-rgb), 0.3);
     }
 
     .portfolio-title-select :deep(.v-field) {
@@ -437,7 +437,7 @@
         gap: 10px;
         align-items: center;
         padding: 4px 0;
-        border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+        border-bottom: 1px dashed rgba(var(--dynamic-fg-rgb), 0.05);
     }
 
     .font-mono {

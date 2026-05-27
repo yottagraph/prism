@@ -73,7 +73,7 @@
 <style scoped>
     .driver-card {
         height: 100%;
-        background: rgba(255, 255, 255, 0.02);
+        background: rgba(var(--dynamic-fg-rgb), 0.02);
     }
 
     .driver-card.top {

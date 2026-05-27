@@ -112,7 +112,7 @@
     }
 
     .fused-row {
-        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        border-top: 1px solid rgba(var(--dynamic-fg-rgb), 0.08);
     }
 
     .font-mono {

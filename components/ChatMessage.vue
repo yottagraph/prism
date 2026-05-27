@@ -39,19 +39,19 @@
 
 <style scoped>
     .user-bubble {
-        background: rgba(63, 234, 0, 0.12);
-        border: 1px solid rgba(63, 234, 0, 0.25);
+        background: rgba(var(--dynamic-primary-rgb), 0.12);
+        border: 1px solid rgba(var(--dynamic-primary-rgb), 0.25);
     }
     .agent-bubble {
-        background: rgba(255, 255, 255, 0.06);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(var(--dynamic-fg-rgb), 0.06);
+        border: 1px solid rgba(var(--dynamic-fg-rgb), 0.1);
     }
     .error-bubble {
         background: rgba(239, 68, 68, 0.12);
         border: 1px solid rgba(239, 68, 68, 0.3);
     }
     .bubble-text {
-        color: rgba(255, 255, 255, 0.87);
+        color: var(--dynamic-text-primary);
     }
 
     .streaming-cursor {
@@ -83,7 +83,7 @@
         width: 6px;
         height: 6px;
         border-radius: 50%;
-        background: rgba(255, 255, 255, 0.4);
+        background: rgba(var(--dynamic-fg-rgb), 0.4);
         animation: typing-bounce 1.2s ease-in-out infinite;
     }
 

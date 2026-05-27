@@ -40,8 +40,8 @@
 
 <style scoped>
     .indicator-card {
-        background: rgba(255, 255, 255, 0.02);
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        background: rgba(var(--dynamic-fg-rgb), 0.02);
+        border: 1px solid rgba(var(--dynamic-fg-rgb), 0.05);
     }
     .track {
         position: relative;
@@ -57,7 +57,7 @@
         background: rgba(244, 67, 54, 0.25);
     }
     .zone.middle {
-        background: rgba(255, 255, 255, 0.14);
+        background: rgba(var(--dynamic-fg-rgb), 0.14);
     }
     .zone.upper {
         background: rgba(76, 175, 80, 0.25);

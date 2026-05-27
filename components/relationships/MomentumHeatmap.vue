@@ -82,12 +82,12 @@
     }
 
     .heatmap-cell {
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(var(--dynamic-fg-rgb), 0.1);
         border-radius: 8px;
         padding: 8px;
         text-align: left;
         cursor: pointer;
-        background: rgba(255, 255, 255, 0.03);
+        background: rgba(var(--dynamic-fg-rgb), 0.03);
         color: inherit;
         transition:
             transform 0.12s ease,
@@ -96,7 +96,7 @@
 
     .heatmap-cell:hover {
         transform: translateY(-1px);
-        border-color: rgba(255, 255, 255, 0.25);
+        border-color: rgba(var(--dynamic-fg-rgb), 0.25);
     }
 
     .cell-detail {
@@ -124,7 +124,7 @@
     }
 
     .neutral {
-        background: rgba(255, 255, 255, 0.04);
-        border-color: rgba(255, 255, 255, 0.12);
+        background: rgba(var(--dynamic-fg-rgb), 0.04);
+        border-color: rgba(var(--dynamic-fg-rgb), 0.12);
     }
 </style>

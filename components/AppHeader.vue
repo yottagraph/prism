@@ -1,20 +1,34 @@
 <template>
-    <v-app-bar
-        app
-        density="default"
-        :style="{
-            background: `linear-gradient(135deg, ${currentThemeColors.headerGradientStart}, ${currentThemeColors.headerGradientEnd})`,
-            color: '#ffffff',
-        }"
-    >
+    <v-app-bar app density="default" class="app-header">
         <div class="d-flex align-center app-header-title">
             <img src="/LL-logo-full-wht.svg" alt="Lovelace" class="header-logo" />
             <span class="app-title-text">{{ appName }}</span>
             <span class="app-version-text">{{ buildString }}</span>
         </div>
 
-        <!-- Spacer to center the title -->
         <v-spacer></v-spacer>
+
+        <!-- Theme Picker -->
+        <v-menu :close-on-content-click="false" location="bottom end">
+            <template v-slot:activator="{ props: menuProps }">
+                <v-tooltip text="Theme">
+                    <template v-slot:activator="{ props: tooltipProps }">
+                        <v-btn
+                            icon
+                            v-bind="mergeProps(menuProps, tooltipProps)"
+                            class="ml-1 header-icon-btn"
+                        >
+                            <v-icon icon="mdi-palette" class="header-icon"></v-icon>
+                        </v-btn>
+                    </template>
+                </v-tooltip>
+            </template>
+            <v-card class="theme-menu-card" min-width="280">
+                <v-card-text class="pa-3">
+                    <ThemePresetPicker :show-description="false" />
+                </v-card-text>
+            </v-card>
+        </v-menu>
 
         <!-- Settings Gear -->
         <v-tooltip :text="`Settings (${modKey}G)`">
@@ -24,10 +38,9 @@
                     v-bind="tooltipProps"
                     data-testid="settings-button"
                     @click="state.showSettingsDialog = true"
-                    class="ml-1"
-                    color="white"
+                    class="ml-1 header-icon-btn"
                 >
-                    <v-icon icon="mdi-cog" color="white"></v-icon>
+                    <v-icon icon="mdi-cog" class="header-icon"></v-icon>
                 </v-btn>
             </template>
         </v-tooltip>
@@ -41,8 +54,7 @@
                             icon
                             v-bind="mergeProps(menu, tooltip)"
                             data-testid="user-menu-button"
-                            class="ml-1"
-                            color="white"
+                            class="ml-1 header-icon-btn"
                         >
                             <v-avatar size="32" color="primary">
                                 <img
@@ -55,7 +67,7 @@
                                     @error="handleImageError"
                                     @load="handleImageLoad"
                                 />
-                                <span v-else class="text-h6" style="color: white">{{
+                                <span v-else class="text-h6 avatar-initials">{{
                                     userInitials
                                 }}</span>
                             </v-avatar>
@@ -78,24 +90,21 @@
     import { useLovelaceTheme } from '~/composables/useLovelaceTheme';
     import { useUserState } from '~/composables/useUserState';
     import { useProxiedAvatar } from '~/composables/useProxiedAvatar';
+    import ThemePresetPicker from '~/components/ThemePresetPicker.vue';
 
     import { state } from '~/utils/appState';
 
-    const { currentThemeColors } = useLovelaceTheme();
+    const { isDark } = useLovelaceTheme();
     const { clearUser, userPicture, userName } = useUserState();
     const { appName } = useAppInfo();
     const router = useRouter();
 
-    // Use proxied avatar URL to avoid 429 errors from Google
     const { proxiedUrl: avatarUrl } = useProxiedAvatar(userPicture);
 
-    // Build string for version display
     const buildString = ref(useRuntimeConfig().public.versionString);
 
-    // Track avatar loading errors
     const avatarHasError = ref(false);
 
-    // Handle logout - navigate to logout route to trigger middleware
     const handleLogout = () => {
         router.push('/logout');
     };
@@ -106,7 +115,6 @@
 
     const modKey = computed(() => (isMacPlatform.value ? '⇧⌘' : 'Alt+Shift+'));
 
-    // Compute user initials for fallback avatar
     const userInitials = computed(() => {
         if (!userName.value) return '?';
         const names = userName.value.split(' ');
@@ -116,7 +124,6 @@
         return userName.value.substring(0, 2).toUpperCase();
     });
 
-    // Handle image loading errors
     const handleImageError = (event: Event) => {
         console.error('Avatar image failed to load:', {
             originalUrl: userPicture.value,
@@ -127,20 +134,38 @@
         avatarHasError.value = true;
     };
 
-    // Handle successful image load
     const handleImageLoad = () => {
-        console.log('Avatar image loaded successfully');
         avatarHasError.value = false;
     };
 
-    // Reset error state when avatar URL changes
-    watch(avatarUrl, (newUrl) => {
-        console.log('Avatar URL changed:', newUrl);
+    watch(avatarUrl, () => {
         avatarHasError.value = false;
     });
 </script>
 
 <style scoped>
+    .app-header {
+        background: linear-gradient(
+            135deg,
+            var(--dynamic-header-gradient-start),
+            var(--dynamic-header-gradient-end)
+        ) !important;
+        color: var(--dynamic-text-primary) !important;
+        border-bottom: 1px solid var(--dynamic-border);
+    }
+
+    .header-icon-btn {
+        color: var(--dynamic-text-primary) !important;
+    }
+
+    .header-icon {
+        color: var(--dynamic-text-primary) !important;
+    }
+
+    .avatar-initials {
+        color: var(--dynamic-text-primary);
+    }
+
     .app-header-title {
         display: flex;
         align-items: center;
@@ -169,5 +194,10 @@
         margin-left: 8px;
         position: relative;
         top: 2px;
+    }
+
+    .theme-menu-card {
+        background: var(--dynamic-card-background) !important;
+        border: 1px solid var(--dynamic-border) !important;
     }
 </style>

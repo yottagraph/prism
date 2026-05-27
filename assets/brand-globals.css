@@ -30,6 +30,44 @@
     --lv-finance-blue: #003bff;
     --lv-finance-blue-dim: #0230d0;
 
+    /* Dynamic tokens — Lovelace Dark defaults for first-paint.
+       Overridden by applyCssVariables() once the composable mounts. */
+    --dynamic-primary: #3fea00;
+    --dynamic-primary-rgb: 63, 234, 0;
+    --dynamic-primary-strong: hsl(140 90% 70%);
+    --dynamic-secondary: #ff5c00;
+    --dynamic-accent: #003bff;
+    --dynamic-background: #0a0a0a;
+    --dynamic-surface: #141414;
+    --dynamic-card-background: #1e1e1e;
+    --dynamic-panel-background: #111111;
+    --dynamic-text-primary: #ffffff;
+    --dynamic-text-secondary: #a0aec0;
+    --dynamic-text-muted: #757575;
+    --dynamic-hover: #1e1e1e;
+    --dynamic-border: #2a2a2a;
+    --dynamic-success: #3fea00;
+    --dynamic-warning: #ff9f0a;
+    --dynamic-error: #ef4444;
+    --dynamic-header-gradient-start: #0a0a0a;
+    --dynamic-header-gradient-end: #141414;
+    --dynamic-fg-rgb: 255, 255, 255;
+    --dynamic-fg-rgb-inverse: 10, 10, 10;
+    --dynamic-bg-rgb: 10, 10, 10;
+    --dynamic-overlay-bg: rgba(20, 20, 24, 0.96);
+    --dynamic-overlay-border: rgba(255, 255, 255, 0.1);
+    --dynamic-card-shadow: none;
+    --dynamic-sidebar-bg: #0a0a0c;
+    --dynamic-sidebar-fg-rgb: 255, 255, 255;
+    --dynamic-sidebar-border: rgba(255, 255, 255, 0.05);
+    --dynamic-map-bg-start: #0a0a0a;
+    --dynamic-map-bg-end: #111111;
+    --dynamic-map-county-stroke: rgba(255, 255, 255, 0.08);
+    --dynamic-map-state-stroke: rgba(255, 255, 255, 0.25);
+    --dynamic-score-ramp-low: #1d8db5;
+    --dynamic-score-ramp-mid: #3fa45a;
+    --dynamic-score-ramp-high: #f0b53c;
+
     /* Typography */
     --font-primary: 'Space Grotesk', 'Inter', system-ui, -apple-system, sans-serif;
     --font-headline: 'Space Grotesk', 'Inter', system-ui, sans-serif;

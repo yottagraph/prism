@@ -428,8 +428,8 @@
 
 <style scoped>
     .page-header {
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        background: rgba(0, 0, 0, 0.3);
+        border-bottom: 1px solid rgba(var(--dynamic-fg-rgb), 0.05);
+        background: rgba(var(--dynamic-bg-rgb), 0.3);
     }
 
     .chat-card {
@@ -437,7 +437,7 @@
     }
 
     .chat-header {
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        border-bottom: 1px solid rgba(var(--dynamic-fg-rgb), 0.05);
     }
 
     .chat-body {
@@ -456,21 +456,21 @@
     }
 
     .role-user .msg-bubble {
-        background: rgba(63, 234, 0, 0.08);
-        border-color: rgba(63, 234, 0, 0.2);
+        background: rgba(var(--dynamic-primary-rgb), 0.08);
+        border-color: rgba(var(--dynamic-primary-rgb), 0.2);
     }
 
     .msg-bubble {
         max-width: 80%;
         padding: 10px 14px;
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.06);
+        background: rgba(var(--dynamic-fg-rgb), 0.03);
+        border: 1px solid rgba(var(--dynamic-fg-rgb), 0.06);
         border-radius: 10px;
         font-size: 0.9rem;
     }
 
     .msg-text :deep(strong) {
-        color: var(--lv-green, #3fea00);
+        color: var(--dynamic-primary);
     }
 
     .gap-2 {
@@ -490,8 +490,8 @@
     }
 
     .trace-card {
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(var(--dynamic-fg-rgb), 0.08);
         border-radius: 8px;
-        background: rgba(255, 255, 255, 0.02);
+        background: rgba(var(--dynamic-fg-rgb), 0.02);
     }
 </style>

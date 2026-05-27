@@ -543,7 +543,7 @@
 
 <style scoped>
     .detail-pre {
-        background-color: rgba(255, 255, 255, 0.04);
+        background-color: rgba(var(--dynamic-fg-rgb), 0.04);
         padding: 8px 10px;
         border-radius: 4px;
         font-size: 11px;

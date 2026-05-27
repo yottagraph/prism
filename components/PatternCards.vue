@@ -70,7 +70,7 @@
 <style scoped>
     .pattern-card {
         height: 100%;
-        background: rgba(255, 255, 255, 0.02);
-        border-left: 3px solid rgba(63, 234, 0, 0.4);
+        background: rgba(var(--dynamic-fg-rgb), 0.02);
+        border-left: 3px solid rgba(var(--dynamic-primary-rgb), 0.4);
     }
 </style>

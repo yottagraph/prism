@@ -400,8 +400,8 @@
 
 <style scoped>
     .stock-card {
-        background: rgba(255, 255, 255, 0.02);
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        background: rgba(var(--dynamic-fg-rgb), 0.02);
+        border: 1px solid rgba(var(--dynamic-fg-rgb), 0.05);
     }
     .metrics-grid {
         display: grid;
@@ -409,8 +409,8 @@
         gap: 10px;
     }
     .metric-box {
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(var(--dynamic-fg-rgb), 0.05);
+        background: rgba(var(--dynamic-fg-rgb), 0.02);
         border-radius: 8px;
         padding: 8px 10px;
     }
@@ -422,7 +422,7 @@
         font-family: var(--font-mono, ui-monospace, monospace);
     }
     .stat-strip {
-        background: rgba(255, 255, 255, 0.02);
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        background: rgba(var(--dynamic-fg-rgb), 0.02);
+        border: 1px solid rgba(var(--dynamic-fg-rgb), 0.05);
     }
 </style>

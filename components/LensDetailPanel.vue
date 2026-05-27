@@ -173,10 +173,10 @@
     }
 
     .metric-box {
-        background: rgba(255, 255, 255, 0.03);
+        background: rgba(var(--dynamic-fg-rgb), 0.03);
         border-radius: 8px;
         padding: 10px 12px;
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(var(--dynamic-fg-rgb), 0.05);
     }
 
     .finding-list {
@@ -185,8 +185,8 @@
     }
 
     .finding-card {
-        background: rgba(255, 255, 255, 0.02);
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        background: rgba(var(--dynamic-fg-rgb), 0.02);
+        border: 1px solid rgba(var(--dynamic-fg-rgb), 0.05);
     }
 
     .font-mono {

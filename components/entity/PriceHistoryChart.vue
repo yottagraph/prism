@@ -622,9 +622,9 @@
     .chart-wrap {
         position: relative;
         width: 100%;
-        border: 1px solid rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(var(--dynamic-fg-rgb), 0.06);
         border-radius: 10px;
-        background: rgba(255, 255, 255, 0.015);
+        background: rgba(var(--dynamic-fg-rgb), 0.015);
         padding: 8px 4px 4px;
     }
     .chart-svg {
@@ -636,15 +636,15 @@
     }
     .axis-label {
         font-size: 10px;
-        fill: rgba(255, 255, 255, 0.55);
+        fill: var(--dynamic-text-muted);
         font-family: var(--font-mono, ui-monospace, monospace);
     }
     .axis-line {
-        stroke: rgba(255, 255, 255, 0.12);
+        stroke: rgba(var(--dynamic-fg-rgb), 0.12);
         stroke-width: 1;
     }
     .grid-line {
-        stroke: rgba(255, 255, 255, 0.05);
+        stroke: rgba(var(--dynamic-fg-rgb), 0.05);
         stroke-width: 1;
         stroke-dasharray: 2 4;
     }
@@ -669,10 +669,10 @@
         fill: rgb(var(--v-theme-error, 244 67 54));
     }
     .volume-bar {
-        fill: rgba(255, 255, 255, 0.18);
+        fill: rgba(var(--dynamic-fg-rgb), 0.18);
     }
     .crosshair-line {
-        stroke: rgba(255, 255, 255, 0.4);
+        stroke: rgba(var(--dynamic-fg-rgb), 0.4);
         stroke-width: 1;
         stroke-dasharray: 3 3;
     }
@@ -715,17 +715,18 @@
         top: 0;
         left: 0;
         min-width: 160px;
-        background: rgba(20, 20, 24, 0.96);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: var(--dynamic-overlay-bg);
+        border: 1px solid var(--dynamic-overlay-border);
         border-radius: 8px;
         padding: 8px 10px;
         font-size: 12px;
         pointer-events: none;
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+        box-shadow: 0 6px 20px rgba(var(--dynamic-fg-rgb-inverse), 0.45);
         z-index: 5;
+        color: var(--dynamic-text-primary);
     }
     .tt-date {
-        color: rgba(255, 255, 255, 0.6);
+        color: var(--dynamic-text-secondary);
         font-size: 11px;
         margin-bottom: 2px;
     }
@@ -743,16 +744,16 @@
         justify-content: space-between;
         font-family: var(--font-mono, ui-monospace, monospace);
         font-size: 11px;
-        color: rgba(255, 255, 255, 0.75);
+        color: var(--dynamic-text-secondary);
     }
     .stat-card {
-        background: rgba(255, 255, 255, 0.02);
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        background: rgba(var(--dynamic-fg-rgb), 0.02);
+        border: 1px solid rgba(var(--dynamic-fg-rgb), 0.05);
         border-radius: 8px;
         padding: 8px 10px;
     }
     .empty-state {
-        border: 1px dashed rgba(255, 255, 255, 0.08);
+        border: 1px dashed rgba(var(--dynamic-fg-rgb), 0.08);
         border-radius: 10px;
     }
     .font-mono {

@@ -9,6 +9,10 @@
         </v-card-title>
 
         <v-tabs v-model="activeTab" color="primary" density="comfortable" align-tabs="start">
+            <v-tab value="appearance">
+                <v-icon start size="small">mdi-palette-outline</v-icon>
+                Appearance
+            </v-tab>
             <v-tab value="general">
                 <v-icon start size="small">mdi-cog-outline</v-icon>
                 General
@@ -23,6 +27,23 @@
 
         <v-card-text class="settings-body">
             <v-window v-model="activeTab">
+                <v-window-item value="appearance">
+                    <v-container>
+                        <v-row>
+                            <v-col cols="12">
+                                <h3 class="text-h6 mb-2">Theme</h3>
+                                <div
+                                    class="text-caption mb-3"
+                                    style="color: var(--dynamic-text-muted)"
+                                >
+                                    Choose a color preset. Your selection syncs across devices.
+                                </div>
+                                <ThemePresetPicker :show-description="true" />
+                            </v-col>
+                        </v-row>
+                    </v-container>
+                </v-window-item>
+
                 <v-window-item value="general">
                     <v-container>
                         <v-row>
@@ -74,6 +95,7 @@
 <script setup lang="ts">
     import { ref } from 'vue';
     import ElementalLogsTab from '~/components/settings/ElementalLogsTab.vue';
+    import ThemePresetPicker from '~/components/ThemePresetPicker.vue';
     import { state } from '~/utils/appState';
 
     const config = useRuntimeConfig();
@@ -82,7 +104,7 @@
         scanDiagnosticsLogs: false,
     });
 
-    const activeTab = ref<'general' | 'logs'>('general');
+    const activeTab = ref<'appearance' | 'general' | 'logs'>('appearance');
 </script>
 
 <style scoped>
@@ -100,7 +122,7 @@
 
     code {
         padding: 2px 4px;
-        background-color: rgba(0, 0, 0, 0.05);
+        background-color: rgba(var(--dynamic-fg-rgb), 0.05);
         border-radius: 3px;
         font-family: monospace;
     }

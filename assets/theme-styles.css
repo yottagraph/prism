@@ -101,7 +101,7 @@
 /* Unselected buttons */
 .v-btn-toggle .v-btn:not(.v-btn--active),
 .v-btn-group .v-btn:not(.v-btn--active) {
-    color: rgba(255, 255, 255, 0.9) !important;
+    color: var(--dynamic-text-primary) !important;
 }
 
 /* Selected buttons -- Cyber Green highlight */
@@ -111,7 +111,7 @@
     color: var(--lv-black) !important;
     border-color: var(--lv-green) !important;
     font-weight: 600 !important;
-    box-shadow: 0 0 12px rgba(63, 234, 0, 0.3) !important;
+    box-shadow: 0 0 12px rgba(var(--dynamic-primary-rgb), 0.3) !important;
     opacity: 1 !important;
     transform: none !important;
 }
@@ -132,7 +132,7 @@
 /* Hover states for unselected buttons */
 .v-btn-toggle .v-btn:not(.v-btn--active):hover,
 .v-btn-group .v-btn:not(.v-btn--active):hover {
-    background-color: rgba(255, 255, 255, 0.1) !important;
+    background-color: rgba(var(--dynamic-fg-rgb), 0.1) !important;
 }
 
 /* Consistent transition and sizing */
@@ -269,9 +269,32 @@
 
 /* Dark input styling */
 .v-field--focused {
-    background-color: rgba(255, 255, 255, 0.08);
+    background-color: rgba(var(--dynamic-fg-rgb), 0.08);
 }
 
 .v-field__input {
-    color: white;
+    color: var(--dynamic-text-primary);
+}
+
+/* ===================================
+   Vuetify Overlay Portal Styles
+   Tooltips and menus render at <body> root,
+   outside the Vuetify theme cascade.
+   =================================== */
+.lv-tooltip {
+    background: var(--dynamic-overlay-bg) !important;
+    color: var(--dynamic-text-primary) !important;
+    border: 1px solid var(--dynamic-overlay-border);
+    border-radius: 8px !important;
+    font-family: var(--font-mono, monospace);
+    font-size: 12px !important;
+    letter-spacing: 0.02em;
+    box-shadow: 0 10px 20px rgba(var(--dynamic-fg-rgb-inverse), 0.28);
+    backdrop-filter: blur(8px);
+}
+
+.lv-menu {
+    border: 1px solid var(--dynamic-overlay-border);
+    background: var(--dynamic-overlay-bg);
+    backdrop-filter: blur(8px);
 }

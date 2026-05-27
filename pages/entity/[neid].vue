@@ -353,13 +353,13 @@
 
 <style scoped>
     .page-header {
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        background: rgba(0, 0, 0, 0.3);
+        border-bottom: 1px solid rgba(var(--dynamic-fg-rgb), 0.05);
+        background: rgba(var(--dynamic-bg-rgb), 0.3);
     }
 
     .relation-card {
-        background: rgba(255, 255, 255, 0.02);
-        border: 1px solid rgba(255, 255, 255, 0.04);
+        background: rgba(var(--dynamic-fg-rgb), 0.02);
+        border: 1px solid rgba(var(--dynamic-fg-rgb), 0.04);
     }
 
     .rel-list {
@@ -385,7 +385,7 @@
         gap: 12px;
         align-items: center;
         padding: 6px 0;
-        border-bottom: 1px dashed rgba(255, 255, 255, 0.04);
+        border-bottom: 1px dashed rgba(var(--dynamic-fg-rgb), 0.04);
     }
 
     .timeline-citations {

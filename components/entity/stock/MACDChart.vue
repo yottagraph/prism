@@ -53,19 +53,19 @@
 
 <style scoped>
     .indicator-card {
-        background: rgba(255, 255, 255, 0.02);
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        background: rgba(var(--dynamic-fg-rgb), 0.02);
+        border: 1px solid rgba(var(--dynamic-fg-rgb), 0.05);
     }
     .macd-svg {
         width: 100%;
         height: 120px;
     }
     .zero-line {
-        stroke: rgba(255, 255, 255, 0.2);
+        stroke: rgba(var(--dynamic-fg-rgb), 0.2);
         stroke-dasharray: 3 3;
     }
     .hist {
-        fill: rgba(255, 255, 255, 0.5);
+        fill: rgba(var(--dynamic-fg-rgb), 0.5);
     }
     .hist.pos {
         fill: rgba(76, 175, 80, 0.65);
@@ -88,7 +88,7 @@
         fill: rgba(255, 152, 0, 0.95);
     }
     .label {
-        fill: rgba(255, 255, 255, 0.7);
+        fill: var(--dynamic-text-secondary);
         font-size: 10px;
         font-family: var(--font-mono, ui-monospace, monospace);
     }

@@ -70,8 +70,8 @@
 
 <style scoped>
     .indicator-card {
-        background: rgba(255, 255, 255, 0.02);
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        background: rgba(var(--dynamic-fg-rgb), 0.02);
+        border: 1px solid rgba(var(--dynamic-fg-rgb), 0.05);
     }
     .font-mono {
         font-family: var(--font-mono, ui-monospace, monospace);
