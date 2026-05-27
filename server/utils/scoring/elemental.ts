@@ -10,8 +10,17 @@ export interface ElementalPropertyValue {
     eid?: string;
     pid?: number;
     value?: unknown;
+    ref?: string;
+    attributes?: Record<string, unknown>;
     values?: Array<{ value?: unknown; [key: string]: unknown }>;
     [key: string]: unknown;
+}
+
+export interface ElementalPropertyFact {
+    value: string | number;
+    ref?: string;
+    date?: string;
+    attributes?: Record<string, unknown>;
 }
 
 export interface ElementalSchema {
@@ -245,6 +254,65 @@ export function extractDates(values: ElementalPropertyValue[], pid: number): Dat
                 const d = new Date(valueRow.value);
                 if (!Number.isNaN(d.getTime())) out.push(d);
             }
+        }
+    }
+    return out;
+}
+
+function coerceFactDate(row: Record<string, unknown> | undefined): string | undefined {
+    if (!row) return undefined;
+    const direct = row.date;
+    if (typeof direct === 'string' && direct.trim()) return direct;
+    const attributes =
+        row.attributes && typeof row.attributes === 'object'
+            ? (row.attributes as Record<string, unknown>)
+            : undefined;
+    if (!attributes) return undefined;
+    const candidate =
+        attributes.date ??
+        attributes.filing_date ??
+        attributes.report_date ??
+        attributes.published_date ??
+        attributes.timestamp;
+    return typeof candidate === 'string' && candidate.trim() ? candidate : undefined;
+}
+
+export function extractPropertyFacts(values: ElementalPropertyValue[], pid: number): ElementalPropertyFact[] {
+    const out: ElementalPropertyFact[] = [];
+    for (const row of values) {
+        if (row.pid !== pid) continue;
+        const rowRef = typeof row.ref === 'string' ? row.ref : undefined;
+        const rowDate = coerceFactDate(row as Record<string, unknown>);
+        const rowAttributes =
+            row.attributes && typeof row.attributes === 'object'
+                ? (row.attributes as Record<string, unknown>)
+                : undefined;
+
+        if (typeof row.value === 'number' || typeof row.value === 'string') {
+            out.push({
+                value: row.value,
+                ref: rowRef,
+                date: rowDate,
+                attributes: rowAttributes,
+            });
+        }
+
+        const nested = Array.isArray(row.values) ? row.values : [];
+        for (const nestedRow of nested) {
+            const value = nestedRow?.value;
+            if (typeof value !== 'number' && typeof value !== 'string') continue;
+            const nestedRef = typeof nestedRow?.ref === 'string' ? nestedRow.ref : rowRef;
+            const nestedDate = coerceFactDate(nestedRow as Record<string, unknown>) ?? rowDate;
+            const nestedAttributes =
+                nestedRow?.attributes && typeof nestedRow.attributes === 'object'
+                    ? (nestedRow.attributes as Record<string, unknown>)
+                    : rowAttributes;
+            out.push({
+                value,
+                ref: nestedRef,
+                date: nestedDate,
+                attributes: nestedAttributes,
+            });
         }
     }
     return out;

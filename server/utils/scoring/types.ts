@@ -14,14 +14,33 @@ export interface SubScores {
     market: number;
 }
 
+export type LensKey = keyof SubScores;
+
+export interface CitationRef {
+    ref?: string;
+    url?: string;
+    title?: string;
+    source?: string;
+    date?: string;
+    snippet?: string;
+}
+
+export interface EvidenceItem {
+    text: string;
+    date?: string;
+    citations: CitationRef[];
+}
+
+export interface LensDetail {
+    metrics: Array<{ label: string; value: string; ref?: string }>;
+    findings: EvidenceItem[];
+}
+
 export interface RiskDriver {
-    lens: keyof SubScores;
+    lens: LensKey;
     source: 'SEC' | 'NEWS' | 'STOCK' | 'POLY';
     score: number;
-    label: string;
-    explanation: string;
-    evidence: string;
-    href?: string;
+    finding: EvidenceItem;
 }
 
 export interface EntityRiskScore extends SubScores {
@@ -41,9 +60,10 @@ export interface SourceCoverage {
 export interface ScoreComputationResult {
     scores: EntityRiskScore;
     drivers: RiskDriver[];
-    conflicts: Array<{ lens: keyof SubScores; delta: number }>;
+    conflicts: Array<{ lens: LensKey; delta: number }>;
     confidenceLevel: 'High' | 'Medium' | 'Low';
     coverage: SourceCoverage;
+    lensDetails: Record<LensKey, LensDetail>;
 }
 
 export interface EntityDescriptor {

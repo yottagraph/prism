@@ -10,10 +10,8 @@ import { computed, ref, watch } from 'vue';
 
 import {
     type EntityRiskScore,
+    type RiskDriver,
     type SourceFusionWeights,
-    confidence,
-    deriveDrivers,
-    detectConflicts,
 } from './useFusedScoring';
 
 export interface EntityProperty {
@@ -47,14 +45,36 @@ export interface EntityProfileData {
         category: string;
         title: string;
         severity: 'low' | 'medium' | 'high';
+        citations?: Array<{
+            ref?: string;
+            url?: string;
+            title?: string;
+            source?: string;
+            date?: string;
+            snippet?: string;
+        }>;
     }>;
     scores: EntityRiskScore;
-    drivers: ReturnType<typeof deriveDrivers>;
-    conflicts: ReturnType<typeof detectConflicts>;
-    confidenceLevel: ReturnType<typeof confidence>;
+    drivers: RiskDriver[];
+    conflicts: Array<{ lens: keyof EntityRiskScore | string; delta: number }>;
+    confidenceLevel: 'High' | 'Medium' | 'Low';
     lensDetails?: Record<
         string,
-        { metrics: Array<{ label: string; value: string }>; evidence: string[] }
+        {
+            metrics: Array<{ label: string; value: string; ref?: string }>;
+            findings: Array<{
+                text: string;
+                date?: string;
+                citations: Array<{
+                    ref?: string;
+                    url?: string;
+                    title?: string;
+                    source?: string;
+                    date?: string;
+                    snippet?: string;
+                }>;
+            }>;
+        }
     >;
 }
 

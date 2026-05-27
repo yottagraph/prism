@@ -19,21 +19,13 @@
                         {{ d.score }}
                     </span>
                 </div>
-                <div class="text-body-1 font-weight-medium mb-1">{{ d.label }}</div>
-                <div class="text-body-2 text-medium-emphasis mb-2">{{ d.explanation }}</div>
-                <a
-                    v-if="d.href"
-                    class="text-caption text-medium-emphasis evidence-link"
-                    :href="d.href"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                >
-                    <v-icon size="x-small" class="mr-1">mdi-file-document-outline</v-icon>
-                    {{ d.evidence }}
-                </a>
-                <div v-else class="text-caption text-medium-emphasis">
-                    <v-icon size="x-small" class="mr-1">mdi-file-document-outline</v-icon>
-                    {{ d.evidence }}
+                <div class="text-body-2 mb-2">{{ d.finding.text }}</div>
+                <div v-if="d.finding.citations?.length" class="d-flex flex-wrap ga-2">
+                    <CitationChip
+                        v-for="(citation, idx) in d.finding.citations"
+                        :key="`driver-${i}-${idx}`"
+                        :citation="citation"
+                    />
                 </div>
             </v-card>
         </v-col>
@@ -41,6 +33,7 @@
 </template>
 
 <script setup lang="ts">
+    import CitationChip from '~/components/CitationChip.vue';
     import type { RiskDriver } from '~/composables/useFusedScoring';
 
     defineProps<{ drivers: RiskDriver[] }>();
@@ -80,14 +73,5 @@
 
     .font-mono {
         font-family: var(--font-mono, ui-monospace, monospace);
-    }
-
-    .evidence-link {
-        color: inherit;
-        text-decoration: none;
-    }
-
-    .evidence-link:hover {
-        text-decoration: underline;
     }
 </style>

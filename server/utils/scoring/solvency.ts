@@ -1,20 +1,43 @@
 import type { H3Event } from 'h3';
 
 import { makeCacheKey, readScoringCache, writeScoringCache } from './cache';
+import { resolveRefs } from './citations';
 import {
-    extractDates,
-    extractNumeric,
+    extractPropertyFacts,
     getPropertyValues,
     getSchema,
     normalizePidMap,
 } from './elemental';
 import { clampScore } from './hash';
+import type { EvidenceItem, LensDetail } from './types';
 
 interface SolvencyResult {
     score: number;
     hasRealData: boolean;
-    metrics: Array<{ label: string; value: string }>;
-    evidence: string[];
+    detail: LensDetail;
+}
+
+function formatMoney(value: number): string {
+    const abs = Math.abs(value);
+    if (abs >= 1e12) return `$${(value / 1e12).toFixed(2)}T`;
+    if (abs >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
+    if (abs >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
+    return `$${value.toFixed(0)}`;
+}
+
+function parseFactNumber(value: string | number): number | null {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string') {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+}
+
+function parseFactDate(value?: string): Date | null {
+    if (!value) return null;
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? null : d;
 }
 
 export async function computeSolvencyScore(
@@ -28,8 +51,8 @@ export async function computeSolvencyScore(
 
     let score = 0;
     let hasRealData = false;
-    const metrics: Array<{ label: string; value: string }> = [];
-    const evidence: string[] = [];
+    const metrics: LensDetail['metrics'] = [];
+    const findings: EvidenceItem[] = [];
 
     try {
         const schema = await getSchema(event);
@@ -53,13 +76,23 @@ export async function computeSolvencyScore(
 
         if (candidatePids.length) {
             const values = await getPropertyValues([neid], candidatePids, true, event);
-            const debt = extractNumeric(values, debtPid ?? -1)[0];
-            const ebitda = extractNumeric(values, ebitdaPid ?? -1)[0];
-            const opMargin = extractNumeric(values, marginPid ?? -1)[0];
-            const interest = extractNumeric(values, interestPid ?? -1)[0];
-            const assets = extractNumeric(values, assetsPid ?? -1)[0];
-            const liabilities = extractNumeric(values, liabilitiesPid ?? -1)[0];
-            const filings = extractDates(values, filingPid ?? -1);
+            const debtFacts = debtPid ? extractPropertyFacts(values, debtPid) : [];
+            const ebitdaFacts = ebitdaPid ? extractPropertyFacts(values, ebitdaPid) : [];
+            const marginFacts = marginPid ? extractPropertyFacts(values, marginPid) : [];
+            const interestFacts = interestPid ? extractPropertyFacts(values, interestPid) : [];
+            const assetsFacts = assetsPid ? extractPropertyFacts(values, assetsPid) : [];
+            const liabilitiesFacts = liabilitiesPid ? extractPropertyFacts(values, liabilitiesPid) : [];
+            const filingFacts = filingPid ? extractPropertyFacts(values, filingPid) : [];
+
+            const debt = parseFactNumber(debtFacts[0]?.value ?? '');
+            const ebitda = parseFactNumber(ebitdaFacts[0]?.value ?? '');
+            const opMargin = parseFactNumber(marginFacts[0]?.value ?? '');
+            const interest = parseFactNumber(interestFacts[0]?.value ?? '');
+            const assets = parseFactNumber(assetsFacts[0]?.value ?? '');
+            const liabilities = parseFactNumber(liabilitiesFacts[0]?.value ?? '');
+            const filingDates = filingFacts
+                .map((fact) => parseFactDate(fact.date ?? (typeof fact.value === 'string' ? fact.value : undefined)))
+                .filter((d): d is Date => !!d);
 
             const leverage = debt && ebitda ? Math.max(0, debt / Math.max(1, ebitda)) : null;
             const coverage =
@@ -67,9 +100,9 @@ export async function computeSolvencyScore(
             const liabilityRatio =
                 assets && liabilities ? Math.max(0, liabilities / Math.max(1, assets)) : null;
             const freshestDays =
-                filings.length > 0
+                filingDates.length > 0
                     ? Math.round(
-                          (Date.now() - Math.max(...filings.map((d) => d.getTime()))) / 86_400_000
+                          (Date.now() - Math.max(...filingDates.map((d) => d.getTime()))) / 86_400_000
                       )
                     : null;
 
@@ -101,7 +134,58 @@ export async function computeSolvencyScore(
                 if (freshestDays !== null)
                     metrics.push({ label: 'Latest filing age', value: `${freshestDays}d` });
 
-                evidence.push('Computed from Elemental fundamentals and filing timestamps');
+                const refs = [
+                    debtFacts[0]?.ref,
+                    ebitdaFacts[0]?.ref,
+                    marginFacts[0]?.ref,
+                    interestFacts[0]?.ref,
+                    assetsFacts[0]?.ref,
+                    liabilitiesFacts[0]?.ref,
+                    filingFacts[0]?.ref,
+                ].filter((ref): ref is string => !!ref);
+                const citationMap = await resolveRefs(refs, event);
+                const citations = refs
+                    .map((ref) => citationMap.get(ref))
+                    .filter((citation): citation is NonNullable<typeof citation> => !!citation);
+
+                if (leverage !== null && debt !== null && ebitda !== null) {
+                    findings.push({
+                        text: `Net debt to EBITDA is ${leverage.toFixed(2)}x based on debt of ${formatMoney(
+                            debt
+                        )} and EBITDA of ${formatMoney(ebitda)}.`,
+                        date: debtFacts[0]?.date || ebitdaFacts[0]?.date,
+                        citations,
+                    });
+                }
+                if (coverage !== null && interest !== null && ebitda !== null) {
+                    findings.push({
+                        text: `Interest coverage is ${coverage.toFixed(2)}x using EBITDA ${formatMoney(
+                            ebitda
+                        )} against interest expense ${formatMoney(interest)}.`,
+                        date: interestFacts[0]?.date || ebitdaFacts[0]?.date,
+                        citations,
+                    });
+                }
+                if (typeof opMargin === 'number') {
+                    findings.push({
+                        text: `Operating margin is ${opMargin.toFixed(
+                            1
+                        )}% in the latest available filing window.`,
+                        date: marginFacts[0]?.date,
+                        citations,
+                    });
+                }
+                if (liabilityRatio !== null && assets !== null && liabilities !== null) {
+                    findings.push({
+                        text: `Liabilities are ${(liabilityRatio * 100).toFixed(
+                            1
+                        )}% of assets (${formatMoney(liabilities)} liabilities vs ${formatMoney(
+                            assets
+                        )} assets).`,
+                        date: liabilitiesFacts[0]?.date || assetsFacts[0]?.date,
+                        citations,
+                    });
+                }
             }
         }
     } catch (error) {
@@ -111,12 +195,19 @@ export async function computeSolvencyScore(
     const result: SolvencyResult = {
         score,
         hasRealData,
-        metrics: metrics.length
-            ? metrics
-            : [{ label: 'Status', value: 'Elemental data unavailable' }],
-        evidence: evidence.length
-            ? evidence
-            : ['No solvency metrics returned from Elemental sources'],
+        detail: {
+            metrics: metrics.length
+                ? metrics
+                : [{ label: 'Status', value: 'Elemental solvency data unavailable' }],
+            findings: findings.length
+                ? findings
+                : [
+                      {
+                          text: 'No solvency fundamentals were returned for this entity.',
+                          citations: [],
+                      },
+                  ],
+        },
     };
     await writeScoringCache(event, cacheKey, result);
     return result;

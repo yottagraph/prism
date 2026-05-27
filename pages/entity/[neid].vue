@@ -75,7 +75,6 @@
                             <div class="text-subtitle-2 mb-3">Lens Detail</div>
                             <LensDetailPanel
                                 :scores="data.scores"
-                                :seed="data.neid"
                                 :lens-details="data.lensDetails"
                             />
                         </v-card>
@@ -171,6 +170,13 @@
                                         {{ ev.category }}
                                     </v-chip>
                                     <span class="title-text text-body-2">{{ ev.title }}</span>
+                                    <div v-if="ev.citations?.length" class="timeline-citations">
+                                        <CitationChip
+                                            v-for="(citation, idx) in ev.citations"
+                                            :key="`${ev.date}-${ev.title}-${idx}`"
+                                            :citation="citation"
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </v-card>
@@ -188,6 +194,7 @@
     import { usePortfolio } from '~/composables/usePortfolio';
     import { tierColor, tierLabel } from '~/composables/useFusedScoring';
     import { useMacroContext } from '~/composables/useRelationships';
+    import CitationChip from '~/components/CitationChip.vue';
 
     const route = useRoute();
     const neid = computed(() => route.params.neid as string);
@@ -271,11 +278,18 @@
 
     .timeline-row {
         display: grid;
-        grid-template-columns: 100px 130px 1fr;
+        grid-template-columns: 100px 130px 1fr auto;
         gap: 12px;
         align-items: center;
         padding: 6px 0;
         border-bottom: 1px dashed rgba(255, 255, 255, 0.04);
+    }
+
+    .timeline-citations {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        justify-content: flex-end;
     }
 
     .font-mono {

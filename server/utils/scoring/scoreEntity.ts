@@ -2,7 +2,7 @@ import type { H3Event } from 'h3';
 
 import {
     confidence,
-    deriveDrivers,
+    deriveDriversFromLenses,
     detectConflicts,
     makeEntityRiskScore,
     DEFAULT_WEIGHTS,
@@ -40,15 +40,27 @@ export async function scoreEntity(
     );
     writeLatestScore(portfolioId, neid, scores);
 
+    const lensDetails = {
+        solvency: solvency.detail,
+        executive: executive.detail,
+        news: news.detail,
+        market: market.detail,
+    };
+
     return {
         scores,
-        drivers: deriveDrivers(neid, {
+        drivers: deriveDriversFromLenses(lensDetails, {
             solvency: scores.solvency,
             executive: scores.executive,
             news: scores.news,
             market: scores.market,
         }),
-        conflicts: detectConflicts(scores),
+        conflicts: detectConflicts({
+            solvency: scores.solvency,
+            executive: scores.executive,
+            news: scores.news,
+            market: scores.market,
+        }),
         confidenceLevel: confidence(scores),
         coverage: {
             sec: solvency.hasRealData || executive.hasRealData,
@@ -56,5 +68,6 @@ export async function scoreEntity(
             stock: market.hasRealData,
             poly: false,
         },
+        lensDetails,
     };
 }

@@ -1,15 +1,16 @@
 import type { H3Event } from 'h3';
 
 import { makeCacheKey, readScoringCache, writeScoringCache } from './cache';
+import { resolveRefs } from './citations';
 import { callMcpTool, extractMcpStructuredContent } from './mcpGateway';
 import { extractNumeric, getPropertyValues, getSchema, normalizePidMap } from './elemental';
 import { clampScore } from './hash';
+import type { EvidenceItem, LensDetail } from './types';
 
 interface NewsResult {
     score: number;
     hasRealData: boolean;
-    metrics: Array<{ label: string; value: string }>;
-    evidence: string[];
+    detail: LensDetail;
 }
 
 export async function computeNewsPressureScore(
@@ -23,8 +24,8 @@ export async function computeNewsPressureScore(
 
     let score = 0;
     let hasRealData = false;
-    const metrics: Array<{ label: string; value: string }> = [];
-    const evidence: string[] = [];
+    const metrics: LensDetail['metrics'] = [];
+    const findings: EvidenceItem[] = [];
 
     try {
         const schema = await getSchema(event);
@@ -57,7 +58,14 @@ export async function computeNewsPressureScore(
                 metrics.push({ label: 'Avg sentiment', value: `${sentimentAvg.toFixed(2)}` });
                 metrics.push({ label: 'Mention velocity', value: `${mentions.toFixed(1)}` });
                 metrics.push({ label: 'Articles (window)', value: `${Math.round(articles)}` });
-                evidence.push('Computed from Elemental news sentiment and mention properties');
+                findings.push({
+                    text: `Average sentiment is ${sentimentAvg.toFixed(
+                        2
+                    )} with mention velocity ${mentions.toFixed(
+                        1
+                    )} and approximately ${Math.round(articles)} articles in the active window.`,
+                    citations: [],
+                });
             }
         }
     } catch (error) {
@@ -76,7 +84,7 @@ export async function computeNewsPressureScore(
                 event
             );
             const structured = extractMcpStructuredContent<{
-                events?: Array<{ properties?: Record<string, any> }>;
+                events?: Array<{ name?: string; properties?: Record<string, any> }>;
             }>(result);
             const events = Array.isArray(structured?.events) ? structured!.events : [];
             if (events.length > 0) {
@@ -89,22 +97,124 @@ export async function computeNewsPressureScore(
                 score = clampScore(28 + Math.min(35, adverseCount * 8) + Math.min(20, events.length));
                 metrics.push({ label: 'Events (25)', value: `${events.length}` });
                 metrics.push({ label: 'Adverse events', value: `${adverseCount}` });
-                evidence.push('Computed from elemental_get_events MCP feed');
+                const eventRefs = events
+                    .flatMap((eventRow) =>
+                        Object.values(eventRow?.properties || {})
+                            .map((property: any) => property?.ref)
+                            .filter((ref): ref is string => typeof ref === 'string')
+                    )
+                    .slice(0, 30);
+                const citationMap = await resolveRefs(eventRefs, event);
+                events.slice(0, 8).forEach((eventRow) => {
+                    const category = String(eventRow?.properties?.category?.value || 'News event');
+                    const date = String(eventRow?.properties?.date?.value || '');
+                    const description = String(
+                        eventRow?.properties?.description?.value || eventRow?.name || category
+                    );
+                    const refs = Object.values(eventRow?.properties || {})
+                        .map((property: any) => property?.ref)
+                        .filter((ref): ref is string => typeof ref === 'string');
+                    const citations = refs
+                        .map((ref) => citationMap.get(ref))
+                        .filter((citation): citation is NonNullable<typeof citation> => !!citation);
+                    findings.push({
+                        text: `${description} (${category})${date ? ` on ${date}` : ''}.`,
+                        date: date || undefined,
+                        citations,
+                    });
+                });
             }
         } catch (error) {
             console.warn('[news pressure] elemental_get_events fallback failed', error);
         }
     }
 
+    try {
+        const relatedArticlesResult = await callMcpTool(
+            'elemental',
+            'elemental_get_related',
+            {
+                entity_id: { id_type: 'neid', id: neid },
+                related_flavor: 'article',
+                related_properties: ['headline', 'url', 'published_date', 'source'],
+                direction: 'both',
+                limit: 8,
+            },
+            event
+        );
+        const relatedArticles = extractMcpStructuredContent<{
+            relationships?: Array<{
+                name?: string;
+                properties?: Record<string, { value?: unknown; ref?: string }>;
+            }>;
+        }>(relatedArticlesResult)?.relationships;
+        if (Array.isArray(relatedArticles) && relatedArticles.length > 0) {
+            hasRealData = true;
+            const refs = relatedArticles
+                .flatMap((article) =>
+                    Object.values(article.properties || {})
+                        .map((property) => property?.ref)
+                        .filter((ref): ref is string => typeof ref === 'string')
+                )
+                .slice(0, 24);
+            const citationMap = await resolveRefs(refs, event);
+            relatedArticles.slice(0, 6).forEach((article) => {
+                const headline = String(article?.properties?.headline?.value || article?.name || 'Article');
+                const source = String(article?.properties?.source?.value || '');
+                const publishedDate = String(article?.properties?.published_date?.value || '');
+                const url = String(article?.properties?.url?.value || '');
+                const articleRefs = Object.values(article.properties || {})
+                    .map((property) => property?.ref)
+                    .filter((ref): ref is string => typeof ref === 'string');
+                const citations = articleRefs
+                    .map((ref) => citationMap.get(ref))
+                    .filter((citation): citation is NonNullable<typeof citation> => !!citation)
+                    .map((citation) => ({
+                        ...citation,
+                        url: citation.url || (url || undefined),
+                        source: citation.source || (source || undefined),
+                        date: citation.date || (publishedDate || undefined),
+                        title: citation.title || headline,
+                    }));
+                if (citations.length === 0 && url) {
+                    citations.push({
+                        url,
+                        source: source || 'Article',
+                        date: publishedDate || undefined,
+                        title: headline,
+                    });
+                }
+                findings.push({
+                    text: `${headline}${source ? ` (${source})` : ''}${
+                        publishedDate ? ` published on ${publishedDate}` : ''
+                    }.`,
+                    date: publishedDate || undefined,
+                    citations,
+                });
+            });
+            const existing = metrics.find((metric) => metric.label === 'Articles (window)');
+            if (!existing) metrics.push({ label: 'Articles (window)', value: `${relatedArticles.length}` });
+        }
+    } catch (error) {
+        console.warn('[news pressure] related articles lookup failed', error);
+    }
+
     const result: NewsResult = {
         score,
         hasRealData,
-        metrics: metrics.length
-            ? metrics
-            : [{ label: 'Status', value: 'Elemental data unavailable' }],
-        evidence: evidence.length
-            ? evidence
-            : ['No news sentiment signals returned from Elemental sources'],
+        detail: {
+            metrics: metrics.length
+                ? metrics
+                : [{ label: 'Status', value: 'Elemental news data unavailable' }],
+            findings: findings.length
+                ? findings
+                : [
+                      {
+                          text: 'No news events or related articles were returned for this entity.',
+                          citations: [],
+                      },
+                  ],
+        },
     };
     await writeScoringCache(event, cacheKey, result);
     return result;

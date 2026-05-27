@@ -11,7 +11,12 @@ import { computed, ref } from 'vue';
 
 import portfolioFixture from '~/assets/portfolios-fixture.json';
 import { searchEntities } from '~/utils/elementalHelpers';
-import { type EntityRiskScore, type RiskTier, type SourceFusionWeights } from './useFusedScoring';
+import {
+    type CitationRef,
+    type EntityRiskScore,
+    type RiskTier,
+    type SourceFusionWeights,
+} from './useFusedScoring';
 
 export interface PortfolioEntity {
     /** Name as provided by the user (before resolution). */
@@ -61,9 +66,7 @@ interface ScanEntityEventPayload {
             lens: string;
             source: string;
             score: number;
-            label: string;
-            explanation: string;
-            evidence: string;
+            finding: { text: string; date?: string; citations: CitationRef[] };
         }>;
         conflicts?: Array<{ lens: string; delta: number }>;
         confidenceLevel?: 'High' | 'Medium' | 'Low';

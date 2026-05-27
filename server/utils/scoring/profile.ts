@@ -1,8 +1,10 @@
 import type { H3Event } from 'h3';
 
 import { makeCacheKey, readScoringCache, writeScoringCache } from './cache';
-import { deriveDrivers, detectConflicts, confidence } from './fuse';
+import { confidence, detectConflicts } from './fuse';
+import { resolveRefs } from './citations';
 import { findEntities, getEntityName, getSchema, normalizePidMap } from './elemental';
+import { callMcpTool, extractMcpStructuredContent } from './mcpGateway';
 import { scoreEntity } from './scoreEntity';
 
 async function resolveNeighborNames(event: H3Event, eids: string[], limit = 10): Promise<string[]> {
@@ -77,6 +79,43 @@ export async function getEntityProfile(event: H3Event, portfolioId: string, neid
     if (cached) return cached;
 
     const name = await getEntityName(neid, event).catch(() => neid);
+    const entitySnapshot = await callMcpTool(
+        'elemental',
+        'elemental_get_entity',
+        {
+            entity_id: { id_type: 'neid', id: neid },
+            properties: ['ticker_symbol', 'company_cik', 'industry'],
+        },
+        event
+    ).catch(() => null);
+    const entityData = extractMcpStructuredContent<{
+        entity?: {
+            flavor?: string;
+            properties?: Record<string, { value?: unknown }>;
+        };
+    }>(entitySnapshot);
+
+    const eventsResult = await callMcpTool(
+        'elemental',
+        'elemental_get_events',
+        {
+            entity_id: { id_type: 'neid', id: neid },
+            limit: 25,
+            include_participants: false,
+        },
+        event
+    ).catch(() => null);
+    const eventRows =
+        extractMcpStructuredContent<{
+            events?: Array<{ name?: string; properties?: Record<string, { value?: unknown; ref?: string }> }>;
+        }>(eventsResult)?.events ?? [];
+    const eventRefs = eventRows.flatMap((eventRow) =>
+        Object.values(eventRow.properties || {})
+            .map((property) => property?.ref)
+            .filter((ref): ref is string => typeof ref === 'string')
+    );
+    const eventCitationMap = await resolveRefs(eventRefs, event).catch(() => new Map());
+
     const relationships = await getRelationships(event, neid).catch(() => ({
         companies: [],
         people: [],
@@ -88,17 +127,39 @@ export async function getEntityProfile(event: H3Event, portfolioId: string, neid
     const profile = {
         neid,
         name,
-        ticker: null as string | null,
-        cik: null as string | null,
-        sector: null as string | null,
-        entityType: null as string | null,
+        ticker:
+            (entityData?.entity?.properties?.ticker_symbol?.value as string | null | undefined) ?? null,
+        cik: (entityData?.entity?.properties?.company_cik?.value as string | null | undefined) ?? null,
+        sector: (entityData?.entity?.properties?.industry?.value as string | null | undefined) ?? null,
+        entityType: (entityData?.entity?.flavor as string | null | undefined) ?? null,
         properties: [] as Array<{ pid: number; name: string; value: string | number | null }>,
         relationships,
-        events: [] as Array<{
+        events: eventRows.slice(0, 25).map((eventRow) => {
+            const category = String(eventRow?.properties?.category?.value || 'Event');
+            const date = String(eventRow?.properties?.date?.value || '');
+            const title = String(
+                eventRow?.properties?.description?.value || eventRow?.name || category || 'Event'
+            );
+            const refs = Object.values(eventRow?.properties || {})
+                .map((property) => property?.ref)
+                .filter((ref): ref is string => typeof ref === 'string');
+            const citations = refs
+                .map((ref) => eventCitationMap.get(ref))
+                .filter((citation): citation is NonNullable<typeof citation> => !!citation);
+            return {
+                date,
+                category,
+                title,
+                severity:
+                    /bankrupt|default|fraud|regulator|litig/i.test(title) ? ('high' as const) : ('medium' as const),
+                citations,
+            };
+        }) as Array<{
             date: string;
             category: string;
             title: string;
             severity: 'low' | 'medium' | 'high';
+            citations: Array<{ ref?: string; url?: string; title?: string; source?: string; date?: string; snippet?: string }>;
         }>,
         scores: scored?.scores ?? {
             solvency: 0,
@@ -112,35 +173,11 @@ export async function getEntityProfile(event: H3Event, portfolioId: string, neid
         drivers: scored?.drivers ?? [],
         conflicts: scored?.conflicts ?? [],
         confidenceLevel: scored?.confidenceLevel ?? 'Low',
-        lensDetails: {
-            solvency: {
-                metrics: [{ label: 'Score', value: `${scored?.scores?.solvency ?? 0}` }],
-                evidence: scored
-                    ? ['Elemental fundamentals and filing cadence']
-                    : ['Elemental solvency data unavailable for this entity'],
-            },
-            executive: {
-                metrics: [{ label: 'Score', value: `${scored?.scores?.executive ?? 0}` }],
-                evidence: scored
-                    ? ['Officer/director relationship graph signals']
-                    : ['Elemental governance data unavailable for this entity'],
-            },
-            news: {
-                metrics: [{ label: 'Score', value: `${scored?.scores?.news ?? 0}` }],
-                evidence: scored
-                    ? ['News sentiment and mention velocity properties']
-                    : ['Elemental news data unavailable for this entity'],
-            },
-            market: {
-                metrics: [{ label: 'Score', value: `${scored?.scores?.market ?? 0}` }],
-                evidence: scored
-                    ? ['Market return/volatility/anomaly features']
-                    : ['Elemental market data unavailable for this entity'],
-            },
-            macro: {
-                metrics: [{ label: 'Status', value: 'Macro signals loaded separately' }],
-                evidence: ['Macro context rendered from live Elemental-backed macro endpoints'],
-            },
+        lensDetails: scored?.lensDetails ?? {
+            solvency: { metrics: [{ label: 'Score', value: '0' }], findings: [] },
+            executive: { metrics: [{ label: 'Score', value: '0' }], findings: [] },
+            news: { metrics: [{ label: 'Score', value: '0' }], findings: [] },
+            market: { metrics: [{ label: 'Score', value: '0' }], findings: [] },
         },
     };
 
@@ -152,10 +189,19 @@ export async function getEntityScoreBreakdown(event: H3Event, portfolioId: strin
     const scored = await scoreEntity(event, portfolioId, neid);
     return {
         scores: scored.scores,
-        drivers: deriveDrivers(neid, scored.scores),
-        conflicts: detectConflicts(scored.scores),
+        drivers: scored.drivers,
+        conflicts: detectConflicts(
+            {
+                solvency: scored.scores.solvency,
+                executive: scored.scores.executive,
+                news: scored.scores.news,
+                market: scored.scores.market,
+            },
+            20
+        ),
         confidenceLevel: confidence(scored.scores),
         coverage: scored.coverage,
+        lensDetails: scored.lensDetails,
     };
 }
 

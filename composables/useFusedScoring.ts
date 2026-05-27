@@ -28,22 +28,27 @@ export interface SourceFusionWeights {
     market: number;
 }
 
+export interface CitationRef {
+    ref?: string;
+    url?: string;
+    title?: string;
+    source?: string;
+    date?: string;
+    snippet?: string;
+}
+
+export interface EvidenceItem {
+    text: string;
+    date?: string;
+    citations: CitationRef[];
+}
+
 export const DEFAULT_WEIGHTS: SourceFusionWeights = {
     solvency: 0.4,
     executive: 0.25,
     news: 0.2,
     market: 0.15,
 };
-
-/** FNV-1a 32-bit hash — small, fast, no deps. */
-function hash32(input: string): number {
-    let h = 0x811c9dc5;
-    for (let i = 0; i < input.length; i++) {
-        h ^= input.charCodeAt(i);
-        h = Math.imul(h, 0x01000193);
-    }
-    return h >>> 0;
-}
 
 export function fuseScore(s: SubScores, w: SourceFusionWeights = DEFAULT_WEIGHTS): number {
     const sum = w.solvency + w.executive + w.news + w.market || 1;
@@ -91,7 +96,7 @@ export function detectConflicts(
 ): Array<{ lens: keyof SubScores; delta: number }> {
     const mean = (s.solvency + s.executive + s.news + s.market) / 4;
     const out: Array<{ lens: keyof SubScores; delta: number }> = [];
-    (Object.keys(s) as Array<keyof SubScores>).forEach((k) => {
+    (['solvency', 'executive', 'news', 'market'] as Array<keyof SubScores>).forEach((k) => {
         const delta = s[k] - mean;
         if (Math.abs(delta) >= threshold) out.push({ lens: k, delta: Math.round(delta) });
     });
@@ -113,109 +118,5 @@ export interface RiskDriver {
     lens: keyof SubScores;
     source: 'SEC' | 'NEWS' | 'STOCK' | 'POLY';
     score: number;
-    label: string;
-    explanation: string;
-    evidence: string;
-    href?: string;
-}
-
-const LENS_SOURCE: Record<keyof SubScores, RiskDriver['source']> = {
-    solvency: 'SEC',
-    executive: 'SEC',
-    news: 'NEWS',
-    market: 'STOCK',
-};
-
-const DRIVER_LIBRARY: Record<
-    keyof SubScores,
-    Array<{ label: string; expl: string; ev: string }>
-> = {
-    solvency: [
-        {
-            label: 'Elevated leverage',
-            expl: 'Net debt to EBITDA exceeds peer median; coverage ratio narrowing.',
-            ev: 'Most recent 10-K liquidity & capital resources section.',
-        },
-        {
-            label: 'Margin compression',
-            expl: 'Operating margin down YoY against rising input costs.',
-            ev: 'Latest 10-Q income statement segment detail.',
-        },
-        {
-            label: 'Equity erosion',
-            expl: 'Successive quarters of accumulated deficit growth.',
-            ev: 'Quarterly balance sheet stockholders\u2019 equity rollforward.',
-        },
-    ],
-    executive: [
-        {
-            label: 'C-suite departure cluster',
-            expl: 'Two or more named executive officers exited within the trailing 6 months.',
-            ev: '8-K Item 5.02 filings within the last two quarters.',
-        },
-        {
-            label: 'Auditor change',
-            expl: 'Independent registered public accounting firm changed within the last fiscal year.',
-            ev: '8-K Item 4.01 filing.',
-        },
-        {
-            label: 'Board turnover',
-            expl: 'Multiple director resignations without replacement disclosure.',
-            ev: 'Proxy statement governance section + 8-K Item 5.02.',
-        },
-    ],
-    news: [
-        {
-            label: 'Negative coverage cluster',
-            expl: 'Three or more adverse articles in the last 14 days from top-tier outlets.',
-            ev: 'Sentiment-tagged article feed; severity-weighted cluster.',
-        },
-        {
-            label: 'Rising mention velocity',
-            expl: 'Mention rate is 2.3x the trailing 90-day median.',
-            ev: 'News volume timeseries from the platform sentiment layer.',
-        },
-        {
-            label: 'Adverse regulatory mention',
-            expl: 'Coverage flags an active investigation or enforcement filing.',
-            ev: 'Topic-classified article with regulator entity link.',
-        },
-    ],
-    market: [
-        {
-            label: 'Drawdown vs sector',
-            expl: '30-day return underperforms the sector benchmark by >12%.',
-            ev: 'Stock data layer: returns + benchmark deviation.',
-        },
-        {
-            label: 'Volatility spike',
-            expl: 'Implied and realized volatility both above 75th percentile.',
-            ev: 'Options chain implied vol + 30D realized vol.',
-        },
-        {
-            label: 'Anomaly: volume + price',
-            expl: 'Abnormal volume on declining price detected in the last 5 sessions.',
-            ev: 'Anomaly detection module on intraday OHLCV.',
-        },
-    ],
-};
-
-export function deriveDrivers(seed: string, s: SubScores): RiskDriver[] {
-    const sorted = (Object.keys(s) as Array<keyof SubScores>)
-        .map((lens) => ({ lens, score: s[lens] }))
-        .sort((a, b) => b.score - a.score);
-    const drivers: RiskDriver[] = [];
-    for (const { lens, score } of sorted) {
-        const lib = DRIVER_LIBRARY[lens];
-        const choice = lib[hash32(`${seed}|driver|${lens}`) % lib.length];
-        drivers.push({
-            lens,
-            source: LENS_SOURCE[lens],
-            score,
-            label: choice.label,
-            explanation: choice.expl,
-            evidence: choice.ev,
-        });
-    }
-    return drivers.slice(0, 5);
+    finding: EvidenceItem;
 }

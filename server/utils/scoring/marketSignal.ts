@@ -4,12 +4,12 @@ import { makeCacheKey, readScoringCache, writeScoringCache } from './cache';
 import { callMcpTool, extractMcpStructuredContent } from './mcpGateway';
 import { extractNumeric, getEntityName, getPropertyValues, getSchema, normalizePidMap } from './elemental';
 import { clampScore } from './hash';
+import type { EvidenceItem, LensDetail } from './types';
 
 interface MarketResult {
     score: number;
     hasRealData: boolean;
-    metrics: Array<{ label: string; value: string }>;
-    evidence: string[];
+    detail: LensDetail;
 }
 
 export async function computeMarketSignalScore(
@@ -23,8 +23,8 @@ export async function computeMarketSignalScore(
 
     let score = 0;
     let hasRealData = false;
-    const metrics: Array<{ label: string; value: string }> = [];
-    const evidence: string[] = [];
+    const metrics: LensDetail['metrics'] = [];
+    const findings: EvidenceItem[] = [];
 
     try {
         const schema = await getSchema(event);
@@ -66,7 +66,16 @@ export async function computeMarketSignalScore(
                 if (typeof anomaly === 'number')
                     metrics.push({ label: 'Anomaly flags', value: `${Math.round(anomaly)}` });
 
-                evidence.push('Computed from Elemental market signal properties');
+                findings.push({
+                    text: `Market signals indicate ${
+                        typeof return30 === 'number' ? `${return30.toFixed(1)}% 30-day return` : 'unknown return'
+                    }, ${
+                        typeof vol30 === 'number'
+                            ? `${vol30.toFixed(1)}% realized volatility`
+                            : 'unknown volatility'
+                    }${typeof rsi === 'number' ? `, RSI ${rsi.toFixed(1)}` : ''}.`,
+                    citations: [],
+                });
             }
         }
     } catch (error) {
@@ -88,7 +97,7 @@ export async function computeMarketSignalScore(
             const structured = extractMcpStructuredContent<{
                 found?: boolean;
                 ticker_info?: { ticker?: string };
-                prices?: Array<{ close?: number }>;
+                prices?: Array<{ close?: number; date?: string }>;
             }>(result);
             const prices = Array.isArray(structured?.prices) ? structured!.prices : [];
             const closes = prices
@@ -123,7 +132,28 @@ export async function computeMarketSignalScore(
                 if (structured?.ticker_info?.ticker) {
                     metrics.push({ label: 'Ticker', value: structured.ticker_info.ticker });
                 }
-                evidence.push('Computed from stocks MCP daily price history');
+                const firstDate = prices[0]?.date;
+                const lastDate = prices[prices.length - 1]?.date;
+                const ticker = structured?.ticker_info?.ticker;
+                const tickerUrl = ticker ? `https://finance.yahoo.com/quote/${ticker}` : undefined;
+                findings.push({
+                    text: `${ticker || companyName} closed at $${last.toFixed(2)}${
+                        lastDate ? ` on ${lastDate}` : ''
+                    }, ${returnPct >= 0 ? 'up' : 'down'} ${Math.abs(returnPct).toFixed(
+                        1
+                    )}% over the observed window${firstDate ? ` since ${firstDate}` : ''}. Annualized volatility is ${annualizedVolPct.toFixed(
+                        1
+                    )}%.`,
+                    date: lastDate || undefined,
+                    citations: [
+                        {
+                            source: 'stocks-mcp',
+                            date: lastDate || undefined,
+                            url: tickerUrl,
+                            title: ticker ? `${ticker} price history` : `${companyName} price history`,
+                        },
+                    ],
+                });
             }
         } catch (error) {
             console.warn('[market signal] stocks MCP fallback failed', error);
@@ -133,12 +163,19 @@ export async function computeMarketSignalScore(
     const result: MarketResult = {
         score,
         hasRealData,
-        metrics: metrics.length
-            ? metrics
-            : [{ label: 'Status', value: 'Elemental data unavailable' }],
-        evidence: evidence.length
-            ? evidence
-            : ['No market signals returned from Elemental sources'],
+        detail: {
+            metrics: metrics.length
+                ? metrics
+                : [{ label: 'Status', value: 'Elemental market data unavailable' }],
+            findings: findings.length
+                ? findings
+                : [
+                      {
+                          text: 'No market price or volatility data was returned for this entity.',
+                          citations: [],
+                      },
+                  ],
+        },
     };
     await writeScoringCache(event, cacheKey, result);
     return result;
