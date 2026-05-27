@@ -140,6 +140,8 @@ All entity data, relationships, events, properties, and signals are sourced from
 | **Instruments**               | Instrument store             | Credit facilities (amount, maturity, lender, covenants), bonds/notes (CUSIP, FIGI, principal, maturity), holdings positions     |
 | **Locations**                 | Location graph               | HQ addresses, jurisdictions, facility locations, geographic relationships                                                       |
 
+> **Interaction details:** [`design/elemental-interaction.md`](design/elemental-interaction.md) documents how Prism reads Elemental today (ContextPackage, Galaxy, REST, MCP). [`design/elemental-batch-api-request.md`](design/elemental-batch-api-request.md) is the proposed-state spec for the custom batch endpoints we want Lovelace to expose (scan-bundle, cik-velocity-bundle, stock-bundle, entity-bundle, relationship-universe, acs-bundle) to replace the per-entity fan-outs.
+
 ### 6.2 What the Prototype Stores Locally (User State)
 
 A lightweight local database holds only user-generated and agent-generated state. This follows the same pattern as the Agent-First FSI PRD.
