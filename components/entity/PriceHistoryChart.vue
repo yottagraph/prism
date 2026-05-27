@@ -290,16 +290,75 @@
         else window.removeEventListener('resize', measure);
     });
 
-    // Normalised, sorted data
+    function parseTs(input: string): number | null {
+        const ts = Date.parse(input);
+        return Number.isFinite(ts) ? ts : null;
+    }
+
+    function dayKeyUtc(ts: number): string {
+        const d = new Date(ts);
+        const y = d.getUTCFullYear();
+        const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(d.getUTCDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    }
+
+    // Normalised, daily-aggregated, sorted data.
+    // Elemental can return intraday points; collapsing to daily bars makes
+    // 7D/30D/90D/6M/1Y windows behave as users expect.
     const allPoints = computed<Bar[]>(() => {
-        const list = (props.prices || [])
-            .filter((p) => p && typeof p.close === 'number' && Number.isFinite(p.close))
-            .map((p) => ({
-                ...p,
-                date: typeof p.date === 'string' ? p.date : new Date(p.date).toISOString(),
-            }))
-            .sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
-        return list;
+        type DayBar = Bar & { firstTs: number; lastTs: number };
+        const byDay = new Map<string, DayBar>();
+
+        for (const raw of props.prices || []) {
+            if (!raw || typeof raw.close !== 'number' || !Number.isFinite(raw.close)) continue;
+            const dateText =
+                typeof raw.date === 'string' ? raw.date : new Date(raw.date).toISOString();
+            const ts = parseTs(dateText);
+            if (ts == null) continue;
+            const key = dayKeyUtc(ts);
+            const high =
+                typeof raw.high === 'number' && Number.isFinite(raw.high) ? raw.high : raw.close;
+            const low =
+                typeof raw.low === 'number' && Number.isFinite(raw.low) ? raw.low : raw.close;
+            const open =
+                typeof raw.open === 'number' && Number.isFinite(raw.open) ? raw.open : raw.close;
+            const volume =
+                typeof raw.volume === 'number' && Number.isFinite(raw.volume)
+                    ? raw.volume
+                    : undefined;
+
+            const existing = byDay.get(key);
+            if (!existing) {
+                byDay.set(key, {
+                    date: `${key}T00:00:00.000Z`,
+                    open,
+                    high,
+                    low,
+                    close: raw.close,
+                    volume,
+                    firstTs: ts,
+                    lastTs: ts,
+                });
+                continue;
+            }
+
+            if (ts < existing.firstTs) {
+                existing.firstTs = ts;
+                existing.open = open;
+            }
+            if (ts > existing.lastTs) {
+                existing.lastTs = ts;
+                existing.close = raw.close;
+            }
+            existing.high = Math.max(existing.high ?? raw.close, high);
+            existing.low = Math.min(existing.low ?? raw.close, low);
+            if (volume != null) existing.volume = (existing.volume ?? 0) + volume;
+        }
+
+        return Array.from(byDay.values())
+            .sort((a, b) => a.firstTs - b.firstTs)
+            .map(({ firstTs, lastTs, ...bar }) => bar);
     });
 
     const visiblePoints = computed<Bar[]>(() => {
