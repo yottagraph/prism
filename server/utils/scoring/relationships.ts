@@ -48,7 +48,7 @@ async function resolveNames(event: H3Event, eids: string[], limit = 20) {
 
 async function linked(
     event: H3Event,
-    expression: object,
+    centerEid: string,
     pid?: number,
     direction: 'incoming' | 'outgoing' = 'outgoing'
 ) {
@@ -58,8 +58,9 @@ async function linked(
             {
                 type: 'linked',
                 linked: {
-                    expression,
-                    pid,
+                    to_entity: centerEid,
+                    distance: 1,
+                    pids: [pid],
                     direction,
                 },
             },
@@ -89,21 +90,19 @@ export async function buildRelationshipUniverse(event: H3Event, entities: Portfo
     const pid = normalizePidMap(schema);
     const pids = {
         company: pid.subsidiary_of ?? pid.compensation_peer_of,
-        people: pid.officer_of ?? pid.director_of,
-        owner: pid.beneficial_owner_of,
+        people: pid.is_officer ?? pid.is_director ?? pid.officer_of ?? pid.director_of,
+        owner: pid.is_beneficial_owner ?? pid.beneficial_owner_of,
         instrument: pid.issued_by ?? pid.lender_of ?? pid.holds_position,
-        location: pid.located_at,
+        location: pid.is_located_at ?? pid.located_at,
     };
 
     for (const entity of entities) {
-        const expression = { type: 'is_entity', is_entity: { eid: entity.neid } };
-
         const [companyIds, personIds, ownerIds, instrumentIds, locationIds] = await Promise.all([
-            linked(event, expression, pids.company, 'outgoing'),
-            linked(event, expression, pids.people, 'incoming'),
-            linked(event, expression, pids.owner, 'incoming'),
-            linked(event, expression, pids.instrument, 'incoming'),
-            linked(event, expression, pids.location, 'outgoing'),
+            linked(event, entity.neid, pids.company, 'outgoing'),
+            linked(event, entity.neid, pids.people, 'incoming'),
+            linked(event, entity.neid, pids.owner, 'incoming'),
+            linked(event, entity.neid, pids.instrument, 'incoming'),
+            linked(event, entity.neid, pids.location, 'outgoing'),
         ]);
 
         const companies = await resolveNames(event, companyIds);

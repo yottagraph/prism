@@ -34,28 +34,38 @@ export async function computeSolvencyScore(
     try {
         const schema = await getSchema(event);
         const pid = normalizePidMap(schema);
+        const debtPid = pid.total_debt ?? pid['us_gaap:total_debt'];
+        const ebitdaPid = pid.ebitda ?? pid['us_gaap:ebitda'];
+        const marginPid = pid.operating_margin ?? pid['us_gaap:operating_margin'];
+        const interestPid = pid.interest_expense ?? pid['us_gaap:interest_expense'];
+        const assetsPid = pid.assets ?? pid.total_assets ?? pid['us_gaap:assets'];
+        const liabilitiesPid = pid.liabilities ?? pid.total_liabilities ?? pid['us_gaap:liabilities'];
+        const filingPid = pid.filing_date ?? pid.report_date;
         const candidatePids = [
-            pid.total_debt,
-            pid.ebitda,
-            pid.operating_margin,
-            pid.interest_expense,
-            pid.assets,
-            pid.liabilities,
-            pid.report_date,
-            pid.filing_date,
+            debtPid,
+            ebitdaPid,
+            marginPid,
+            interestPid,
+            assetsPid,
+            liabilitiesPid,
+            filingPid,
         ].filter((v): v is number => typeof v === 'number');
 
         if (candidatePids.length) {
             const values = await getPropertyValues([neid], candidatePids, true, event);
-            const debt = extractNumeric(values, pid.total_debt ?? -1)[0];
-            const ebitda = extractNumeric(values, pid.ebitda ?? -1)[0];
-            const opMargin = extractNumeric(values, pid.operating_margin ?? -1)[0];
-            const interest = extractNumeric(values, pid.interest_expense ?? -1)[0];
-            const filings = extractDates(values, pid.filing_date ?? pid.report_date ?? -1);
+            const debt = extractNumeric(values, debtPid ?? -1)[0];
+            const ebitda = extractNumeric(values, ebitdaPid ?? -1)[0];
+            const opMargin = extractNumeric(values, marginPid ?? -1)[0];
+            const interest = extractNumeric(values, interestPid ?? -1)[0];
+            const assets = extractNumeric(values, assetsPid ?? -1)[0];
+            const liabilities = extractNumeric(values, liabilitiesPid ?? -1)[0];
+            const filings = extractDates(values, filingPid ?? -1);
 
             const leverage = debt && ebitda ? Math.max(0, debt / Math.max(1, ebitda)) : null;
             const coverage =
                 ebitda && interest ? Math.max(0, ebitda / Math.max(1, interest)) : null;
+            const liabilityRatio =
+                assets && liabilities ? Math.max(0, liabilities / Math.max(1, assets)) : null;
             const freshestDays =
                 filings.length > 0
                     ? Math.round(
@@ -66,6 +76,7 @@ export async function computeSolvencyScore(
             if (
                 leverage !== null ||
                 coverage !== null ||
+                liabilityRatio !== null ||
                 opMargin !== undefined ||
                 freshestDays !== null
             ) {
@@ -73,6 +84,7 @@ export async function computeSolvencyScore(
                 let raw = 45;
                 if (leverage !== null) raw += Math.min(35, leverage * 4);
                 if (coverage !== null) raw += Math.max(-20, 12 - coverage * 3);
+                if (liabilityRatio !== null) raw += Math.min(20, Math.max(0, liabilityRatio - 0.5) * 30);
                 if (typeof opMargin === 'number') raw += opMargin < 0 ? 18 : opMargin < 8 ? 10 : 0;
                 if (freshestDays !== null)
                     raw += Math.min(15, Math.max(0, freshestDays - 120) / 12);
@@ -82,6 +94,8 @@ export async function computeSolvencyScore(
                     metrics.push({ label: 'Net Debt / EBITDA', value: `${leverage.toFixed(2)}x` });
                 if (coverage !== null)
                     metrics.push({ label: 'Interest Coverage', value: `${coverage.toFixed(2)}x` });
+                if (liabilityRatio !== null)
+                    metrics.push({ label: 'Liabilities / Assets', value: `${(liabilityRatio * 100).toFixed(1)}%` });
                 if (typeof opMargin === 'number')
                     metrics.push({ label: 'Operating Margin', value: `${opMargin.toFixed(1)}%` });
                 if (freshestDays !== null)

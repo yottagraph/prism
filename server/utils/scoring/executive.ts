@@ -29,9 +29,9 @@ export async function computeExecutiveScore(
         const schema = await getSchema(event);
         const pids = normalizePidMap(schema);
 
-        const officerPid = pids.officer_of ?? pids.officer ?? pids.has_officer;
-        const directorPid = pids.director_of ?? pids.director ?? pids.has_director;
-        const ownerPid = pids.beneficial_owner_of ?? pids.beneficial_owner;
+        const officerPid = pids.is_officer ?? pids.officer_of ?? pids.officer ?? pids.has_officer;
+        const directorPid = pids.is_director ?? pids.director_of ?? pids.director ?? pids.has_director;
+        const ownerPid = pids.is_beneficial_owner ?? pids.beneficial_owner_of ?? pids.beneficial_owner;
 
         const relationshipPids = [officerPid, directorPid, ownerPid].filter(
             (v): v is number => typeof v === 'number'
@@ -43,8 +43,9 @@ export async function computeExecutiveScore(
                     {
                         type: 'linked',
                         linked: {
-                            expression: { type: 'is_entity', is_entity: { eid: neid } },
-                            pid,
+                            to_entity: neid,
+                            distance: 1,
+                            pids: [pid],
                             direction: 'incoming',
                         },
                     },

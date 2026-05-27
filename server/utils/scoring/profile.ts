@@ -39,8 +39,9 @@ async function getRelationships(event: H3Event, neid: string) {
                 {
                     type: 'linked',
                     linked: {
-                        expression: { type: 'is_entity', is_entity: { eid: neid } },
-                        pid: propertyPid,
+                        to_entity: neid,
+                        distance: 1,
+                        pids: [propertyPid],
                         direction: 'outgoing',
                     },
                 },
@@ -62,9 +63,9 @@ async function getRelationships(event: H3Event, neid: string) {
 
     await Promise.all([
         linkedBy(pid.subsidiary_of ?? pid.compensation_peer_of, 'subsidiary_of', 'companies'),
-        linkedBy(pid.officer_of ?? pid.director_of, 'officer_of', 'people'),
+        linkedBy(pid.is_officer ?? pid.is_director ?? pid.officer_of ?? pid.director_of, 'officer_of', 'people'),
         linkedBy(pid.issued_by ?? pid.lender_of, 'issued_by', 'instruments'),
-        linkedBy(pid.located_at, 'located_at', 'locations'),
+        linkedBy(pid.is_located_at ?? pid.located_at, 'located_at', 'locations'),
     ]);
 
     return links;
