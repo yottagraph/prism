@@ -1,6 +1,7 @@
 import type { H3Event } from 'h3';
 
 import { makeCacheKey, readScoringCache, writeScoringCache } from './cache';
+import { callMcpTool, extractMcpStructuredContent } from './mcpGateway';
 import { extractNumeric, getPropertyValues, getSchema, normalizePidMap } from './elemental';
 import { clampScore } from './hash';
 
@@ -61,6 +62,38 @@ export async function computeNewsPressureScore(
         }
     } catch (error) {
         console.warn('[news pressure] failed', error);
+    }
+
+    if (!hasRealData) {
+        try {
+            const result = await callMcpTool(
+                'elemental',
+                'elemental_get_events',
+                {
+                    entity_id: { id_type: 'neid', id: neid },
+                    limit: 25,
+                },
+                event
+            );
+            const structured = extractMcpStructuredContent<{
+                events?: Array<{ properties?: Record<string, any> }>;
+            }>(result);
+            const events = Array.isArray(structured?.events) ? structured!.events : [];
+            if (events.length > 0) {
+                hasRealData = true;
+                const adverseKeywords = ['bankruptcy', 'default', 'legal', 'regulatory', 'restructuring'];
+                const adverseCount = events.filter((eventRow) => {
+                    const category = String(eventRow?.properties?.category?.value || '').toLowerCase();
+                    return adverseKeywords.some((keyword) => category.includes(keyword));
+                }).length;
+                score = clampScore(28 + Math.min(35, adverseCount * 8) + Math.min(20, events.length));
+                metrics.push({ label: 'Events (25)', value: `${events.length}` });
+                metrics.push({ label: 'Adverse events', value: `${adverseCount}` });
+                evidence.push('Computed from elemental_get_events MCP feed');
+            }
+        } catch (error) {
+            console.warn('[news pressure] elemental_get_events fallback failed', error);
+        }
     }
 
     const result: NewsResult = {

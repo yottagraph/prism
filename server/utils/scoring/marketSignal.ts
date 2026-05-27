@@ -1,7 +1,8 @@
 import type { H3Event } from 'h3';
 
 import { makeCacheKey, readScoringCache, writeScoringCache } from './cache';
-import { extractNumeric, getPropertyValues, getSchema, normalizePidMap } from './elemental';
+import { callMcpTool, extractMcpStructuredContent } from './mcpGateway';
+import { extractNumeric, getEntityName, getPropertyValues, getSchema, normalizePidMap } from './elemental';
 import { clampScore } from './hash';
 
 interface MarketResult {
@@ -70,6 +71,63 @@ export async function computeMarketSignalScore(
         }
     } catch (error) {
         console.warn('[market signal] failed', error);
+    }
+
+    if (!hasRealData) {
+        try {
+            const companyName = await getEntityName(neid, event);
+            const result = await callMcpTool(
+                'stocks',
+                'get_daily_stock_prices',
+                {
+                    company_name: companyName,
+                    lookback_days: 45,
+                },
+                event
+            );
+            const structured = extractMcpStructuredContent<{
+                found?: boolean;
+                ticker_info?: { ticker?: string };
+                prices?: Array<{ close?: number }>;
+            }>(result);
+            const prices = Array.isArray(structured?.prices) ? structured!.prices : [];
+            const closes = prices
+                .map((row) => row?.close)
+                .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+
+            if ((structured?.found ?? false) && closes.length >= 5) {
+                const first = closes[0];
+                const last = closes[closes.length - 1];
+                const returnPct = first ? ((last - first) / first) * 100 : 0;
+                const dayReturns: number[] = [];
+                for (let i = 1; i < closes.length; i++) {
+                    const prev = closes[i - 1];
+                    if (!prev) continue;
+                    dayReturns.push((closes[i] - prev) / prev);
+                }
+                const mean =
+                    dayReturns.length > 0
+                        ? dayReturns.reduce((sum, value) => sum + value, 0) / dayReturns.length
+                        : 0;
+                const variance =
+                    dayReturns.length > 0
+                        ? dayReturns.reduce((sum, value) => sum + (value - mean) ** 2, 0) /
+                          dayReturns.length
+                        : 0;
+                const annualizedVolPct = Math.sqrt(variance) * Math.sqrt(252) * 100;
+
+                hasRealData = true;
+                score = clampScore(35 + Math.max(0, -returnPct) * 1.4 + Math.max(0, annualizedVolPct - 22));
+                metrics.push({ label: '30-45d return', value: `${returnPct.toFixed(1)}%` });
+                metrics.push({ label: 'Annualized vol', value: `${annualizedVolPct.toFixed(1)}%` });
+                if (structured?.ticker_info?.ticker) {
+                    metrics.push({ label: 'Ticker', value: structured.ticker_info.ticker });
+                }
+                evidence.push('Computed from stocks MCP daily price history');
+            }
+        } catch (error) {
+            console.warn('[market signal] stocks MCP fallback failed', error);
+        }
     }
 
     const result: MarketResult = {

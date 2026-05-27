@@ -163,13 +163,17 @@ export async function findEntities(
     event?: H3Event
 ): Promise<string[]> {
     recordElementalCall(event, 'elemental/find', 'POST', { limit });
+    const form = new URLSearchParams();
+    form.set('expression', JSON.stringify(expression));
+    form.set('limit', String(limit));
+    const { qsApiKey } = getGatewayConfig();
     const res = await $fetch<any>(buildUrl('elemental/find'), {
         method: 'POST',
-        headers: headers(),
-        body: {
-            expression: JSON.stringify(expression),
-            limit: String(limit),
+        headers: {
+            ...(qsApiKey ? { 'X-Api-Key': qsApiKey } : {}),
+            'Content-Type': 'application/x-www-form-urlencoded',
         },
+        body: form.toString(),
     });
     return (res?.eids ?? []) as string[];
 }
