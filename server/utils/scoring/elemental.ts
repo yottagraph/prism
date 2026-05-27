@@ -185,14 +185,18 @@ export async function getPropertyValues(
         pids: pids.length,
         includeAttributes,
     });
+    const form = new URLSearchParams();
+    form.set('eids', JSON.stringify(eids));
+    form.set('pids', JSON.stringify(pids));
+    form.set('include_attributes', String(includeAttributes));
+    const { qsApiKey } = getGatewayConfig();
     const res = await $fetch<any>(buildUrl('elemental/entities/properties'), {
         method: 'POST',
-        headers: headers(),
-        body: {
-            eids: JSON.stringify(eids),
-            pids: JSON.stringify(pids),
-            include_attributes: String(includeAttributes),
+        headers: {
+            ...(qsApiKey ? { 'X-Api-Key': qsApiKey } : {}),
+            'Content-Type': 'application/x-www-form-urlencoded',
         },
+        body: form.toString(),
     });
     return (res?.values ?? []) as ElementalPropertyValue[];
 }
