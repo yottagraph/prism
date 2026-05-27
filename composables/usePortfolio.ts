@@ -212,6 +212,8 @@ function defaultPortfolios(): PortfolioDoc[] {
 const prefs = ref<ReturnType<typeof useAppFeaturePrefs<PortfolioPrefsShape>> | null>(null);
 const scanning = ref(false);
 const scanProgress = ref<{ done: number; total: number }>({ done: 0, total: 0 });
+const scanStatusMessage = ref('Idle');
+const scanStatusHistory = ref<Array<{ at: number; phase: string; message: string }>>([]);
 const lastScanError = ref<string | null>(null);
 const lastScanCoverage = ref<{ sec: number; news: number; stock: number; poly: number }>({
     sec: 0,
@@ -223,6 +225,17 @@ const lastScanCoverage = ref<{ sec: number; news: number; stock: number; poly: n
 interface AgentStreamEvent {
     event: string;
     data: any;
+}
+
+function pushScanStatus(message: string, phase = 'info') {
+    scanStatusHistory.value.push({
+        at: Date.now(),
+        phase,
+        message,
+    });
+    if (scanStatusHistory.value.length > 80) {
+        scanStatusHistory.value = scanStatusHistory.value.slice(-80);
+    }
 }
 
 function ensurePrefs() {
@@ -341,6 +354,9 @@ export function usePortfolio() {
         if (idx < 0) return;
         scanning.value = true;
         lastScanError.value = null;
+        scanStatusMessage.value = 'Starting scan…';
+        scanStatusHistory.value = [];
+        pushScanStatus('Starting scan', 'init');
         const ents = p.portfolios[idx].entities;
         scanProgress.value = { done: 0, total: ents.length };
 
@@ -363,6 +379,8 @@ export function usePortfolio() {
             if (!response.ok || !response.body) {
                 throw new Error(`Scan request failed (${response.status})`);
             }
+            scanStatusMessage.value = 'Connected, waiting for server updates…';
+            pushScanStatus(scanStatusMessage.value, 'init');
 
             for await (const { event, data } of readScanSSE(response)) {
                 if (event === 'entity') {
@@ -374,11 +392,23 @@ export function usePortfolio() {
                     current.resolutionError = payload.entity.resolutionError;
                     current.scores = payload.entity.scores;
                     p.portfolios[idx].entities = [...ents];
+                    if (payload.entity.resolutionError) {
+                        scanStatusMessage.value = `Issue loading ${payload.entity.inputName}: ${payload.entity.resolutionError}`;
+                        pushScanStatus(scanStatusMessage.value, 'warning');
+                    } else if (payload.entity.scores) {
+                        scanStatusMessage.value = `Loaded ${payload.entity.resolvedName} (${payload.entity.scores.fused})`;
+                    }
                 } else if (event === 'progress') {
                     scanProgress.value = {
                         done: data?.done ?? scanProgress.value.done,
                         total: data?.total ?? scanProgress.value.total,
                     };
+                    scanStatusMessage.value = `Scanning ${scanProgress.value.done}/${scanProgress.value.total} entities…`;
+                } else if (event === 'status') {
+                    if (typeof data?.message === 'string' && data.message.trim()) {
+                        scanStatusMessage.value = data.message;
+                        pushScanStatus(scanStatusMessage.value, data?.phase || 'status');
+                    }
                 } else if (event === 'done') {
                     if (data?.coverage) {
                         lastScanCoverage.value = data.coverage;
@@ -387,6 +417,7 @@ export function usePortfolio() {
                         console.info('[scan diagnostics]', data.diagnostics);
                     }
                     const entitiesOut = Array.isArray(data?.entities) ? data.entities : [];
+                    const failedNames: string[] = [];
                     entitiesOut.forEach((entityOut: any, entityIndex: number) => {
                         const current = ents[entityIndex];
                         if (!current) return;
@@ -394,14 +425,31 @@ export function usePortfolio() {
                         current.resolvedName = entityOut.resolvedName || current.resolvedName;
                         current.resolutionError = entityOut.resolutionError;
                         current.scores = entityOut.scores ?? current.scores;
+                        if (entityOut.resolutionError) {
+                            failedNames.push(entityOut.resolvedName || entityOut.inputName || `row ${entityIndex + 1}`);
+                        }
                     });
                     p.portfolios[idx].entities = [...ents];
+                    if (failedNames.length > 0) {
+                        const preview = failedNames.slice(0, 3).join(', ');
+                        lastScanError.value =
+                            failedNames.length > 3
+                                ? `${failedNames.length} entities failed to fully load (e.g. ${preview}).`
+                                : `${failedNames.length} entities failed to fully load: ${preview}.`;
+                        pushScanStatus(lastScanError.value, 'warning');
+                    }
+                    if (!lastScanError.value) {
+                        scanStatusMessage.value = 'Scan complete.';
+                        pushScanStatus(scanStatusMessage.value, 'complete');
+                    }
                 } else if (event === 'error') {
                     throw new Error(data?.message || 'Scan pipeline failed');
                 }
             }
         } catch (e: any) {
             lastScanError.value = e?.message || 'Scan failed';
+            scanStatusMessage.value = `Scan failed: ${lastScanError.value}`;
+            pushScanStatus(scanStatusMessage.value, 'error');
             // Best-effort resolution without local placeholder scoring when scan API is unavailable.
             for (const entity of ents) {
                 if (entity.neid && entity.scores && !opts.force) {
@@ -428,6 +476,9 @@ export function usePortfolio() {
             p.portfolios[idx].entities = [...ents];
         } finally {
             scanning.value = false;
+            if (!lastScanError.value && scanStatusMessage.value === 'Idle') {
+                scanStatusMessage.value = 'Scan complete.';
+            }
         }
     }
 
@@ -437,6 +488,8 @@ export function usePortfolio() {
         weights,
         scanning: computed(() => scanning.value),
         scanProgress: computed(() => scanProgress.value),
+        scanStatusMessage: computed(() => scanStatusMessage.value),
+        scanStatusHistory: computed(() => scanStatusHistory.value),
         lastScanError: computed(() => lastScanError.value),
         lastScanCoverage: computed(() => lastScanCoverage.value),
         setActivePortfolio,

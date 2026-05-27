@@ -170,6 +170,10 @@ export default defineEventHandler(async (event) => {
                 let done = 0;
                 const output: any[] = Array.from({ length: total }).map(() => null);
                 const coverage = { sec: 0, news: 0, stock: 0, poly: 0 };
+                emit('status', {
+                    phase: 'init',
+                    message: `Initializing scan for ${total} entities`,
+                });
                 const diagnostics: ScanDiagnostics | null = diagnosticsEnabled
                     ? {
                           traceId: makeTraceId(),
@@ -200,6 +204,10 @@ export default defineEventHandler(async (event) => {
                     entities,
                     diagnostics || undefined
                 );
+                emit('status', {
+                    phase: 'resolution',
+                    message: `Resolved ${diagnostics?.resolution.resolvedViaBatch ?? 0}/${total} entities in batch lookup`,
+                });
 
                 let cursor = 0;
                 const workers = Math.min(8, Math.max(1, total));
@@ -244,6 +252,10 @@ export default defineEventHandler(async (event) => {
                                     },
                                 };
                                 if (resolved.neid) {
+                                    emit('status', {
+                                        phase: 'scoring',
+                                        message: `Scoring ${resolved.resolvedName}`,
+                                    });
                                     pushActivity({
                                         portfolioId: body.portfolioId,
                                         step: 'history',
@@ -290,21 +302,36 @@ export default defineEventHandler(async (event) => {
                             } finally {
                                 done += 1;
                                 emit('progress', { done, total });
+                                if (done === total || done % 5 === 0) {
+                                    emit('status', {
+                                        phase: 'progress',
+                                        message: `Processed ${done}/${total} entities`,
+                                    });
+                                }
                             }
                         }
                     })
                 );
 
                 writeCoverage(body.portfolioId, coverage);
+                const failedEntities = output.filter((entity) => entity?.resolutionError).length;
                 pushActivity({
                     portfolioId: body.portfolioId,
                     step: 'composition',
                     entity: body.portfolioId,
                     detail: `Scan complete (${done}/${total})`,
                 });
+                emit('status', {
+                    phase: 'complete',
+                    message:
+                        failedEntities > 0
+                            ? `Scan complete with ${failedEntities} unresolved/scoring issues`
+                            : `Scan complete (${done}/${total})`,
+                });
                 emit('done', {
                     entities: output,
                     coverage,
+                    failedEntities,
                     ...(diagnostics
                         ? { diagnostics: summarizeDiagnostics(diagnostics, total, done) }
                         : {}),
@@ -316,6 +343,7 @@ export default defineEventHandler(async (event) => {
                     );
                 }
             } catch (error: any) {
+                emit('status', { phase: 'error', message: error?.message || 'Scan failed' });
                 emit('error', { message: error?.message || 'Scan failed' });
             } finally {
                 controller.close();

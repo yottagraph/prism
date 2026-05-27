@@ -56,7 +56,9 @@ export function useServerStatus() {
             }
 
             server.address = baseURL;
-            console.log('[ServerStatus] Checking query server at:', baseURL);
+            if (process.env.NODE_ENV !== 'production') {
+                console.log('[ServerStatus] Checking query server at:', baseURL);
+            }
 
             await $fetch(statusPath, {
                 baseURL,
@@ -68,7 +70,9 @@ export function useServerStatus() {
             server.error = undefined;
             server.lastChecked = new Date();
         } catch (error) {
-            console.warn('[ServerStatus] Query server check failed:', error);
+            if (process.env.NODE_ENV !== 'production') {
+                console.warn('[ServerStatus] Query server check failed:', error);
+            }
             server.status = 'unavailable';
             server.error = error instanceof Error ? error.message : 'Unknown error';
             server.lastChecked = new Date();

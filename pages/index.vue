@@ -37,8 +37,16 @@
                 <span v-if="active" class="text-caption text-medium-emphasis mr-3">
                     <strong>{{ active.entities.length }}</strong> entities
                 </span>
-                <span v-if="scanning" class="text-caption text-medium-emphasis">
-                    Scanning {{ scanProgress.done }}/{{ scanProgress.total }}…
+                <span v-if="scanning" class="d-inline-flex align-center text-caption text-medium-emphasis">
+                    <v-progress-circular
+                        size="14"
+                        width="2"
+                        indeterminate
+                        color="primary"
+                        class="mr-2"
+                    />
+                    {{ scanStatusMessage }}
+                    <span class="ml-1">({{ scanProgress.done }}/{{ scanProgress.total }})</span>
                 </span>
                 <span v-else-if="allResolved" class="text-caption text-success">
                     <v-icon size="x-small" class="mr-1">mdi-check-circle</v-icon>
@@ -64,6 +72,43 @@
             >
                 Scan completed with errors: {{ lastScanError }}
             </v-alert>
+
+            <v-expansion-panels v-if="recentScanStatus.length" variant="accordion" class="mb-3">
+                <v-expansion-panel>
+                    <v-expansion-panel-title>
+                        <div class="d-flex align-center" style="width: 100%">
+                            <v-icon size="small" class="mr-2">mdi-text-box-search-outline</v-icon>
+                            <span class="text-subtitle-2">Scan details</span>
+                            <v-spacer />
+                            <span class="text-caption text-medium-emphasis">
+                                {{ recentScanStatus.length }} latest updates
+                            </span>
+                        </div>
+                    </v-expansion-panel-title>
+                    <v-expansion-panel-text>
+                        <div class="scan-status-list">
+                            <div
+                                v-for="(item, idx) in recentScanStatus"
+                                :key="`${item.at}-${idx}`"
+                                class="scan-status-row"
+                            >
+                                <span class="font-mono text-caption text-medium-emphasis">
+                                    {{ new Date(item.at).toLocaleTimeString() }}
+                                </span>
+                                <v-chip
+                                    size="x-small"
+                                    variant="tonal"
+                                    :color="item.phase === 'error' ? 'error' : item.phase === 'warning' ? 'warning' : 'info'"
+                                    label
+                                >
+                                    {{ item.phase }}
+                                </v-chip>
+                                <span class="text-body-2">{{ item.message }}</span>
+                            </div>
+                        </div>
+                    </v-expansion-panel-text>
+                </v-expansion-panel>
+            </v-expansion-panels>
 
             <SourceFusionBar
                 :total="active?.entities.length ?? 0"
@@ -169,6 +214,8 @@
         scanPortfolio,
         scanning,
         scanProgress,
+        scanStatusMessage,
+        scanStatusHistory,
         lastScanError: scanError,
         lastScanCoverage,
         createPortfolio,
@@ -230,6 +277,8 @@
             poly: scored > 0 ? active.value.entities.length : 0,
         };
     });
+
+    const recentScanStatus = computed(() => scanStatusHistory.value.slice(-10).reverse());
 
     const { signals: macroSignals } = useMacroContext();
     const { signals: fredMacroSignals } = useFredMacroContext();
@@ -309,5 +358,24 @@
 
     .portfolio-title-select :deep(.v-field__outline) {
         display: none;
+    }
+
+    .scan-status-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .scan-status-row {
+        display: grid;
+        grid-template-columns: 92px 86px 1fr;
+        gap: 10px;
+        align-items: center;
+        padding: 4px 0;
+        border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+    }
+
+    .font-mono {
+        font-family: var(--font-mono, ui-monospace, monospace);
     }
 </style>
