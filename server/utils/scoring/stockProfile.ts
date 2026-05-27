@@ -12,14 +12,18 @@ import {
     type ElementalPropertyFact,
 } from './elemental';
 import {
+    anomalyScore,
     annualisedVol,
     atr,
     bollinger,
+    classifyAnomalyType,
+    dailyReturns,
     ema,
     fiftyTwoWeekHighLow,
     goldenDeathCross,
     macd,
     roc,
+    rollingZscore,
     rsi,
     sma,
     trendSignal,
@@ -71,6 +75,35 @@ export interface StockEntityProfile {
             daysSinceLow: number;
         } | null;
         trend: 'bullish' | 'bearish' | 'neutral' | null;
+        latestAnomaly: {
+            returnZscore: number | null;
+            volumeZscore: number | null;
+            volatilityZscore: number | null;
+            anomalyScore: number | null;
+            anomalyType:
+                | 'price_spike_up'
+                | 'price_spike_down'
+                | 'volume_surge'
+                | 'high_volatility'
+                | 'multi_signal'
+                | null;
+        } | null;
+        recentAnomalies: Array<{
+            priceDate: string;
+            closePrice: number;
+            dailyReturn: number | null;
+            returnZscore: number | null;
+            volumeZscore: number | null;
+            volatilityZscore: number | null;
+            anomalyScore: number;
+            anomalyType:
+                | 'price_spike_up'
+                | 'price_spike_down'
+                | 'volume_surge'
+                | 'high_volatility'
+                | 'multi_signal'
+                | null;
+        }>;
         narrative: string[];
     };
     fundamentals: {
@@ -189,6 +222,13 @@ function firstPid(pidMap: Record<string, string>, ...candidates: string[]): stri
     return undefined;
 }
 
+function stdDev(values: number[]): number {
+    if (values.length < 2) return 0;
+    const avg = values.reduce((sum, value) => sum + value, 0) / values.length;
+    const variance = values.reduce((sum, value) => sum + (value - avg) ** 2, 0) / values.length;
+    return Math.sqrt(variance);
+}
+
 interface OhlcvRow {
     date: string;
     close: number;
@@ -279,7 +319,7 @@ export async function getStockEntityProfile(
     neid: string,
     nameHint?: string
 ): Promise<StockEntityProfile> {
-    const cacheKey = makeCacheKey(portfolioId, neid, 'stock-profile-v3');
+    const cacheKey = makeCacheKey(portfolioId, neid, 'stock-profile-v4');
     const cached = await readScoringCache<StockEntityProfile>(event, cacheKey);
     if (cached) return cached;
 
@@ -736,6 +776,52 @@ export async function getStockEntityProfile(
         rsi14,
         macd: macdLatest,
     });
+    const returnsSeries = dailyReturns(fullCloses);
+    const volatilitySeries: Array<number | null> = new Array(fullCloses.length).fill(null);
+    for (let i = 0; i < fullCloses.length; i++) {
+        if (i < 20) continue;
+        const window = returnsSeries.slice(i - 19, i + 1).filter((v): v is number => v != null);
+        if (window.length < 20) continue;
+        volatilitySeries[i] = window.length > 1 ? Math.sqrt(252) * stdDev(window) : null;
+    }
+    const volumeSeries = (fullSeries.length ? fullSeries : series).map((row) =>
+        typeof row.volume === 'number' && row.volume >= 0 ? row.volume : null
+    );
+    const logVolumeSeries = volumeSeries.map((v) => (v == null ? null : Math.log1p(v)));
+    const returnZscores = rollingZscore(returnsSeries, 252, 20);
+    const volumeZscores = rollingZscore(logVolumeSeries, 252, 20);
+    const volatilityZscores = rollingZscore(volatilitySeries, 252, 20);
+    const anomalyRows = (fullSeries.length ? fullSeries : series).map((row, i) => {
+        const returnZscore = returnZscores[i];
+        const volumeZscore = volumeZscores[i];
+        const volatilityZscore = volatilityZscores[i];
+        const score = anomalyScore(returnZscore, volumeZscore, volatilityZscore);
+        const anomalyType = classifyAnomalyType(returnZscore, volumeZscore, volatilityZscore, 2);
+        return {
+            priceDate: row.date,
+            closePrice: row.close,
+            dailyReturn: returnsSeries[i],
+            returnZscore,
+            volumeZscore,
+            volatilityZscore,
+            anomalyScore: score,
+            anomalyType,
+        };
+    });
+    const latestAnomalyRaw = anomalyRows.length ? anomalyRows[anomalyRows.length - 1] : null;
+    const latestAnomaly = latestAnomalyRaw
+        ? {
+              returnZscore: latestAnomalyRaw.returnZscore,
+              volumeZscore: latestAnomalyRaw.volumeZscore,
+              volatilityZscore: latestAnomalyRaw.volatilityZscore,
+              anomalyScore: latestAnomalyRaw.anomalyScore,
+              anomalyType: latestAnomalyRaw.anomalyType,
+          }
+        : null;
+    const recentAnomalies = anomalyRows
+        .slice(-20)
+        .filter((row) => row.anomalyScore >= 50)
+        .sort((a, b) => b.anomalyScore - a.anomalyScore);
 
     const sharesOutstanding = fundamentalMetrics.sharesOutstanding;
     const epsForPe = fundamentalMetrics.epsDiluted ?? fundamentalMetrics.epsBasic;
@@ -899,6 +985,8 @@ export async function getStockEntityProfile(
             volumeRatio20d,
             fiftyTwoWeek,
             trend,
+            latestAnomaly,
+            recentAnomalies,
             narrative,
         },
         fundamentals: {

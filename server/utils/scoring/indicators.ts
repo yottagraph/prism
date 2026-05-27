@@ -28,6 +28,12 @@ export interface FiftyTwoWeekRange {
 }
 
 export type TrendSignal = 'bullish' | 'bearish' | 'neutral';
+export type AnomalyType =
+    | 'price_spike_up'
+    | 'price_spike_down'
+    | 'volume_surge'
+    | 'high_volatility'
+    | 'multi_signal';
 
 function isFiniteNumber(value: unknown): value is number {
     return typeof value === 'number' && Number.isFinite(value);
@@ -49,6 +55,15 @@ function stdDev(values: number[]): number {
     const m = mean(values);
     const variance = values.reduce((sum, v) => sum + (v - m) ** 2, 0) / values.length;
     return Math.sqrt(variance);
+}
+
+function zscoreToScore(z: number): number {
+    if (!Number.isFinite(z)) return 0;
+    const zAbs = Math.abs(z);
+    if (zAbs < 1) return zAbs * 25;
+    if (zAbs < 2) return 25 + (zAbs - 1) * 25;
+    if (zAbs < 3) return 50 + (zAbs - 2) * 25;
+    return Math.min(100, 75 + (zAbs - 3) * 25);
 }
 
 export function sma(closes: number[], period: number): number | null {
@@ -184,6 +199,73 @@ export function annualisedVol(closes: number[], period = 20): number | null {
     }
     if (returns.length < 2) return null;
     return stdDev(returns) * Math.sqrt(252) * 100;
+}
+
+export function dailyReturns(closes: number[]): Array<number | null> {
+    const out: Array<number | null> = new Array(closes.length).fill(null);
+    for (let i = 1; i < closes.length; i++) {
+        const prev = closes[i - 1];
+        const curr = closes[i];
+        if (!isFiniteNumber(prev) || !isFiniteNumber(curr) || prev === 0) continue;
+        out[i] = ((curr - prev) / prev) * 100;
+    }
+    return out;
+}
+
+export function rollingZscore(
+    values: Array<number | null>,
+    lookback = 252,
+    minPeriods = 20
+): Array<number | null> {
+    const out: Array<number | null> = new Array(values.length).fill(null);
+    for (let i = 0; i < values.length; i++) {
+        const current = values[i];
+        if (!isFiniteNumber(current)) continue;
+        const start = Math.max(0, i - lookback + 1);
+        const window: number[] = [];
+        for (let j = start; j <= i; j++) {
+            const point = values[j];
+            if (isFiniteNumber(point)) window.push(point);
+        }
+        if (window.length < minPeriods) continue;
+        const sigma = stdDev(window);
+        if (!sigma) continue;
+        const m = mean(window);
+        out[i] = (current - m) / sigma;
+    }
+    return out;
+}
+
+export function anomalyScore(
+    returnZ: number | null,
+    volumeZ: number | null,
+    volatilityZ: number | null
+): number {
+    const returnScore = zscoreToScore(returnZ ?? 0) * 0.4;
+    const volumeScore = zscoreToScore(volumeZ ?? 0) * 0.3;
+    const volatilityScore = zscoreToScore(volatilityZ ?? 0) * 0.3;
+    return returnScore + volumeScore + volatilityScore;
+}
+
+export function classifyAnomalyType(
+    returnZ: number | null,
+    volumeZ: number | null,
+    volatilityZ: number | null,
+    threshold = 2
+): AnomalyType | null {
+    const flags: string[] = [];
+    if (isFiniteNumber(returnZ) && Math.abs(returnZ) > threshold) {
+        flags.push(returnZ > 0 ? 'price_spike_up' : 'price_spike_down');
+    }
+    if (isFiniteNumber(volumeZ) && Math.abs(volumeZ) > threshold) {
+        flags.push('volume_surge');
+    }
+    if (isFiniteNumber(volatilityZ) && volatilityZ > threshold) {
+        flags.push('high_volatility');
+    }
+    if (!flags.length) return null;
+    if (flags.length > 1) return 'multi_signal';
+    return flags[0] as AnomalyType;
 }
 
 export function volumeRatio(rows: OhlcvPoint[], period = 20): number | null {

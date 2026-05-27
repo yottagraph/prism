@@ -19,6 +19,7 @@ export default defineEventHandler(async (event) => {
     if (!entities.length) return [];
     const universe = await buildRelationshipUniverse(event, entities);
     return universe.companies.map((node) => ({
+        neid: node.id.replace(/^co-/, ''),
         name: node.label,
         connectionType: 'subsidiary_of',
         connectedTo: node.connectsTo,

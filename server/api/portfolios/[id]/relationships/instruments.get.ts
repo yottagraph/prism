@@ -19,6 +19,7 @@ export default defineEventHandler(async (event) => {
     if (!entities.length) return [];
     const universe = await buildRelationshipUniverse(event, entities);
     return universe.instruments.map((node) => ({
+        neid: node.id.replace(/^ix-/, ''),
         name: node.label,
         type: 'Credit Facility',
         issuer: node.connectsTo[0] || 'Unknown',

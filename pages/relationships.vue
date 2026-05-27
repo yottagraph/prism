@@ -54,23 +54,42 @@
                 <v-tabs v-model="tab" color="primary" align-tabs="start">
                     <v-tab value="companies">
                         <v-icon size="small" class="mr-2">mdi-domain</v-icon>
-                        Companies ({{ companies.length }})
+                        Companies
+                        <v-chip size="x-small" class="ml-2" variant="outlined">
+                            {{ companies.length }}
+                        </v-chip>
                     </v-tab>
                     <v-tab value="people">
                         <v-icon size="small" class="mr-2">mdi-account</v-icon>
-                        People ({{ people.length }})
+                        People
+                        <v-chip size="x-small" class="ml-2" variant="outlined">
+                            {{ people.length }}
+                        </v-chip>
                     </v-tab>
                     <v-tab value="instruments">
                         <v-icon size="small" class="mr-2">mdi-bank</v-icon>
-                        Instruments ({{ instruments.length }})
+                        Financial Instruments
+                        <v-chip size="x-small" class="ml-2" variant="outlined">
+                            {{ instruments.length }}
+                        </v-chip>
                     </v-tab>
                     <v-tab value="locations">
                         <v-icon size="small" class="mr-2">mdi-map-marker</v-icon>
-                        Locations ({{ locations.length }})
+                        Locations
+                        <v-chip size="x-small" class="ml-2" variant="outlined">
+                            {{ locations.length }}
+                        </v-chip>
+                    </v-tab>
+                    <v-tab value="stocks">
+                        <v-icon size="small" class="mr-2">mdi-chart-line</v-icon>
+                        Stocks
+                        <v-chip size="x-small" class="ml-2" variant="outlined">
+                            {{ stocks?.tickers.length ?? 0 }}
+                        </v-chip>
                     </v-tab>
                 </v-tabs>
                 <v-divider />
-                <div class="px-4 pt-3">
+                <div v-if="tab !== 'stocks'" class="px-4 pt-3">
                     <v-row dense>
                         <v-col cols="12" md="6">
                             <v-text-field
@@ -99,11 +118,18 @@
                         <v-data-table
                             :headers="companyHeaders"
                             :items="filteredCompanies"
+                            :loading="loading"
                             density="comfortable"
                             class="rel-table"
+                            @click:row="onCompanyRowClick"
                         >
                             <template v-slot:item.connectedTo="{ item }">
                                 {{ (item.connectedTo as string[]).join(', ') }}
+                            </template>
+                            <template #no-data>
+                                <div class="text-caption text-medium-emphasis pa-4">
+                                    No related companies found.
+                                </div>
                             </template>
                         </v-data-table>
                     </v-window-item>
@@ -111,6 +137,7 @@
                         <v-data-table
                             :headers="peopleHeaders"
                             :items="filteredPeople"
+                            :loading="loading"
                             density="comfortable"
                             class="rel-table"
                         >
@@ -148,21 +175,35 @@
                                 </v-chip>
                                 <span v-else class="text-caption text-success">Active</span>
                             </template>
+                            <template #no-data>
+                                <div class="text-caption text-medium-emphasis pa-4">
+                                    No related people found.
+                                </div>
+                            </template>
                         </v-data-table>
                     </v-window-item>
                     <v-window-item value="instruments">
                         <v-data-table
                             :headers="instrumentHeaders"
                             :items="filteredInstruments"
+                            :loading="loading"
                             density="comfortable"
                             class="rel-table"
-                        />
+                            @click:row="onInstrumentRowClick"
+                        >
+                            <template #no-data>
+                                <div class="text-caption text-medium-emphasis pa-4">
+                                    No related instruments found.
+                                </div>
+                            </template>
+                        </v-data-table>
                     </v-window-item>
                     <v-window-item value="locations">
                         <v-data-table
                             v-if="locationView === 'table'"
                             :headers="locationHeaders"
                             :items="filteredLocations"
+                            :loading="loading"
                             density="comfortable"
                             class="rel-table"
                         >
@@ -177,6 +218,11 @@
                                 <span class="text-caption text-medium-emphasis ml-2">
                                     {{ (item.entitiesPresent as string[]).join(', ') }}
                                 </span>
+                            </template>
+                            <template #no-data>
+                                <div class="text-caption text-medium-emphasis pa-4">
+                                    No related locations found.
+                                </div>
                             </template>
                         </v-data-table>
                         <v-row v-else dense class="pa-3">
@@ -198,6 +244,14 @@
                             </v-col>
                         </v-row>
                     </v-window-item>
+                    <v-window-item value="stocks">
+                        <StocksAnalyticsTab
+                            :data="stocks"
+                            :loading="loading"
+                            @select-ticker="onSelectTicker"
+                            @select-anomaly="onSelectAnomaly"
+                        />
+                    </v-window-item>
                 </v-window>
             </v-card>
         </div>
@@ -212,7 +266,9 @@
     import type { GraphNode } from '~/composables/useRelationships';
 
     const { activePortfolio: active } = usePortfolio();
-    const { graph, companies, people, instruments, locations, patterns } = useRelationships(active);
+    const { loading, graph, companies, people, instruments, locations, patterns, stocks } =
+        useRelationships(active);
+    const router = useRouter();
 
     const tab = ref('companies');
     const locationView = ref<'table' | 'map'>('table');
@@ -247,6 +303,24 @@
     const selectedNode = ref<GraphNode | null>(null);
     function onSelectNode(n: GraphNode) {
         selectedNode.value = n;
+    }
+
+    function onCompanyRowClick(_: Event, payload: { item: { raw: { neid?: string } } }) {
+        const neid = payload?.item?.raw?.neid;
+        if (neid) void router.push(`/entity/${neid}`);
+    }
+
+    function onInstrumentRowClick(_: Event, payload: { item: { raw: { neid?: string } } }) {
+        const neid = payload?.item?.raw?.neid;
+        if (neid) void router.push(`/entity/${neid}`);
+    }
+
+    function onSelectTicker(item: { neid: string }) {
+        if (item.neid) void router.push(`/entity/${item.neid}`);
+    }
+
+    function onSelectAnomaly(item: { neid: string }) {
+        if (item.neid) void router.push(`/entity/${item.neid}`);
     }
 
     function portfolioName(nodeId: string) {
