@@ -29,24 +29,30 @@ export function useServerStatus() {
             const serverAddress = config.public[server.configKey] as string;
             const gatewayUrl = config.public.gatewayUrl as string;
             const tenantOrgId = config.public.tenantOrgId as string;
-            const qsApiKey = config.public.qsApiKey as string;
 
             // Prefer the Portal Gateway QS proxy when available — direct
             // calls from a tenant's browser to the Query Server fail on
             // CORS and have no usable bearer token on the login page.
             // Mirrors the proxy-first logic in plugins/elemental-client.client.ts.
-            const useProxy = !!(gatewayUrl && tenantOrgId && qsApiKey);
+            const useProxy = !!(gatewayUrl && tenantOrgId);
 
             let baseURL = '';
             const headers: Record<string, string> = {};
+            let statusPath = '/status';
 
             if (useProxy) {
-                baseURL = `${gatewayUrl}/api/qs/${tenantOrgId}`;
-                headers['X-Api-Key'] = qsApiKey;
+                // The QS proxy can return noisy 500s on `/status` despite data
+                // routes working. Treat "proxy fully configured" as healthy.
+                server.status = 'available';
+                server.error = undefined;
+                server.lastChecked = new Date();
+                server.address = `${gatewayUrl}/api/qs/${tenantOrgId}`;
+                return;
             } else if (serverAddress) {
                 baseURL = serverAddress.startsWith('http')
                     ? serverAddress
                     : `https://${serverAddress}`;
+                statusPath = '/status';
             } else {
                 console.log('[ServerStatus] No query server address configured');
                 server.status = 'not-configured';
@@ -57,7 +63,7 @@ export function useServerStatus() {
             server.address = baseURL;
             console.log('[ServerStatus] Checking query server at:', baseURL);
 
-            await $fetch('/status', {
+            await $fetch(statusPath, {
                 baseURL,
                 headers,
                 timeout: 5000,

@@ -150,7 +150,7 @@ export async function ensureBackendProbed(): Promise<void> {
             backend: 'firestore' | 'localfs' | 'none';
         }>('/api/prefs/status');
         _backend.value = status.backend;
-        if (!status.available) {
+        if (!status.available && process.env.NODE_ENV !== 'production') {
             // eslint-disable-next-line no-console
             console.warn(
                 '[prefs] no backend configured — preferences will hold defaults but not persist. ' +

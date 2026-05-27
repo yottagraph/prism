@@ -1,29 +1,10 @@
 export default defineEventHandler(async () => {
-    const { public: config } = useRuntimeConfig();
-    const gatewayUrl = (config as any).gatewayUrl as string;
-    const tenantOrgId = (config as any).tenantOrgId as string;
-    const qsApiKey = (config as any).qsApiKey as string;
-    if (!gatewayUrl || !tenantOrgId || !qsApiKey) {
-        return [];
-    }
-
-    const candidateUrls = [
-        `${gatewayUrl}/api/mcp/${tenantOrgId}/lovelace-fred/macro`,
-        `${gatewayUrl}/api/mcp/${tenantOrgId}/lovelace-fred/context`,
-        `${gatewayUrl}/api/mcp/${tenantOrgId}/lovelace-fred/latest`,
-    ];
-
-    for (const url of candidateUrls) {
-        try {
-            const res = await $fetch<any>(url, {
-                headers: { 'X-Api-Key': qsApiKey },
-            });
-            if (Array.isArray(res) && res.length) return res;
-            if (Array.isArray(res?.signals) && res.signals.length) return res.signals;
-        } catch {
-            // Try next candidate.
-        }
-    }
-
+    // NOTE:
+    // FRED is not exposed as a dedicated MCP server path like
+    // `/api/mcp/{org}/lovelace-fred/*`. Those URLs are invalid and can
+    // silently return HTML from the portal fallback.
+    //
+    // Until a proper Elemental-backed FRED query implementation is wired in
+    // (via Query Server schema/properties), return an explicit empty list.
     return [];
 });
