@@ -1,11 +1,13 @@
 import type { H3Event } from 'h3';
 
 import { resolveRefs } from '../citations';
+import type { ContextPackage } from '../contextPackage';
 import { extractPropertyFacts, getPropertyValues, getSchema, normalizePidMap } from '../elemental';
+import type { ElementalPropertyFact } from '../elemental';
 import type { EvidenceItem } from '../types';
 import type { FhsSignal, FhsTierResult } from './types';
 
-type Fact = ReturnType<typeof extractPropertyFacts>[number];
+type Fact = ElementalPropertyFact;
 
 function asNumber(value: string | number | undefined): number | null {
     if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -47,58 +49,94 @@ export interface Tier1Output extends FhsTierResult {
     leveragePrevious: number | null;
 }
 
-export async function computeTier1Financials(event: H3Event, neid: string): Promise<Tier1Output> {
-    const schema = await getSchema(event);
-    const pid = normalizePidMap(schema);
-    const pids = {
-        assets: pid.total_assets ?? pid.assets ?? pid['us_gaap:assets'],
-        liabilities: pid.total_liabilities ?? pid.liabilities ?? pid['us_gaap:liabilities'],
-        equity:
-            pid.stockholders_equity ??
-            pid.shareholders_equity ??
-            pid.partners_capital ??
-            pid['us_gaap:stockholders_equity'],
-        revenue: pid.total_revenue ?? pid.revenue ?? pid['us_gaap:revenues'],
-        netIncome: pid.net_income ?? pid['us_gaap:net_income_loss'],
-        currentAssets: pid.current_assets ?? pid['us_gaap:assets_current'],
-        currentLiabilities: pid.current_liabilities ?? pid['us_gaap:liabilities_current'],
-        cash:
-            pid.cash_and_cash_equivalents ??
-            pid.cash ??
-            pid['us_gaap:cash_and_cash_equivalents_at_carrying_value'],
-        operatingIncome: pid.operating_income ?? pid['us_gaap:operating_income_loss'],
-        interestExpense: pid.interest_expense ?? pid['us_gaap:interest_expense'],
-        operatingCashFlow:
-            pid.operating_cash_flow ??
-            pid['us_gaap:net_cash_provided_by_used_in_operating_activities'],
-        filingDate: pid.filing_date ?? pid.report_date,
+function resolveFacts(ctx: ContextPackage | null, pid: Record<string, string>) {
+    const PROP_ALIASES: Record<string, string[]> = {
+        assets: ['total_assets', 'assets', 'us_gaap:assets'],
+        liabilities: ['total_liabilities', 'liabilities', 'us_gaap:liabilities'],
+        equity: [
+            'stockholders_equity',
+            'shareholders_equity',
+            'partners_capital',
+            'us_gaap:stockholders_equity',
+        ],
+        revenue: ['total_revenue', 'revenue', 'us_gaap:revenues'],
+        netIncome: ['net_income', 'us_gaap:net_income_loss'],
+        currentAssets: ['current_assets', 'us_gaap:assets_current'],
+        currentLiabilities: ['current_liabilities', 'us_gaap:liabilities_current'],
+        cash: [
+            'cash_and_cash_equivalents',
+            'cash',
+            'us_gaap:cash_and_cash_equivalents_at_carrying_value',
+        ],
+        operatingIncome: ['operating_income', 'us_gaap:operating_income_loss'],
+        interestExpense: ['interest_expense', 'us_gaap:interest_expense'],
+        operatingCashFlow: [
+            'operating_cash_flow',
+            'us_gaap:net_cash_provided_by_used_in_operating_activities',
+        ],
+        filingDate: ['filing_date', 'report_date'],
     };
-    const selectedPids = Object.values(pids).filter((value): value is string => Boolean(value));
-
-    if (!selectedPids.length) {
-        return {
-            tier: 1,
-            tierName: 'Hard Financials',
-            score: null,
-            weight: 0.45,
-            signalCount: 0,
-            hasData: false,
-            metrics: [],
-            findings: [],
-            signals: [],
-            freshestFilingDays: null,
-            leverageLatest: null,
-            leveragePrevious: null,
-        };
+    if (ctx) {
+        const out: Record<string, Fact[]> = {};
+        for (const [key, aliases] of Object.entries(PROP_ALIASES)) {
+            out[key] = [];
+            for (const alias of aliases) {
+                const series = ctx.seriesByPid[alias] ?? ctx.financials[alias];
+                if (series?.length) {
+                    out[key] = series;
+                    break;
+                }
+            }
+        }
+        return out;
     }
+    const pids: Record<string, string | undefined> = {};
+    for (const [key, aliases] of Object.entries(PROP_ALIASES)) {
+        pids[key] = aliases.map((a) => pid[a]).find(Boolean);
+    }
+    return { pids };
+}
 
-    const values = await getPropertyValues([neid], selectedPids, true, event);
-    const facts = Object.fromEntries(
-        Object.entries(pids).map(([key, pidValue]) => [
-            key,
-            pidValue ? extractPropertyFacts(values, pidValue) : [],
-        ])
-    ) as Record<keyof typeof pids, Fact[]>;
+export async function computeTier1Financials(
+    event: H3Event,
+    neid: string,
+    ctx?: ContextPackage
+): Promise<Tier1Output> {
+    const schema = ctx?.schema ?? (await getSchema(event));
+    const pid = ctx?.pidMap ?? normalizePidMap(schema);
+    const resolved = resolveFacts(ctx ?? null, pid);
+
+    let facts: Record<string, Fact[]>;
+
+    if ('pids' in resolved) {
+        const pids = resolved.pids as Record<string, string | undefined>;
+        const selectedPids = Object.values(pids).filter((v): v is string => Boolean(v));
+        if (!selectedPids.length) {
+            return {
+                tier: 1,
+                tierName: 'Hard Financials',
+                score: null,
+                weight: 0.45,
+                signalCount: 0,
+                hasData: false,
+                metrics: [],
+                findings: [],
+                signals: [],
+                freshestFilingDays: null,
+                leverageLatest: null,
+                leveragePrevious: null,
+            };
+        }
+        const values = await getPropertyValues([neid], selectedPids, true, event);
+        facts = Object.fromEntries(
+            Object.entries(pids).map(([key, pidValue]) => [
+                key,
+                pidValue ? extractPropertyFacts(values, pidValue) : [],
+            ])
+        ) as Record<string, Fact[]>;
+    } else {
+        facts = resolved as Record<string, Fact[]>;
+    }
 
     const assets = asNumber(latestFact(facts.assets)?.value);
     const liabilities = asNumber(latestFact(facts.liabilities)?.value);

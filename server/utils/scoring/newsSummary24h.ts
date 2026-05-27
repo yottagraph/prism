@@ -1,6 +1,7 @@
 import type { H3Event } from 'h3';
 
 import { makeCacheKey, readScoringCache, writeScoringCache } from './cache';
+import type { ContextPackage } from './contextPackage';
 import { callMcpTool, extractMcpStructuredContent } from './mcpGateway';
 import type { LensDetail } from './types';
 
@@ -45,7 +46,8 @@ function classifyActivity(
 export async function computeNewsSummary24h(
     event: H3Event,
     portfolioId: string,
-    neid: string
+    neid: string,
+    ctx?: ContextPackage
 ): Promise<NewsSummary24hResult> {
     const cacheKey = makeCacheKey(portfolioId, neid, 'news-24h');
     const cached = await readScoringCache<NewsSummary24hResult>(event, cacheKey);
@@ -61,46 +63,75 @@ export async function computeNewsSummary24h(
     const scores: number[] = [];
 
     try {
-        const relatedResult = await callMcpTool(
-            'elemental',
-            'elemental_get_related',
-            {
-                entity_id: { id_type: 'neid', id: neid },
-                related_flavor: 'article',
-                related_properties: ['headline', 'published_date', 'sentiment', 'source'],
-                direction: 'both',
-                limit: 120,
-            },
-            event
-        );
-        const structured = extractMcpStructuredContent<{
-            relationships?: Array<{ properties?: Record<string, { value?: unknown }> }>;
-        }>(relatedResult);
-        const rows = Array.isArray(structured?.relationships) ? structured.relationships : [];
-        if (rows.length > 0) {
+        interface ArticleRow {
+            publishedDate: string | null;
+            headline: string | null;
+            sentiment: number | null;
+        }
+
+        let articleRows: ArticleRow[] = [];
+
+        if (ctx) {
+            articleRows = ctx.articles.map((a) => ({
+                publishedDate: a.publishedDate,
+                headline: a.headline,
+                sentiment: a.sentiment,
+            }));
+        } else {
+            const relatedResult = await callMcpTool(
+                'elemental',
+                'elemental_get_related',
+                {
+                    entity_id: { id_type: 'neid', id: neid },
+                    related_flavor: 'article',
+                    related_properties: ['headline', 'published_date', 'sentiment', 'source'],
+                    direction: 'both',
+                    limit: 120,
+                },
+                event
+            );
+            const structured = extractMcpStructuredContent<{
+                relationships?: Array<{ properties?: Record<string, { value?: unknown }> }>;
+            }>(relatedResult);
+            const rows = Array.isArray(structured?.relationships) ? structured.relationships : [];
+            articleRows = rows.map((row) => {
+                const sentimentValue = row?.properties?.sentiment?.value;
+                let sentiment: number | null = null;
+                if (typeof sentimentValue === 'number' && Number.isFinite(sentimentValue)) {
+                    sentiment = sentimentValue;
+                } else if (typeof sentimentValue === 'string') {
+                    const p = Number(sentimentValue);
+                    if (Number.isFinite(p)) sentiment = p;
+                }
+                return {
+                    publishedDate: row?.properties?.published_date?.value
+                        ? String(row.properties.published_date.value)
+                        : null,
+                    headline: row?.properties?.headline?.value
+                        ? String(row.properties.headline.value)
+                        : null,
+                    sentiment,
+                };
+            });
+        }
+
+        if (articleRows.length > 0) {
             hasRealData = true;
             const nowMs = Date.now();
             const since24h = nowMs - 24 * 60 * 60 * 1000;
             const since30d = nowMs - 30 * 24 * 60 * 60 * 1000;
             let mentions30d = 0;
-            rows.forEach((row) => {
-                const published = String(row?.properties?.published_date?.value || '');
+            articleRows.forEach((row) => {
+                const published = row.publishedDate ?? '';
                 const ts = Date.parse(published);
                 if (!Number.isFinite(ts)) return;
                 if (ts >= since30d) {
                     mentions30d += 1;
-                    const sentimentValue = row?.properties?.sentiment?.value;
-                    if (typeof sentimentValue === 'number' && Number.isFinite(sentimentValue)) {
-                        scores.push(sentimentValue);
-                    } else if (typeof sentimentValue === 'string') {
-                        const parsed = Number(sentimentValue);
-                        if (Number.isFinite(parsed)) scores.push(parsed);
-                    }
+                    if (row.sentiment != null) scores.push(row.sentiment);
                 }
                 if (ts >= since24h) {
                     mentionCount24h += 1;
-                    const headline = String(row?.properties?.headline?.value || '').trim();
-                    if (headline) headlines.push(headline);
+                    if (row.headline?.trim()) headlines.push(row.headline.trim());
                 }
             });
 

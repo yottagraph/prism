@@ -2,6 +2,7 @@ import type { H3Event } from 'h3';
 
 import { makeCacheKey, readScoringCache, writeScoringCache } from './cache';
 import { resolveRefs } from './citations';
+import type { ContextPackage } from './contextPackage';
 import { callMcpTool, extractMcpStructuredContent } from './mcpGateway';
 import { extractNumeric, getPropertyValues, getSchema, normalizePidMap } from './elemental';
 import { clampScore } from './hash';
@@ -16,7 +17,8 @@ interface NewsResult {
 export async function computeNewsPressureScore(
     event: H3Event,
     portfolioId: string,
-    neid: string
+    neid: string,
+    ctx?: ContextPackage
 ): Promise<NewsResult> {
     const cacheKey = makeCacheKey(portfolioId, neid, 'news');
     const cached = await readScoringCache<NewsResult>(event, cacheKey);

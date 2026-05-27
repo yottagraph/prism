@@ -1,5 +1,12 @@
 import type { ScreeningMatch } from './types';
-import { DEMO_SCREENING_LIST, type ScreeningListEntry } from './screeningLists';
+
+export interface ScreeningListEntry {
+    name: string;
+    aliases?: string[];
+    listSource: 'OFAC_SDN' | 'CSL' | 'UN' | 'PEP' | 'custom';
+    jurisdiction?: string;
+    identifiers?: string[];
+}
 
 function normalize(value: string): string {
     return value
@@ -52,8 +59,9 @@ function riskContribution(
 export function runDirectScreening(
     entityName: string,
     identifiers: string[] = [],
-    screeningList = DEMO_SCREENING_LIST
+    screeningList: ScreeningListEntry[] = []
 ): ScreeningMatch[] {
+    if (!screeningList.length) return [];
     const matches: ScreeningMatch[] = [];
     const normalizedEntity = normalize(entityName);
     for (const entry of screeningList) {
@@ -65,13 +73,13 @@ export function runDirectScreening(
         }, 0);
         const quality = classifyMatch(bestScore);
         if (!quality) continue;
-        const confidence = confidenceFromQuality(quality);
+        const conf = confidenceFromQuality(quality);
         const contribution = riskContribution(quality, entry.listSource);
         matches.push({
             matchedEntity: entry.name,
             listSource: entry.listSource,
             matchQuality: quality,
-            matchConfidence: confidence,
+            matchConfidence: conf,
             matchedIdentifiers: identifiers,
             requiresReview: quality === 'possible',
             riskContribution: contribution,

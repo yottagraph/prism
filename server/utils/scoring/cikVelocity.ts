@@ -1,6 +1,7 @@
 import type { H3Event } from 'h3';
 
 import { makeCacheKey, readScoringCache, writeScoringCache } from './cache';
+import type { ContextEvent, ContextPackage } from './contextPackage';
 import { callMcpTool, extractMcpStructuredContent } from './mcpGateway';
 import type { LensDetail } from './types';
 
@@ -35,7 +36,8 @@ function classifyTrend(qoqPct: number | null, latest: number): CikVelocityResult
 export async function computeCikVelocity(
     event: H3Event,
     portfolioId: string,
-    neid: string
+    neid: string,
+    ctx?: ContextPackage
 ): Promise<CikVelocityResult> {
     const cacheKey = makeCacheKey(portfolioId, neid, 'cik-velocity');
     const cached = await readScoringCache<CikVelocityResult>(event, cacheKey);
@@ -57,26 +59,39 @@ export async function computeCikVelocity(
     };
 
     try {
-        const eventsResult = await callMcpTool(
-            'elemental',
-            'elemental_get_events',
-            {
-                entity_id: { id_type: 'neid', id: neid },
-                limit: 500,
-            },
-            event
-        );
-        const structured = extractMcpStructuredContent<{
-            events?: Array<{ properties?: Record<string, { value?: unknown }> }>;
-        }>(eventsResult);
-        const events = Array.isArray(structured?.events) ? structured.events : [];
-        if (events.length === 0) return empty;
+        let contextEvents: ContextEvent[];
+        if (ctx) {
+            contextEvents = ctx.events;
+        } else {
+            const eventsResult = await callMcpTool(
+                'elemental',
+                'elemental_get_events',
+                { entity_id: { id_type: 'neid', id: neid }, limit: 500 },
+                event
+            );
+            const structured = extractMcpStructuredContent<{
+                events?: Array<{ properties?: Record<string, { value?: unknown }> }>;
+            }>(eventsResult);
+            const rawEvents = Array.isArray(structured?.events) ? structured.events : [];
+            contextEvents = rawEvents.map((row) => ({
+                eventType: '',
+                date: row?.properties?.event_date?.value
+                    ? String(row.properties.event_date.value)
+                    : row?.properties?.date?.value
+                      ? String(row.properties.date.value)
+                      : null,
+                description: null,
+                snippet: null,
+                category: null,
+                ref: null,
+                raw: row as unknown as Record<string, unknown>,
+            }));
+        }
+        if (contextEvents.length === 0) return empty;
 
         const counts = new Map<string, number>();
-        for (const row of events) {
-            const dateValue = String(
-                row?.properties?.event_date?.value ?? row?.properties?.date?.value ?? ''
-            );
+        for (const ev of contextEvents) {
+            const dateValue = ev.date ?? '';
             if (!dateValue) continue;
             const ts = Date.parse(dateValue);
             if (!Number.isFinite(ts)) continue;

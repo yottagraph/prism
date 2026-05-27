@@ -1,6 +1,7 @@
 import type { H3Event } from 'h3';
 
 import { makeCacheKey, readScoringCache, writeScoringCache } from './cache';
+import type { ContextPackage } from './contextPackage';
 import { getEntityName } from './elemental';
 import { callMcpTool, extractMcpStructuredContent } from './mcpGateway';
 import type { LensDetail } from './types';
@@ -77,7 +78,8 @@ async function queryPolymarket(serverEvent: H3Event, entityName: string) {
 export async function computePolymarketOutlook(
     event: H3Event,
     portfolioId: string,
-    neid: string
+    neid: string,
+    _ctx?: ContextPackage
 ): Promise<PolymarketOutlookResult> {
     const cacheKey = makeCacheKey(portfolioId, neid, 'polymarket-outlook');
     const cached = await readScoringCache<PolymarketOutlookResult>(event, cacheKey);

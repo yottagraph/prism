@@ -1,6 +1,7 @@
 import type { H3Event } from 'h3';
 
 import { makeCacheKey, readScoringCache, writeScoringCache } from './cache';
+import type { ContextPackage } from './contextPackage';
 import { callMcpTool, extractMcpStructuredContent } from './mcpGateway';
 import {
     extractNumeric,
@@ -21,7 +22,8 @@ interface MarketResult {
 export async function computeMarketSignalScore(
     event: H3Event,
     portfolioId: string,
-    neid: string
+    neid: string,
+    ctx?: ContextPackage
 ): Promise<MarketResult> {
     const cacheKey = makeCacheKey(portfolioId, neid, 'market');
     const cached = await readScoringCache<MarketResult>(event, cacheKey);

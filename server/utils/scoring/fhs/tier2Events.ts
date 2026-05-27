@@ -1,6 +1,7 @@
 import type { H3Event } from 'h3';
 
 import { resolveRefs } from '../citations';
+import type { ContextEvent, ContextPackage } from '../contextPackage';
 import { callMcpTool, extractMcpStructuredContent } from '../mcpGateway';
 import type { EvidenceItem } from '../types';
 import type { FhsSignal, FhsTierResult } from './types';
@@ -66,65 +67,92 @@ function recencyMultiplier(eventDate: string | undefined, nowMs: number): number
     return 1 - progress * 0.75;
 }
 
+function processEvents(
+    contextEvents: ContextEvent[],
+    nowMs: number,
+    signals: FhsSignal[],
+    refs: string[]
+) {
+    for (const ev of contextEvents) {
+        const eventType = ev.eventType.toUpperCase();
+        const mapped = DISTRESS_EVENT_MAP.find((entry) => eventType.includes(entry.eventType));
+        if (!mapped) continue;
+        const date = ev.date ?? '';
+        const multiplier = recencyMultiplier(date || undefined, nowMs);
+        const score = mapped.baseScore * multiplier;
+        const description = ev.description ?? mapped.signalType;
+        if (ev.ref) refs.push(ev.ref);
+        signals.push({
+            signalType: mapped.signalType,
+            tier: 2,
+            severity: mapped.severity,
+            score,
+            weight: mapped.weight,
+            description,
+            evidence: [],
+        });
+    }
+}
+
 export async function computeTier2Events(
     event: H3Event,
     neid: string,
-    nowMs: number
+    nowMs: number,
+    ctx?: ContextPackage
 ): Promise<FhsTierResult> {
     const metrics: FhsTierResult['metrics'] = [];
     const findings: EvidenceItem[] = [];
     const signals: FhsSignal[] = [];
 
     try {
-        const result = await callMcpTool(
-            'elemental',
-            'elemental_get_events',
-            {
-                entity_id: { id_type: 'neid', id: neid },
-                limit: 100,
-            },
-            event
-        );
-        const structured = extractMcpStructuredContent<{
-            events?: Array<{
-                name?: string;
-                properties?: Record<string, { value?: unknown; ref?: string }>;
-            }>;
-        }>(result);
-        const events = Array.isArray(structured?.events) ? structured.events : [];
-
         const refs: string[] = [];
-        for (const row of events) {
-            const eventType = String(
-                row?.properties?.event_type?.value ??
-                    row?.properties?.category?.value ??
-                    row?.name ??
-                    ''
-            ).toUpperCase();
-            const mapped = DISTRESS_EVENT_MAP.find((entry) => eventType.includes(entry.eventType));
-            if (!mapped) continue;
-            const date = String(
-                row?.properties?.event_date?.value ?? row?.properties?.date?.value ?? ''
+
+        if (ctx) {
+            processEvents(ctx.events, nowMs, signals, refs);
+        } else {
+            const result = await callMcpTool(
+                'elemental',
+                'elemental_get_events',
+                {
+                    entity_id: { id_type: 'neid', id: neid },
+                    limit: 100,
+                },
+                event
             );
-            const multiplier = recencyMultiplier(date || undefined, nowMs);
-            const score = mapped.baseScore * multiplier;
-            const description = String(
-                row?.properties?.description?.value ?? row?.name ?? mapped.signalType
-            );
-            const ref =
-                row?.properties?.description?.ref ||
-                row?.properties?.event_type?.ref ||
-                row?.properties?.date?.ref;
-            if (ref) refs.push(ref);
-            signals.push({
-                signalType: mapped.signalType,
-                tier: 2,
-                severity: mapped.severity,
-                score,
-                weight: mapped.weight,
-                description,
-                evidence: [],
-            });
+            const structured = extractMcpStructuredContent<{
+                events?: Array<{
+                    name?: string;
+                    properties?: Record<string, { value?: unknown; ref?: string }>;
+                }>;
+            }>(result);
+            const rawEvents = Array.isArray(structured?.events) ? structured.events : [];
+            const contextEvents: ContextEvent[] = rawEvents.map((row) => ({
+                eventType: String(
+                    row?.properties?.event_type?.value ??
+                        row?.properties?.category?.value ??
+                        row?.name ??
+                        ''
+                ),
+                date: row?.properties?.event_date?.value
+                    ? String(row.properties.event_date.value)
+                    : row?.properties?.date?.value
+                      ? String(row.properties.date.value)
+                      : null,
+                description: row?.properties?.description?.value
+                    ? String(row.properties.description.value)
+                    : (row?.name ?? null),
+                snippet: null,
+                category: row?.properties?.category?.value
+                    ? String(row.properties.category.value)
+                    : null,
+                ref:
+                    (row?.properties?.description?.ref ||
+                        row?.properties?.event_type?.ref ||
+                        row?.properties?.date?.ref) ??
+                    null,
+                raw: row as unknown as Record<string, unknown>,
+            }));
+            processEvents(contextEvents, nowMs, signals, refs);
         }
 
         const citationMap = await resolveRefs(refs, event);

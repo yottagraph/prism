@@ -1,6 +1,8 @@
 import type { H3Event } from 'h3';
 import type { SourceFusionWeights } from '~/server/utils/scoring/types';
 import { pushActivity } from '~/server/utils/scoring/activity';
+import { isGalaxyEnabled, getPropertyQuadsForEntities } from '~/server/utils/scoring/galaxy';
+import { getSchema, normalizePidMap } from '~/server/utils/scoring/elemental';
 import { scoreEntity } from '~/server/utils/scoring/scoreEntity';
 import { writeCoverage } from '~/server/utils/scoring/state';
 import {
@@ -208,6 +210,81 @@ export default defineEventHandler(async (event) => {
                     phase: 'resolution',
                     message: `Resolved ${diagnostics?.resolution.resolvedViaBatch ?? 0}/${total} entities in batch lookup`,
                 });
+
+                // --- Fast-mode: batch-fetch a few key PIDs across all entities ---
+                const resolvedNeids = entities
+                    .map((e) => {
+                        if (e.neid) return e.neid;
+                        const batch = batchResolutions.get(e.inputName.trim());
+                        return batch?.neid ?? null;
+                    })
+                    .filter((n): n is string => Boolean(n));
+
+                const galaxyAvailable = await isGalaxyEnabled(event);
+                if (galaxyAvailable && resolvedNeids.length > 0) {
+                    try {
+                        const schema = await getSchema(event);
+                        const pidMap = normalizePidMap(schema);
+                        const fastPids: Record<string, string | undefined> = {
+                            liabilities: pidMap.total_liabilities ?? pidMap.liabilities,
+                            equity: pidMap.stockholders_equity ?? pidMap.shareholders_equity,
+                            filingDate: pidMap.filing_date ?? pidMap.report_date,
+                        };
+
+                        const fastResults: Record<
+                            string,
+                            Record<string, string | number | null>
+                        > = {};
+                        const pidEntries = Object.entries(fastPids).filter(
+                            (e): e is [string, string] => Boolean(e[1])
+                        );
+
+                        await Promise.all(
+                            pidEntries.map(async ([label, pid]) => {
+                                try {
+                                    const quads = await getPropertyQuadsForEntities(
+                                        pid,
+                                        resolvedNeids
+                                    );
+                                    for (const q of quads) {
+                                        if (!fastResults[q.source]) fastResults[q.source] = {};
+                                        fastResults[q.source][label] = q.destination;
+                                    }
+                                } catch {
+                                    // Non-critical — full scoring will fill in
+                                }
+                            })
+                        );
+
+                        entities.forEach((entity, idx) => {
+                            const neid =
+                                entity.neid ?? batchResolutions.get(entity.inputName.trim())?.neid;
+                            if (!neid) return;
+                            const fast = fastResults[neid];
+                            const resolvedName =
+                                entity.resolvedName ||
+                                batchResolutions.get(entity.inputName.trim())?.resolvedName ||
+                                entity.inputName;
+                            emit('fast-row', {
+                                index: idx,
+                                neid,
+                                resolvedName,
+                                inputName: entity.inputName,
+                                fast: fast ?? {},
+                            });
+                        });
+
+                        emit('status', {
+                            phase: 'fast-mode',
+                            message: `Fast-mode batch complete for ${resolvedNeids.length} entities`,
+                        });
+                    } catch (err) {
+                        console.warn(
+                            '[scan] fast-mode batch failed, continuing with full scan',
+                            err
+                        );
+                    }
+                }
 
                 let cursor = 0;
                 const workers = Math.min(8, Math.max(1, total));

@@ -411,7 +411,15 @@ export function usePortfolio() {
             pushScanStatus(scanStatusMessage.value, 'init');
 
             for await (const { event, data } of readScanSSE(response)) {
-                if (event === 'entity') {
+                if (event === 'fast-row') {
+                    const idx2 = data?.index;
+                    if (typeof idx2 === 'number' && ents[idx2]) {
+                        const current = ents[idx2];
+                        if (data.neid) current.neid = data.neid;
+                        if (data.resolvedName) current.resolvedName = data.resolvedName;
+                        p.portfolios[idx].entities = [...ents];
+                    }
+                } else if (event === 'entity') {
                     const payload = data as ScanEntityEventPayload;
                     const current = ents[payload.index];
                     if (!current) continue;

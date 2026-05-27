@@ -1,11 +1,13 @@
 import type { H3Event } from 'h3';
 
 import { makeCacheKey, readScoringCache, writeScoringCache } from '../cache';
+import type { ContextPackage } from '../contextPackage';
 import type { LensDetail } from '../types';
 import { computeFhsComposite } from './composite';
 import { computeTier1Financials } from './tier1Financials';
 import { computeTier2Events } from './tier2Events';
 import { computeTier3Behavioral } from './tier3Behavioral';
+import { computeTier4Stakes } from './tier4Stakes';
 import { computeTier5Instruments } from './tier5Instruments';
 
 export interface FhsResult {
@@ -17,27 +19,18 @@ export interface FhsResult {
 export async function computeFhsScore(
     event: H3Event,
     portfolioId: string,
-    neid: string
+    neid: string,
+    ctx?: ContextPackage
 ): Promise<FhsResult> {
     const cacheKey = makeCacheKey(portfolioId, neid, 'fhs');
     const cached = await readScoringCache<FhsResult>(event, cacheKey);
     if (cached) return cached;
 
-    const tier1 = await computeTier1Financials(event, neid);
-    const tier2 = await computeTier2Events(event, neid, Date.now());
-    const tier3 = await computeTier3Behavioral(event, neid);
-    const tier5 = await computeTier5Instruments(event, neid);
-    const tier4 = {
-        tier: 4 as const,
-        tierName: 'Stake Changes',
-        score: null,
-        weight: 0.08,
-        signalCount: 0,
-        hasData: false,
-        metrics: [],
-        findings: [],
-        signals: [],
-    };
+    const tier1 = await computeTier1Financials(event, neid, ctx);
+    const tier2 = await computeTier2Events(event, neid, Date.now(), ctx);
+    const tier3 = await computeTier3Behavioral(event, neid, ctx);
+    const tier5 = await computeTier5Instruments(event, neid, ctx);
+    const tier4 = computeTier4Stakes(ctx);
 
     const composite = computeFhsComposite([tier1, tier2, tier3, tier4, tier5], {
         freshestFilingDays: tier1.freshestFilingDays,

@@ -249,16 +249,25 @@ User Request (load portfolio, click entity, ask question)
 
 The Query Agent produces per-entity scores across an 8-module pipeline, then blends core lenses into a fused monitor score. This fusion is the central analytical narrative of the demo.
 
-| Lens / Module            | Score Range | Primary Signals                                                                      | Elemental Source                        |
-| ------------------------ | ----------- | ------------------------------------------------------------------------------------ | --------------------------------------- |
-| **Solvency (FHS)**       | 0-100       | Multi-tier financial stress model with dynamic redistribution                        | SEC XBRL facts, 8-K events              |
-| **Executive Risk (ERS)** | 0-100       | Governance snapshot, recency-weighted departures, key-person and cumulative patterns | SEC relationships, 8-K Item 5.02 events |
-| **Adversarial Capital**  | 0-100       | Direct screening, ownership-path screening, jurisdiction and FOCI heuristics         | Elemental graph + demo screening list   |
-| **Event Pressure**       | 0-100       | Event type severity, recency decay, 14-day clustering bonus                          | Event layer                             |
-| **News Pressure**        | 0-100       | Sentiment trends, mention velocity, adverse media density                            | News sentiment layer                    |
-| **News 24h Summary**     | n/a         | Deterministic 24h rollup, mention-ratio labels                                       | Related article graph                   |
-| **CIK Velocity**         | n/a         | QoQ filing/event mention momentum and divergence                                     | Filing/event activity                   |
-| **Polymarket Outlook**   | n/a         | Market-linked prediction context for the entity (positive/neutral/negative)          | Polymarket MCP                          |
+**Data Fetch Architecture — ContextPackage + Galaxy:**
+
+All scoring modules now consume a shared `ContextPackage` instead of making independent Elemental API calls. The `ContextPackage` is built once per entity per scan via:
+
+1. **Galaxy path** (when enabled): A single `GET /galaxy/{neid}/quads` call retrieves every quad tuple for the entity. The quads are bucketed by property type into financials, events, officers, directors, instruments, ownership, subsidiaries, and articles. This replaces 8-12 per-module API calls with 1.
+2. **Legacy fallback** (when Galaxy is disabled): Parallel calls to `getPropertyValues`, `elemental_get_related`, and `elemental_get_events` fetch the same data in 4-5 batched requests and populate the same `ContextPackage` structure.
+
+Cross-entity batch fetching uses `GET /galaxy/properties/{pid}/quads?neid=...` to populate fast-mode placeholder rows in the Monitor table before full scoring completes.
+
+| Lens / Module            | Score Range | Primary Signals                                                                                                                                                                                                                                                   | Elemental Source                                               |
+| ------------------------ | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| **Solvency (FHS)**       | 0-100       | Multi-tier financial stress model: Tier 1 (financials), Tier 2 (distress events), Tier 3 (behavioral: filing gap, officer departures, auditor changes, late filings, amendment frequency), Tier 4 (stake changes: 13D/13G activist filings), Tier 5 (instruments) | SEC XBRL facts, 8-K events, 13D/13G                            |
+| **Executive Risk (ERS)** | 0-100       | Governance snapshot, recency-weighted departures, key-person risk, cumulative departure pattern (Signal 6), 8-K Item 5.02 executive events (Signal 8)                                                                                                             | SEC relationships, 8-K Item 5.02 events                        |
+| **Adversarial Capital**  | 0-100       | Direct screening, ownership-path screening, jurisdiction and FOCI heuristics                                                                                                                                                                                      | Elemental graph + Elemental screening list (no synthetic data) |
+| **Event Pressure**       | 0-100       | Event type severity, recency decay, 14-day clustering bonus                                                                                                                                                                                                       | Event layer via ContextPackage                                 |
+| **News Pressure**        | 0-100       | Sentiment trends, mention velocity, adverse media density                                                                                                                                                                                                         | News sentiment layer                                           |
+| **News 24h Summary**     | n/a         | Deterministic 24h rollup, mention-ratio labels                                                                                                                                                                                                                    | Related article graph                                          |
+| **CIK Velocity**         | n/a         | QoQ filing/event mention momentum and divergence                                                                                                                                                                                                                  | Filing/event activity                                          |
+| **Polymarket Outlook**   | n/a         | Market-linked prediction context for the entity (positive/neutral/negative)                                                                                                                                                                                       | Polymarket MCP                                                 |
 
 **Fused Risk Score:**
 

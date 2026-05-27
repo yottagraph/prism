@@ -9,6 +9,7 @@ import {
 } from './fuse';
 import { computeAcsScore } from './acs';
 import { computeCikVelocity } from './cikVelocity';
+import { getContextPackage } from './contextPackage';
 import { computeExecutiveScore } from './executive';
 import { computeEventPressureScore } from './eventPressure';
 import { computeMarketSignalScore } from './marketSignal';
@@ -41,6 +42,8 @@ export async function scoreEntity(
     neid: string,
     weights?: SourceFusionWeights
 ): Promise<ScoreComputationResult> {
+    const ctx = await getContextPackage(event, neid);
+
     const [
         solvency,
         executive,
@@ -52,37 +55,37 @@ export async function scoreEntity(
         news24h,
         polymarket,
     ] = await Promise.all([
-        withTimeout(computeSolvencyScore(event, portfolioId, neid), 8_000, {
+        withTimeout(computeSolvencyScore(event, portfolioId, neid, ctx), 4_000, {
             score: 0,
             hasRealData: false,
             detail: { metrics: [{ label: 'Status', value: 'timeout' }], findings: [] },
         }),
-        withTimeout(computeExecutiveScore(event, portfolioId, neid), 8_000, {
+        withTimeout(computeExecutiveScore(event, portfolioId, neid, ctx), 4_000, {
             score: 0,
             hasRealData: false,
             detail: { metrics: [{ label: 'Status', value: 'timeout' }], findings: [] },
         }),
-        withTimeout(computeNewsPressureScore(event, portfolioId, neid), 6_000, {
+        withTimeout(computeNewsPressureScore(event, portfolioId, neid, ctx), 3_000, {
             score: 0,
             hasRealData: false,
             detail: { metrics: [{ label: 'Status', value: 'timeout' }], findings: [] },
         }),
-        withTimeout(computeMarketSignalScore(event, portfolioId, neid), 6_000, {
+        withTimeout(computeMarketSignalScore(event, portfolioId, neid, ctx), 4_000, {
             score: 0,
             hasRealData: false,
             detail: { metrics: [{ label: 'Status', value: 'timeout' }], findings: [] },
         }),
-        withTimeout(computeAcsScore(event, portfolioId, neid), 8_000, {
+        withTimeout(computeAcsScore(event, portfolioId, neid, ctx), 6_000, {
             score: 0,
             hasRealData: false,
             detail: { metrics: [{ label: 'Status', value: 'timeout' }], findings: [] },
         }),
-        withTimeout(computeEventPressureScore(event, portfolioId, neid), 6_000, {
+        withTimeout(computeEventPressureScore(event, portfolioId, neid, ctx), 3_000, {
             score: 0,
             hasRealData: false,
             detail: { metrics: [{ label: 'Status', value: 'timeout' }], findings: [] },
         }),
-        withTimeout(computeCikVelocity(event, portfolioId, neid), 6_000, {
+        withTimeout(computeCikVelocity(event, portfolioId, neid, ctx), 3_000, {
             trend: null,
             qoqPct: null,
             latestMentions: null,
@@ -96,7 +99,7 @@ export async function scoreEntity(
             hasRealData: false,
             detail: { metrics: [{ label: 'Status', value: 'timeout' }], findings: [] },
         }),
-        withTimeout(computeNewsSummary24h(event, portfolioId, neid), 4_000, {
+        withTimeout(computeNewsSummary24h(event, portfolioId, neid, ctx), 3_000, {
             headlineSummary: null,
             mentionRatioLabel: 'normal',
             mentionRatioToday: null,
@@ -107,7 +110,7 @@ export async function scoreEntity(
             hasRealData: false,
             detail: { metrics: [{ label: 'Status', value: 'timeout' }], findings: [] },
         }),
-        withTimeout(computePolymarketOutlook(event, portfolioId, neid), 4_000, {
+        withTimeout(computePolymarketOutlook(event, portfolioId, neid, ctx), 4_000, {
             outlook: null,
             outlookScore: null,
             marketCount: 0,
