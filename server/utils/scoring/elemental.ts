@@ -1,5 +1,6 @@
 import type { H3Event } from 'h3';
 import { beginElementalLog } from '../elementalLogger';
+import { elementalSemaphore } from './semaphore';
 
 export interface ElementalSearchMatch {
     neid: string;
@@ -123,59 +124,61 @@ async function fetchJsonBig<T = any>(
         log?: FetchJsonBigLog;
     }
 ): Promise<T> {
-    const method = init?.method ?? 'GET';
-    const logCtx = init?.log
-        ? beginElementalLog({
-              surface: 'qs-rest',
-              method,
-              endpoint: init.log.endpoint,
-              caller: init.log.caller,
-              reqBytes: init.body ? init.body.length : 0,
-              reqSummary: init.log.reqSummary,
-              reqBody: init.body,
-          })
-        : null;
-    try {
-        const response = await fetch(url, {
-            method,
-            headers: init?.headers,
-            body: init?.body,
-        });
-        const text = await response.text();
-        if (!response.ok) {
+    return elementalSemaphore.run(async () => {
+        const method = init?.method ?? 'GET';
+        const logCtx = init?.log
+            ? beginElementalLog({
+                  surface: 'qs-rest',
+                  method,
+                  endpoint: init.log.endpoint,
+                  caller: init.log.caller,
+                  reqBytes: init.body ? init.body.length : 0,
+                  reqSummary: init.log.reqSummary,
+                  reqBody: init.body,
+              })
+            : null;
+        try {
+            const response = await fetch(url, {
+                method,
+                headers: init?.headers,
+                body: init?.body,
+            });
+            const text = await response.text();
+            if (!response.ok) {
+                logCtx?.finish({
+                    status: response.status,
+                    ok: false,
+                    resBytes: text.length,
+                    error: text,
+                    resBody: text,
+                });
+                throw createError({
+                    statusCode: response.status,
+                    statusMessage: text || `Elemental request failed (${response.status})`,
+                });
+            }
+            if (!text) {
+                logCtx?.finish({ status: response.status, ok: true, resBytes: 0 });
+                return undefined as unknown as T;
+            }
+            const data = parseBigIntSafe<T>(text);
             logCtx?.finish({
                 status: response.status,
-                ok: false,
+                ok: true,
                 resBytes: text.length,
-                error: text,
+                resSummary: init?.log?.summarizeResponse?.(data),
                 resBody: text,
             });
-            throw createError({
-                statusCode: response.status,
-                statusMessage: text || `Elemental request failed (${response.status})`,
+            return data;
+        } catch (error) {
+            logCtx?.finish({
+                status: (error as any)?.statusCode ?? 0,
+                ok: false,
+                error,
             });
+            throw error;
         }
-        if (!text) {
-            logCtx?.finish({ status: response.status, ok: true, resBytes: 0 });
-            return undefined as unknown as T;
-        }
-        const data = parseBigIntSafe<T>(text);
-        logCtx?.finish({
-            status: response.status,
-            ok: true,
-            resBytes: text.length,
-            resSummary: init?.log?.summarizeResponse?.(data),
-            resBody: text,
-        });
-        return data;
-    } catch (error) {
-        logCtx?.finish({
-            status: (error as any)?.statusCode ?? 0,
-            ok: false,
-            error,
-        });
-        throw error;
-    }
+    });
 }
 
 export async function searchEntitiesByName(

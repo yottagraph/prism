@@ -28,6 +28,7 @@ interface ScanRequest {
 interface ScanDiagnostics {
     traceId: string;
     startedAt: number;
+    totalRequests: number;
     resolution: {
         mode: 'batch' | 'per_entity_fallback';
         queriedNames: number;
@@ -49,6 +50,7 @@ function makeTraceId() {
 
 function summarizeDiagnostics(diag: ScanDiagnostics, total: number, done: number) {
     const finishedAt = Date.now();
+    const totalRequests = Object.values(diag.endpoints).reduce((a, b) => a + b, 0);
     return {
         traceId: diag.traceId,
         startedAt: diag.startedAt,
@@ -56,6 +58,7 @@ function summarizeDiagnostics(diag: ScanDiagnostics, total: number, done: number
         durationMs: finishedAt - diag.startedAt,
         totalEntities: total,
         processedEntities: done,
+        totalRequests,
         resolution: diag.resolution,
         endpointCallCounts: diag.endpoints,
         sampleCalls: diag.calls.slice(0, 40),
@@ -176,23 +179,20 @@ export default defineEventHandler(async (event) => {
                     phase: 'init',
                     message: `Initializing scan for ${total} entities`,
                 });
-                const diagnostics: ScanDiagnostics | null = diagnosticsEnabled
-                    ? {
-                          traceId: makeTraceId(),
-                          startedAt: Date.now(),
-                          resolution: {
-                              mode: 'batch',
-                              queriedNames: 0,
-                              resolvedViaBatch: 0,
-                              resolvedViaFallback: 0,
-                          },
-                          endpoints: {},
-                          calls: [],
-                      }
-                    : null;
-                if (diagnostics) {
-                    (event.context as any).scanDiagnostics = diagnostics;
-                }
+                const diagnostics: ScanDiagnostics = {
+                    traceId: makeTraceId(),
+                    startedAt: Date.now(),
+                    totalRequests: 0,
+                    resolution: {
+                        mode: 'batch',
+                        queriedNames: 0,
+                        resolvedViaBatch: 0,
+                        resolvedViaFallback: 0,
+                    },
+                    endpoints: {},
+                    calls: [],
+                };
+                (event.context as any).scanDiagnostics = diagnostics;
 
                 pushActivity({
                     portfolioId: body.portfolioId,
@@ -201,14 +201,10 @@ export default defineEventHandler(async (event) => {
                     detail: `Scan requested for ${total} entities`,
                 });
 
-                const batchResolutions = await resolveEntitiesBatch(
-                    event,
-                    entities,
-                    diagnostics || undefined
-                );
+                const batchResolutions = await resolveEntitiesBatch(event, entities, diagnostics);
                 emit('status', {
                     phase: 'resolution',
-                    message: `Resolved ${diagnostics?.resolution.resolvedViaBatch ?? 0}/${total} entities in batch lookup`,
+                    message: `Resolved ${diagnostics.resolution.resolvedViaBatch}/${total} entities in batch lookup`,
                 });
 
                 // --- Fast-mode: batch-fetch a few key PIDs across all entities ---
@@ -239,13 +235,12 @@ export default defineEventHandler(async (event) => {
                             (e): e is [string, string] => Boolean(e[1])
                         );
 
-                        await Promise.all(
-                            pidEntries.map(async ([label, pid]) => {
+                        const FAST_BATCH_SIZE = 50;
+                        for (const [label, pid] of pidEntries) {
+                            for (let i = 0; i < resolvedNeids.length; i += FAST_BATCH_SIZE) {
+                                const chunk = resolvedNeids.slice(i, i + FAST_BATCH_SIZE);
                                 try {
-                                    const quads = await getPropertyQuadsForEntities(
-                                        pid,
-                                        resolvedNeids
-                                    );
+                                    const quads = await getPropertyQuadsForEntities(pid, chunk);
                                     for (const q of quads) {
                                         if (!fastResults[q.source]) fastResults[q.source] = {};
                                         fastResults[q.source][label] = q.destination;
@@ -253,8 +248,8 @@ export default defineEventHandler(async (event) => {
                                 } catch {
                                     // Non-critical — full scoring will fill in
                                 }
-                            })
-                        );
+                            }
+                        }
 
                         entities.forEach((entity, idx) => {
                             const neid =
@@ -287,7 +282,7 @@ export default defineEventHandler(async (event) => {
                 }
 
                 let cursor = 0;
-                const workers = Math.min(8, Math.max(1, total));
+                const workers = Math.min(3, Math.max(1, total));
                 await Promise.all(
                     Array.from({ length: workers }, async () => {
                         while (cursor < total) {
@@ -310,8 +305,7 @@ export default defineEventHandler(async (event) => {
                                             resolutionError: batchResolved.resolutionError,
                                         };
                                     } else {
-                                        if (diagnostics)
-                                            diagnostics.resolution.resolvedViaFallback += 1;
+                                        diagnostics.resolution.resolvedViaFallback += 1;
                                         resolved = await resolveEntity(event, entity);
                                     }
                                 }
@@ -415,18 +409,19 @@ export default defineEventHandler(async (event) => {
                             ? `Scan complete with ${failedEntities} unresolved/scoring issues`
                             : `Scan complete (${done}/${total})`,
                 });
+                const summary = summarizeDiagnostics(diagnostics, total, done);
                 emit('done', {
                     entities: output,
                     coverage,
                     failedEntities,
-                    ...(diagnostics
-                        ? { diagnostics: summarizeDiagnostics(diagnostics, total, done) }
-                        : {}),
+                    ...(diagnosticsEnabled ? { diagnostics: summary } : {}),
                 });
-                if (diagnostics) {
-                    console.info(
-                        '[scan diagnostics]',
-                        JSON.stringify(summarizeDiagnostics(diagnostics, total, done))
+                if (diagnosticsEnabled) {
+                    console.info('[scan diagnostics]', JSON.stringify(summary));
+                }
+                if (summary.totalRequests > 1000) {
+                    console.warn(
+                        `[scan] request budget exceeded: ${summary.totalRequests} requests for ${total} entities (threshold: 1000)`
                     );
                 }
             } catch (error: any) {

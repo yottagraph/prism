@@ -1,5 +1,6 @@
 import type { H3Event } from 'h3';
 import { beginElementalLog } from '../elementalLogger';
+import { elementalSemaphore } from './semaphore';
 
 export interface GalaxyQuad {
     source: string;
@@ -64,39 +65,41 @@ async function galaxyFetch<T = any>(
     url: string,
     log: { endpoint: string; caller: string; reqSummary?: Record<string, unknown> }
 ): Promise<T> {
-    const logCtx = beginElementalLog({
-        surface: 'qs-rest',
-        method: 'GET',
-        endpoint: log.endpoint,
-        caller: log.caller,
-        reqSummary: log.reqSummary,
+    return elementalSemaphore.run(async () => {
+        const logCtx = beginElementalLog({
+            surface: 'qs-rest',
+            method: 'GET',
+            endpoint: log.endpoint,
+            caller: log.caller,
+            reqSummary: log.reqSummary,
+        });
+        try {
+            const response = await fetch(url, { headers: authHeaders() });
+            const text = await response.text();
+            if (!response.ok) {
+                logCtx.finish({
+                    status: response.status,
+                    ok: false,
+                    resBytes: text.length,
+                    error: text,
+                });
+                throw createError({
+                    statusCode: response.status,
+                    statusMessage: text || `Galaxy request failed (${response.status})`,
+                });
+            }
+            if (!text) {
+                logCtx.finish({ status: response.status, ok: true, resBytes: 0 });
+                return undefined as unknown as T;
+            }
+            const data = parseBigIntSafe<T>(text);
+            logCtx.finish({ status: response.status, ok: true, resBytes: text.length });
+            return data;
+        } catch (error) {
+            logCtx.finish({ status: (error as any)?.statusCode ?? 0, ok: false, error });
+            throw error;
+        }
     });
-    try {
-        const response = await fetch(url, { headers: authHeaders() });
-        const text = await response.text();
-        if (!response.ok) {
-            logCtx.finish({
-                status: response.status,
-                ok: false,
-                resBytes: text.length,
-                error: text,
-            });
-            throw createError({
-                statusCode: response.status,
-                statusMessage: text || `Galaxy request failed (${response.status})`,
-            });
-        }
-        if (!text) {
-            logCtx.finish({ status: response.status, ok: true, resBytes: 0 });
-            return undefined as unknown as T;
-        }
-        const data = parseBigIntSafe<T>(text);
-        logCtx.finish({ status: response.status, ok: true, resBytes: text.length });
-        return data;
-    } catch (error) {
-        logCtx.finish({ status: (error as any)?.statusCode ?? 0, ok: false, error });
-        throw error;
-    }
 }
 
 let galaxyEnabledCache: { value: boolean; expiresAt: number } | null = null;
