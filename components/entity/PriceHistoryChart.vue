@@ -29,7 +29,15 @@
             <div class="text-body-2">No price samples in this window</div>
         </div>
 
-        <div v-else ref="containerRef" class="chart-wrap" @pointerleave="hoverIdx = null">
+        <div
+            v-else
+            ref="containerRef"
+            class="chart-wrap"
+            @pointerleave="
+                hoverIdx = null;
+                hoverX = null;
+            "
+        >
             <svg
                 :viewBox="`0 0 ${width} ${height}`"
                 :width="width"
@@ -88,6 +96,27 @@
                 <!-- Area fill under the price line -->
                 <path :d="areaPath" :class="['area', isPositive ? 'pos' : 'neg']" />
 
+                <!-- Event overlays -->
+                <g class="event-overlays">
+                    <line
+                        v-for="event in visibleEvents"
+                        :key="`ev-line-${event.id}`"
+                        :x1="event.x"
+                        :y1="padding.top"
+                        :x2="event.x"
+                        :y2="priceArea.bottom"
+                        :class="['event-line', `sev-${event.severity}`]"
+                    />
+                    <circle
+                        v-for="event in visibleEvents"
+                        :key="`ev-dot-${event.id}`"
+                        :cx="event.x"
+                        :cy="padding.top + 6"
+                        r="3"
+                        :class="['event-dot', `sev-${event.severity}`]"
+                    />
+                </g>
+
                 <!-- Price line -->
                 <path :d="linePath" :class="['line', isPositive ? 'pos' : 'neg']" />
 
@@ -124,28 +153,37 @@
                 </g>
             </svg>
 
-            <div
-                v-if="hoverPoint && hoverPoint.tooltipStyle"
-                class="tooltip"
-                :style="hoverPoint.tooltipStyle"
-            >
-                <div class="tt-date">{{ hoverPoint.dateLabel }}</div>
-                <div class="tt-price">{{ formatPrice(hoverPoint.point.close) }}</div>
-                <div v-if="hoverPoint.changeText" :class="['tt-change', hoverPoint.changeClass]">
-                    {{ hoverPoint.changeText }}
-                </div>
-                <div v-if="hoverPoint.point.open != null" class="tt-row">
-                    <span>Open</span><span>{{ formatPrice(hoverPoint.point.open) }}</span>
-                </div>
-                <div v-if="hoverPoint.point.high != null" class="tt-row">
-                    <span>High</span><span>{{ formatPrice(hoverPoint.point.high) }}</span>
-                </div>
-                <div v-if="hoverPoint.point.low != null" class="tt-row">
-                    <span>Low</span><span>{{ formatPrice(hoverPoint.point.low) }}</span>
-                </div>
-                <div v-if="hoverPoint.point.volume != null" class="tt-row">
-                    <span>Vol</span><span>{{ formatVolume(hoverPoint.point.volume) }}</span>
-                </div>
+            <div v-if="activeTooltip" class="tooltip" :style="activeTooltip.tooltipStyle">
+                <template v-if="activeTooltip.kind === 'event'">
+                    <div class="tt-date">{{ activeTooltip.dateLabel }}</div>
+                    <div class="tt-price">{{ activeTooltip.label }}</div>
+                    <div class="tt-row">
+                        <span>Severity</span
+                        ><span class="text-capitalize">{{ activeTooltip.severity }}</span>
+                    </div>
+                </template>
+                <template v-else-if="priceTooltip">
+                    <div class="tt-date">{{ priceTooltip.dateLabel }}</div>
+                    <div class="tt-price">{{ formatPrice(priceTooltip.point.close) }}</div>
+                    <div
+                        v-if="priceTooltip.changeText"
+                        :class="['tt-change', priceTooltip.changeClass]"
+                    >
+                        {{ priceTooltip.changeText }}
+                    </div>
+                    <div v-if="priceTooltip.point.open != null" class="tt-row">
+                        <span>Open</span><span>{{ formatPrice(priceTooltip.point.open) }}</span>
+                    </div>
+                    <div v-if="priceTooltip.point.high != null" class="tt-row">
+                        <span>High</span><span>{{ formatPrice(priceTooltip.point.high) }}</span>
+                    </div>
+                    <div v-if="priceTooltip.point.low != null" class="tt-row">
+                        <span>Low</span><span>{{ formatPrice(priceTooltip.point.low) }}</span>
+                    </div>
+                    <div v-if="priceTooltip.point.volume != null" class="tt-row">
+                        <span>Vol</span><span>{{ formatVolume(priceTooltip.point.volume) }}</span>
+                    </div>
+                </template>
             </div>
         </div>
 
@@ -193,9 +231,17 @@
         volume?: number;
     }
 
+    interface ChartEvent {
+        date: string;
+        label: string;
+        severity?: 'critical' | 'high' | 'medium' | 'low';
+        url?: string;
+    }
+
     const props = defineProps<{
         ticker?: string | null;
         prices: Bar[];
+        events?: ChartEvent[];
     }>();
 
     const periods = [
@@ -209,6 +255,7 @@
 
     const period = ref('3M');
     const hoverIdx = ref<number | null>(null);
+    const hoverX = ref<number | null>(null);
     const containerRef = ref<HTMLElement | null>(null);
 
     // Responsive sizing
@@ -361,13 +408,36 @@
         return xScale.value.ticks(5).map((d) => ({ x: xScale.value(d), label: format(d) }));
     });
 
+    const visibleEvents = computed(() => {
+        if (!props.events?.length || !visiblePoints.value.length) return [];
+        const domain = xScale.value.domain() as [Date, Date];
+        return props.events
+            .map((event, idx) => {
+                const ts = Date.parse(event.date);
+                if (!Number.isFinite(ts)) return null;
+                const dt = new Date(ts);
+                if (dt < domain[0] || dt > domain[1]) return null;
+                return {
+                    id: `${event.date}-${event.label}-${idx}`,
+                    x: xScale.value(dt),
+                    label: event.label,
+                    date: event.date,
+                    severity: event.severity || 'low',
+                    url: event.url,
+                };
+            })
+            .filter((event): event is NonNullable<typeof event> => !!event);
+    });
+
     // Hover handling
     function onPointerMove(event: PointerEvent) {
         const svg = event.currentTarget as SVGSVGElement;
         const rect = svg.getBoundingClientRect();
         const xPx = ((event.clientX - rect.left) / rect.width) * width.value;
+        hoverX.value = xPx;
         if (xPx < padding.left || xPx > width.value - padding.right) {
             hoverIdx.value = null;
+            hoverX.value = null;
             return;
         }
         const targetDate = xScale.value.invert(xPx);
@@ -404,6 +474,44 @@
             transform: `translate(${xPx > cw - 180 ? xPx - 180 : xPx + 12}px, 8px)`,
         };
         return { x, y, point: p, dateLabel, changeText, changeClass, tooltipStyle };
+    });
+
+    const hoveredEvent = computed(() => {
+        if (hoverX.value == null || !visibleEvents.value.length) return null;
+        let winner: (typeof visibleEvents.value)[number] | null = null;
+        let distance = Number.POSITIVE_INFINITY;
+        for (const event of visibleEvents.value) {
+            const d = Math.abs(event.x - hoverX.value);
+            if (d < distance) {
+                winner = event;
+                distance = d;
+            }
+        }
+        if (!winner || distance > 6) return null;
+        const cw = containerRef.value?.clientWidth || width.value;
+        const pxPerUnit = cw / width.value;
+        const xPx = winner.x * pxPerUnit;
+        const tooltipStyle = {
+            transform: `translate(${xPx > cw - 200 ? xPx - 200 : xPx + 12}px, 8px)`,
+        };
+        return {
+            ...winner,
+            kind: 'event' as const,
+            tooltipStyle,
+            dateLabel: new Date(winner.date).toLocaleDateString(undefined, {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+            }),
+        };
+    });
+
+    const priceTooltip = computed(() => hoverPoint.value);
+
+    const activeTooltip = computed(() => {
+        if (hoveredEvent.value) return hoveredEvent.value;
+        if (priceTooltip.value) return { ...priceTooltip.value, kind: 'price' as const };
+        return null;
     });
 
     const firstClose = computed(() => visiblePoints.value[0]?.close ?? null);
@@ -508,6 +616,30 @@
         stroke: rgba(255, 255, 255, 0.4);
         stroke-width: 1;
         stroke-dasharray: 3 3;
+    }
+    .event-line {
+        stroke-width: 1;
+        stroke-dasharray: 2 3;
+        opacity: 0.7;
+    }
+    .event-dot {
+        opacity: 0.95;
+    }
+    .sev-critical {
+        stroke: rgba(244, 67, 54, 0.9);
+        fill: rgba(244, 67, 54, 0.95);
+    }
+    .sev-high {
+        stroke: rgba(255, 152, 0, 0.9);
+        fill: rgba(255, 152, 0, 0.95);
+    }
+    .sev-medium {
+        stroke: rgba(33, 150, 243, 0.9);
+        fill: rgba(33, 150, 243, 0.95);
+    }
+    .sev-low {
+        stroke: rgba(158, 158, 158, 0.85);
+        fill: rgba(158, 158, 158, 0.95);
     }
     .hover-dot {
         stroke: #000;

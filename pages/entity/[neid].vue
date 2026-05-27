@@ -233,6 +233,7 @@
                         :stock="stockData"
                         :loading="stockLoading"
                         :error="stockError"
+                        :events="data?.events || []"
                         @refresh="loadStock(true)"
                     />
                 </v-window-item>

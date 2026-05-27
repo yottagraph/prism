@@ -18,6 +18,64 @@ export interface StockEntityProfileData {
     periodHigh: number | null;
     periodLow: number | null;
     samples: number;
+    analytics: {
+        rsi14: number | null;
+        macd: { macd: number; signal: number; histogram: number } | null;
+        bollinger: { upper: number; middle: number; lower: number; percentB: number } | null;
+        movingAverages: {
+            sma20: number | null;
+            sma50: number | null;
+            sma200: number | null;
+            ema12: number | null;
+            ema26: number | null;
+        };
+        goldenCross: boolean;
+        deathCross: boolean;
+        atr14: number | null;
+        roc10: number | null;
+        annualisedVol20d: number | null;
+        volumeRatio20d: number | null;
+        fiftyTwoWeek: {
+            high: number;
+            low: number;
+            daysSinceHigh: number;
+            daysSinceLow: number;
+        } | null;
+        trend: 'bullish' | 'bearish' | 'neutral' | null;
+        narrative: string[];
+    };
+    fundamentals: {
+        marketCap?: number;
+        peRatio?: number;
+        profitMargin?: number;
+        roe?: number;
+        roa?: number;
+        debtToEquity?: number;
+        dividendYield?: number;
+        payoutRatio?: number;
+        totalRevenue?: number;
+        netIncome?: number;
+        totalAssets?: number;
+        totalLiabilities?: number;
+        shareholdersEquity?: number;
+        sharesOutstanding?: number;
+        publicFloat?: number;
+        employees?: number;
+        longTermDebt?: number;
+        epsBasic?: number;
+        epsDiluted?: number;
+        dividendsCommon?: number;
+        grossProfit?: number;
+        operatingCashFlow?: number;
+        citations: Array<{
+            ref?: string;
+            url?: string;
+            title?: string;
+            source?: string;
+            date?: string;
+            snippet?: string;
+        }>;
+    };
     prices: Array<{
         date: string;
         close: number;

@@ -11,7 +11,22 @@ import {
     searchEntitiesByName,
     type ElementalPropertyFact,
 } from './elemental';
+import {
+    annualisedVol,
+    atr,
+    bollinger,
+    ema,
+    fiftyTwoWeekHighLow,
+    goldenDeathCross,
+    macd,
+    roc,
+    rsi,
+    sma,
+    trendSignal,
+    volumeRatio,
+} from './indicators';
 import { callMcpTool, extractMcpStructuredContent } from './mcpGateway';
+import { buildStockNarrative } from './stockNarrative';
 import type { CitationRef } from './types';
 
 export interface StockEntityProfile {
@@ -32,6 +47,57 @@ export interface StockEntityProfile {
     periodHigh: number | null;
     periodLow: number | null;
     samples: number;
+    analytics: {
+        rsi14: number | null;
+        macd: { macd: number; signal: number; histogram: number } | null;
+        bollinger: { upper: number; middle: number; lower: number; percentB: number } | null;
+        movingAverages: {
+            sma20: number | null;
+            sma50: number | null;
+            sma200: number | null;
+            ema12: number | null;
+            ema26: number | null;
+        };
+        goldenCross: boolean;
+        deathCross: boolean;
+        atr14: number | null;
+        roc10: number | null;
+        annualisedVol20d: number | null;
+        volumeRatio20d: number | null;
+        fiftyTwoWeek: {
+            high: number;
+            low: number;
+            daysSinceHigh: number;
+            daysSinceLow: number;
+        } | null;
+        trend: 'bullish' | 'bearish' | 'neutral' | null;
+        narrative: string[];
+    };
+    fundamentals: {
+        marketCap?: number;
+        peRatio?: number;
+        profitMargin?: number;
+        roe?: number;
+        roa?: number;
+        debtToEquity?: number;
+        dividendYield?: number;
+        payoutRatio?: number;
+        totalRevenue?: number;
+        netIncome?: number;
+        totalAssets?: number;
+        totalLiabilities?: number;
+        shareholdersEquity?: number;
+        sharesOutstanding?: number;
+        publicFloat?: number;
+        employees?: number;
+        longTermDebt?: number;
+        epsBasic?: number;
+        epsDiluted?: number;
+        dividendsCommon?: number;
+        grossProfit?: number;
+        operatingCashFlow?: number;
+        citations: CitationRef[];
+    };
     prices: Array<{
         date: string;
         close: number;
@@ -91,21 +157,6 @@ function rankInstrumentCandidates(items: RelatedInstrument[]): RelatedInstrument
     });
 }
 
-function computeAnnualizedVol(closes: number[]): number | null {
-    if (closes.length < 3) return null;
-    const dailyReturns: number[] = [];
-    for (let i = 1; i < closes.length; i++) {
-        const prev = closes[i - 1];
-        if (!prev || !Number.isFinite(prev)) continue;
-        dailyReturns.push((closes[i] - prev) / prev);
-    }
-    if (dailyReturns.length < 2) return null;
-    const mean = dailyReturns.reduce((sum, value) => sum + value, 0) / dailyReturns.length;
-    const variance =
-        dailyReturns.reduce((sum, value) => sum + (value - mean) ** 2, 0) / dailyReturns.length;
-    return Math.sqrt(variance) * Math.sqrt(252) * 100;
-}
-
 function pickLatestStringFact(facts: ElementalPropertyFact[]): string | null {
     if (!facts.length) return null;
     const sorted = [...facts].sort((a, b) => {
@@ -115,6 +166,27 @@ function pickLatestStringFact(facts: ElementalPropertyFact[]): string | null {
     });
     const v = sorted[0]?.value;
     return typeof v === 'string' && v.trim() ? v.trim() : null;
+}
+
+function pickLatestNumericFact(facts: ElementalPropertyFact[]): number | null {
+    if (!facts.length) return null;
+    const sorted = [...facts].sort((a, b) => {
+        const ad = a.date ? Date.parse(a.date) : 0;
+        const bd = b.date ? Date.parse(b.date) : 0;
+        return bd - ad;
+    });
+    for (const fact of sorted) {
+        const value = typeof fact.value === 'number' ? fact.value : Number(fact.value);
+        if (Number.isFinite(value)) return value;
+    }
+    return null;
+}
+
+function firstPid(pidMap: Record<string, string>, ...candidates: string[]): string | undefined {
+    for (const key of candidates) {
+        if (pidMap[key]) return pidMap[key];
+    }
+    return undefined;
 }
 
 interface OhlcvRow {
@@ -207,7 +279,7 @@ export async function getStockEntityProfile(
     neid: string,
     nameHint?: string
 ): Promise<StockEntityProfile> {
-    const cacheKey = makeCacheKey(portfolioId, neid, 'stock-profile-v2');
+    const cacheKey = makeCacheKey(portfolioId, neid, 'stock-profile-v3');
     const cached = await readScoringCache<StockEntityProfile>(event, cacheKey);
     if (cached) return cached;
 
@@ -326,7 +398,10 @@ export async function getStockEntityProfile(
     let currency: string | null = null;
     let sector: string | null = null;
     let industry: string | null = null;
+    let fullSeries: OhlcvRow[] = [];
     let series: OhlcvRow[] = [];
+    const fundamentalMetrics: Omit<StockEntityProfile['fundamentals'], 'citations'> = {};
+    const fundamentalCitations: CitationRef[] = [];
 
     if (instrumentNeid) {
         try {
@@ -384,8 +459,9 @@ export async function getStockEntityProfile(
                         : [],
                 });
 
-                // Keep up to ~1 year of bars for the panel; the chart can window
-                // down per the user's selected period.
+                fullSeries = ohlcv;
+                // Keep up to ~1 year of bars for the panel; server analytics can
+                // compute over the full history while the UI only renders a window.
                 series = ohlcv.slice(-500);
 
                 const identityCites: Array<CitationRef | null> = [
@@ -458,7 +534,174 @@ export async function getStockEntityProfile(
         }
     }
 
+    // Fetch organization-level EDGAR fundamentals directly from the company NEID.
+    // This complements instrument-level OHLCV and enables FSI-parity fundamentals
+    // without relying on external finance APIs.
+    try {
+        const schema = await getSchema(event);
+        const pid = normalizePidMap(schema);
+        const pidByMetric = {
+            totalRevenue: firstPid(pid, 'total_revenue', 'us_gaap:revenues', 'ifrs:revenue'),
+            netIncome: firstPid(pid, 'net_income', 'us_gaap:net_income_loss', 'ifrs:profit_loss'),
+            totalAssets: firstPid(pid, 'total_assets', 'assets', 'us_gaap:assets', 'ifrs:assets'),
+            totalLiabilities: firstPid(
+                pid,
+                'total_liabilities',
+                'liabilities',
+                'us_gaap:liabilities',
+                'ifrs:liabilities'
+            ),
+            shareholdersEquity: firstPid(
+                pid,
+                'shareholders_equity',
+                'shareholders_equity',
+                'us_gaap:stockholders_equity',
+                'ifrs:equity'
+            ),
+            sharesOutstanding: firstPid(
+                pid,
+                'shares_outstanding',
+                'dei:common_shares_outstanding',
+                'us_gaap:common_shares_outstanding'
+            ),
+            epsBasic: firstPid(pid, 'eps_basic', 'us_gaap:eps_basic_xbrl'),
+            epsDiluted: firstPid(pid, 'eps_diluted', 'us_gaap:eps_diluted_xbrl'),
+            dividendsCommon: firstPid(pid, 'us_gaap:dividends_common'),
+            grossProfit: firstPid(pid, 'us_gaap:gross_profit'),
+            operatingCashFlow: firstPid(
+                pid,
+                'operating_cash_flow',
+                'us_gaap:operating_cash_flow',
+                'ifrs:operating_cash_flow'
+            ),
+            longTermDebt: firstPid(pid, 'long_term_debt', 'us_gaap:long_term_debt', 'total_debt'),
+            publicFloat: firstPid(pid, 'dei:public_float'),
+            employees: firstPid(pid, 'dei:number_of_employees'),
+        } as const;
+
+        const orgPids = Array.from(new Set(Object.values(pidByMetric).filter(Boolean) as string[]));
+        if (orgPids.length > 0) {
+            const orgValues = await getPropertyValues([activeNeid], orgPids, true, event);
+            const metricFacts = {
+                totalRevenue: pidByMetric.totalRevenue
+                    ? extractPropertyFacts(orgValues, pidByMetric.totalRevenue)
+                    : [],
+                netIncome: pidByMetric.netIncome
+                    ? extractPropertyFacts(orgValues, pidByMetric.netIncome)
+                    : [],
+                totalAssets: pidByMetric.totalAssets
+                    ? extractPropertyFacts(orgValues, pidByMetric.totalAssets)
+                    : [],
+                totalLiabilities: pidByMetric.totalLiabilities
+                    ? extractPropertyFacts(orgValues, pidByMetric.totalLiabilities)
+                    : [],
+                shareholdersEquity: pidByMetric.shareholdersEquity
+                    ? extractPropertyFacts(orgValues, pidByMetric.shareholdersEquity)
+                    : [],
+                sharesOutstanding: pidByMetric.sharesOutstanding
+                    ? extractPropertyFacts(orgValues, pidByMetric.sharesOutstanding)
+                    : [],
+                epsBasic: pidByMetric.epsBasic
+                    ? extractPropertyFacts(orgValues, pidByMetric.epsBasic)
+                    : [],
+                epsDiluted: pidByMetric.epsDiluted
+                    ? extractPropertyFacts(orgValues, pidByMetric.epsDiluted)
+                    : [],
+                dividendsCommon: pidByMetric.dividendsCommon
+                    ? extractPropertyFacts(orgValues, pidByMetric.dividendsCommon)
+                    : [],
+                grossProfit: pidByMetric.grossProfit
+                    ? extractPropertyFacts(orgValues, pidByMetric.grossProfit)
+                    : [],
+                operatingCashFlow: pidByMetric.operatingCashFlow
+                    ? extractPropertyFacts(orgValues, pidByMetric.operatingCashFlow)
+                    : [],
+                longTermDebt: pidByMetric.longTermDebt
+                    ? extractPropertyFacts(orgValues, pidByMetric.longTermDebt)
+                    : [],
+                publicFloat: pidByMetric.publicFloat
+                    ? extractPropertyFacts(orgValues, pidByMetric.publicFloat)
+                    : [],
+                employees: pidByMetric.employees
+                    ? extractPropertyFacts(orgValues, pidByMetric.employees)
+                    : [],
+            };
+
+            const latestByMetric = {
+                totalRevenue: pickLatestNumericFact(metricFacts.totalRevenue),
+                netIncome: pickLatestNumericFact(metricFacts.netIncome),
+                totalAssets: pickLatestNumericFact(metricFacts.totalAssets),
+                totalLiabilities: pickLatestNumericFact(metricFacts.totalLiabilities),
+                shareholdersEquity: pickLatestNumericFact(metricFacts.shareholdersEquity),
+                sharesOutstanding: pickLatestNumericFact(metricFacts.sharesOutstanding),
+                epsBasic: pickLatestNumericFact(metricFacts.epsBasic),
+                epsDiluted: pickLatestNumericFact(metricFacts.epsDiluted),
+                dividendsCommon: pickLatestNumericFact(metricFacts.dividendsCommon),
+                grossProfit: pickLatestNumericFact(metricFacts.grossProfit),
+                operatingCashFlow: pickLatestNumericFact(metricFacts.operatingCashFlow),
+                longTermDebt: pickLatestNumericFact(metricFacts.longTermDebt),
+                publicFloat: pickLatestNumericFact(metricFacts.publicFloat),
+                employees: pickLatestNumericFact(metricFacts.employees),
+            } as const;
+
+            if (latestByMetric.totalRevenue != null)
+                fundamentalMetrics.totalRevenue = latestByMetric.totalRevenue;
+            if (latestByMetric.netIncome != null)
+                fundamentalMetrics.netIncome = latestByMetric.netIncome;
+            if (latestByMetric.totalAssets != null)
+                fundamentalMetrics.totalAssets = latestByMetric.totalAssets;
+            if (latestByMetric.totalLiabilities != null)
+                fundamentalMetrics.totalLiabilities = latestByMetric.totalLiabilities;
+            if (latestByMetric.shareholdersEquity != null)
+                fundamentalMetrics.shareholdersEquity = latestByMetric.shareholdersEquity;
+            if (latestByMetric.sharesOutstanding != null)
+                fundamentalMetrics.sharesOutstanding = latestByMetric.sharesOutstanding;
+            if (latestByMetric.epsBasic != null)
+                fundamentalMetrics.epsBasic = latestByMetric.epsBasic;
+            if (latestByMetric.epsDiluted != null)
+                fundamentalMetrics.epsDiluted = latestByMetric.epsDiluted;
+            if (latestByMetric.dividendsCommon != null)
+                fundamentalMetrics.dividendsCommon = latestByMetric.dividendsCommon;
+            if (latestByMetric.grossProfit != null)
+                fundamentalMetrics.grossProfit = latestByMetric.grossProfit;
+            if (latestByMetric.operatingCashFlow != null)
+                fundamentalMetrics.operatingCashFlow = latestByMetric.operatingCashFlow;
+            if (latestByMetric.longTermDebt != null)
+                fundamentalMetrics.longTermDebt = latestByMetric.longTermDebt;
+            if (latestByMetric.publicFloat != null)
+                fundamentalMetrics.publicFloat = latestByMetric.publicFloat;
+            if (latestByMetric.employees != null)
+                fundamentalMetrics.employees = latestByMetric.employees;
+
+            const citationRows: Array<[string, ElementalPropertyFact[]]> = [
+                ['Elemental · total_revenue', metricFacts.totalRevenue],
+                ['Elemental · net_income', metricFacts.netIncome],
+                ['Elemental · total_assets', metricFacts.totalAssets],
+                ['Elemental · total_liabilities', metricFacts.totalLiabilities],
+                ['Elemental · shareholders_equity', metricFacts.shareholdersEquity],
+                ['Elemental · shares_outstanding', metricFacts.sharesOutstanding],
+                ['Elemental · eps_basic', metricFacts.epsBasic],
+                ['Elemental · eps_diluted', metricFacts.epsDiluted],
+                ['Elemental · dividends_common', metricFacts.dividendsCommon],
+                ['Elemental · gross_profit', metricFacts.grossProfit],
+                ['Elemental · operating_cash_flow', metricFacts.operatingCashFlow],
+                ['Elemental · long_term_debt', metricFacts.longTermDebt],
+                ['Elemental · public_float', metricFacts.publicFloat],
+                ['Elemental · number_of_employees', metricFacts.employees],
+            ];
+            for (const [label, facts] of citationRows) {
+                const cite = buildCitation(label, facts[0]);
+                if (cite) fundamentalCitations.push(cite);
+            }
+        }
+    } catch (error) {
+        console.warn('[stock profile] organization fundamentals fetch failed', error);
+        dataGaps.push('Organization fundamentals could not be loaded from Elemental');
+    }
+
     const closes = series.map((row) => row.close);
+    const fullCloses = (fullSeries.length ? fullSeries : series).map((row) => row.close);
+    const analyticsSeries = fullSeries.length ? fullSeries : series;
     const latestClose = closes.length > 0 ? closes[closes.length - 1] : null;
     const latestDate = series.length > 0 ? series[series.length - 1].date : null;
     const firstClose = closes.length > 0 ? closes[0] : null;
@@ -466,9 +709,95 @@ export async function getStockEntityProfile(
         firstClose && latestClose
             ? ((latestClose - firstClose) / Math.max(firstClose, 1e-6)) * 100
             : null;
-    const annualizedVolPct = computeAnnualizedVol(closes);
+    const annualizedVolPct = annualisedVol(
+        fullCloses,
+        Math.min(20, Math.max(2, fullCloses.length - 1))
+    );
     const periodHigh = closes.length > 0 ? Math.max(...closes) : null;
     const periodLow = closes.length > 0 ? Math.min(...closes) : null;
+    const rsi14 = rsi(fullCloses, 14);
+    const macdLatest = macd(fullCloses);
+    const bollingerLatest = bollinger(fullCloses, 20, 2);
+    const sma20 = sma(fullCloses, 20);
+    const sma50 = sma(fullCloses, 50);
+    const sma200 = sma(fullCloses, 200);
+    const ema12 = ema(fullCloses, 12);
+    const ema26 = ema(fullCloses, 26);
+    const crosses = goldenDeathCross(fullCloses);
+    const atr14 = atr(analyticsSeries, 14);
+    const roc10 = roc(fullCloses, 10);
+    const annualisedVol20d = annualisedVol(fullCloses, 20);
+    const volumeRatio20d = volumeRatio(analyticsSeries, 20);
+    const fiftyTwoWeek = fiftyTwoWeekHighLow(analyticsSeries, latestDate);
+    const trend = trendSignal({
+        latestClose,
+        sma50,
+        sma200,
+        rsi14,
+        macd: macdLatest,
+    });
+
+    const sharesOutstanding = fundamentalMetrics.sharesOutstanding;
+    const epsForPe = fundamentalMetrics.epsDiluted ?? fundamentalMetrics.epsBasic;
+    const totalRevenue = fundamentalMetrics.totalRevenue;
+    const netIncome = fundamentalMetrics.netIncome;
+    const totalAssets = fundamentalMetrics.totalAssets;
+    const totalLiabilities = fundamentalMetrics.totalLiabilities;
+    const shareholdersEquity = fundamentalMetrics.shareholdersEquity;
+
+    const marketCap =
+        latestClose != null && sharesOutstanding != null
+            ? latestClose * sharesOutstanding
+            : undefined;
+    const peRatio =
+        latestClose != null && epsForPe != null && epsForPe !== 0
+            ? latestClose / epsForPe
+            : undefined;
+    const profitMargin =
+        netIncome != null && totalRevenue != null && totalRevenue !== 0
+            ? netIncome / totalRevenue
+            : undefined;
+    const roe =
+        netIncome != null && shareholdersEquity != null && shareholdersEquity !== 0
+            ? netIncome / shareholdersEquity
+            : undefined;
+    const roa =
+        netIncome != null && totalAssets != null && totalAssets !== 0
+            ? netIncome / totalAssets
+            : undefined;
+    const debtToEquity =
+        totalLiabilities != null && shareholdersEquity != null && shareholdersEquity !== 0
+            ? totalLiabilities / shareholdersEquity
+            : undefined;
+    const dividendYield =
+        fundamentalMetrics.dividendsCommon != null && marketCap != null && marketCap !== 0
+            ? fundamentalMetrics.dividendsCommon / marketCap
+            : undefined;
+    const payoutRatio =
+        fundamentalMetrics.dividendsCommon != null && netIncome != null && netIncome !== 0
+            ? fundamentalMetrics.dividendsCommon / netIncome
+            : undefined;
+
+    if (marketCap != null) fundamentalMetrics.marketCap = marketCap;
+    if (peRatio != null) fundamentalMetrics.peRatio = peRatio;
+    if (profitMargin != null) fundamentalMetrics.profitMargin = profitMargin;
+    if (roe != null) fundamentalMetrics.roe = roe;
+    if (roa != null) fundamentalMetrics.roa = roa;
+    if (debtToEquity != null) fundamentalMetrics.debtToEquity = debtToEquity;
+    if (dividendYield != null) fundamentalMetrics.dividendYield = dividendYield;
+    if (payoutRatio != null) fundamentalMetrics.payoutRatio = payoutRatio;
+    const narrative = buildStockNarrative(
+        ticker,
+        {
+            rsi14,
+            trend,
+            macd: macdLatest,
+            annualisedVol20d,
+            volumeRatio20d,
+            fiftyTwoWeek,
+        },
+        fundamentalMetrics
+    );
 
     if (!ticker) dataGaps.push('Ticker symbol unavailable in Elemental property values');
     if (!instrumentNeid)
@@ -495,6 +824,43 @@ export async function getStockEntityProfile(
     if (closes.length) keyMetrics.push({ label: 'Samples (window)', value: `${closes.length}` });
     if (sector) keyMetrics.push({ label: 'Sector', value: sector });
     if (industry) keyMetrics.push({ label: 'Industry', value: industry });
+    if (fiftyTwoWeek?.high !== undefined)
+        keyMetrics.push({ label: '52W High', value: `$${fiftyTwoWeek.high.toFixed(2)}` });
+    if (fiftyTwoWeek?.low !== undefined)
+        keyMetrics.push({ label: '52W Low', value: `$${fiftyTwoWeek.low.toFixed(2)}` });
+
+    const uniqueFundamentalCitations = Array.from(
+        new Map(
+            fundamentalCitations.map((cite) => [
+                `${cite.source || ''}|${cite.ref || ''}|${cite.date || ''}`,
+                cite,
+            ])
+        ).values()
+    );
+    const fundamentalRefs = uniqueFundamentalCitations
+        .map((cite) => cite.ref)
+        .filter((ref): ref is string => typeof ref === 'string' && ref.length > 0);
+    if (fundamentalRefs.length > 0) {
+        try {
+            const map = await resolveRefs(fundamentalRefs, event);
+            for (let i = 0; i < uniqueFundamentalCitations.length; i++) {
+                const cite = uniqueFundamentalCitations[i];
+                if (!cite.ref) continue;
+                const resolved = map.get(cite.ref);
+                if (!resolved) continue;
+                uniqueFundamentalCitations[i] = {
+                    ...cite,
+                    title: cite.title || resolved.title,
+                    url: cite.url || resolved.url,
+                    source: cite.source || resolved.source,
+                    date: cite.date || resolved.date,
+                    snippet: cite.snippet || resolved.snippet,
+                };
+            }
+        } catch {
+            // fundamentals citation enrichment is best-effort.
+        }
+    }
 
     const profile: StockEntityProfile = {
         neid,
@@ -514,6 +880,31 @@ export async function getStockEntityProfile(
         periodHigh,
         periodLow,
         samples: closes.length,
+        analytics: {
+            rsi14,
+            macd: macdLatest,
+            bollinger: bollingerLatest,
+            movingAverages: {
+                sma20,
+                sma50,
+                sma200,
+                ema12,
+                ema26,
+            },
+            goldenCross: crosses.goldenCross,
+            deathCross: crosses.deathCross,
+            atr14,
+            roc10,
+            annualisedVol20d,
+            volumeRatio20d,
+            fiftyTwoWeek,
+            trend,
+            narrative,
+        },
+        fundamentals: {
+            ...fundamentalMetrics,
+            citations: uniqueFundamentalCitations,
+        },
         prices: series.map((row) => ({
             date: row.date,
             close: row.close,

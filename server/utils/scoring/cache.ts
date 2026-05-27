@@ -92,6 +92,7 @@ export function makeCacheKey(
         | 'relationships'
         | 'events'
         | 'stock-profile-v2'
+        | 'stock-profile-v3'
 ) {
     return `${portfolioId}:${neid}:${dataType}`;
 }
