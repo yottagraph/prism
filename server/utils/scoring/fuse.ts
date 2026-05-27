@@ -1,5 +1,6 @@
 import { clampScore } from './hash';
 import type {
+    CoreLensKey,
     EntityRiskScore,
     LensDetail,
     LensKey,
@@ -10,19 +11,37 @@ import type {
 } from './types';
 
 export const DEFAULT_WEIGHTS: SourceFusionWeights = {
-    solvency: 0.4,
+    solvency: 0.35,
     executive: 0.25,
-    news: 0.2,
-    market: 0.15,
+    news: 0.15,
+    market: 0,
+    eventPressure: 0.25,
+};
+
+export const DEFAULT_WEIGHTS_WITH_ACS: SourceFusionWeights = {
+    solvency: 0.3,
+    executive: 0.2,
+    news: 0.15,
+    market: 0,
+    eventPressure: 0.2,
+    compliance: 0.15,
 };
 
 export function fuseScore(s: SubScores, w: SourceFusionWeights = DEFAULT_WEIGHTS): number {
-    const sum = w.solvency + w.executive + w.news + w.market || 1;
+    const sum =
+        w.solvency +
+            w.executive +
+            w.news +
+            w.market +
+            (w.eventPressure ?? 0) +
+            (w.compliance ?? 0) || 1;
     return clampScore(
         (s.solvency * w.solvency +
             s.executive * w.executive +
             s.news * w.news +
-            s.market * w.market) /
+            s.market * w.market +
+            (s.eventPressure ?? 0) * (w.eventPressure ?? 0) +
+            (s.compliance ?? 0) * (w.compliance ?? 0)) /
             sum
     );
 }
@@ -47,10 +66,10 @@ export function confidence(s: SubScores): 'High' | 'Medium' | 'Low' {
 export function detectConflicts(
     s: SubScores,
     threshold = 20
-): Array<{ lens: keyof SubScores; delta: number }> {
+): Array<{ lens: CoreLensKey; delta: number }> {
     const mean = (s.solvency + s.executive + s.news + s.market) / 4;
-    const lenses: LensKey[] = ['solvency', 'executive', 'news', 'market'];
-    const out: Array<{ lens: LensKey; delta: number }> = [];
+    const lenses: CoreLensKey[] = ['solvency', 'executive', 'news', 'market'];
+    const out: Array<{ lens: CoreLensKey; delta: number }> = [];
     lenses.forEach((k) => {
         const delta = s[k] - mean;
         if (Math.abs(delta) >= threshold) out.push({ lens: k, delta: Math.round(delta) });
@@ -58,18 +77,20 @@ export function detectConflicts(
     return out.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
 }
 
-const LENS_SOURCE: Record<keyof SubScores, RiskDriver['source']> = {
+const LENS_SOURCE: Record<LensKey, RiskDriver['source']> = {
     solvency: 'SEC',
     executive: 'SEC',
     news: 'NEWS',
     market: 'STOCK',
+    eventPressure: 'SEC',
+    compliance: 'CSL',
 };
 
 export function deriveDriversFromLenses(
-    details: Record<LensKey, LensDetail>,
+    details: Partial<Record<LensKey, LensDetail>>,
     s: SubScores
 ): RiskDriver[] {
-    const sorted = (['solvency', 'executive', 'news', 'market'] as LensKey[])
+    const sorted = (['solvency', 'executive', 'news', 'market'] as CoreLensKey[])
         .map((lens) => ({ lens, score: s[lens] }))
         .sort((a, b) => b.score - a.score);
     const out: RiskDriver[] = [];
@@ -91,7 +112,16 @@ export function makeEntityRiskScore(
     weights: SourceFusionWeights,
     previousFused?: number
 ): EntityRiskScore {
-    const fused = fuseScore(subs, weights);
+    let fused = fuseScore(subs, weights);
+    const criticalOverride = Math.max(
+        subs.solvency,
+        subs.executive,
+        subs.news,
+        subs.market,
+        subs.eventPressure ?? 0,
+        subs.compliance ?? 0
+    );
+    if (criticalOverride >= 75) fused = Math.max(fused, 75);
     return {
         ...subs,
         fused,

@@ -247,22 +247,28 @@ User Request (load portfolio, click entity, ask question)
 
 ### 7.3 Multi-Source Fusion
 
-The Query Agent produces per-entity scores across four source-specific lenses, then blends them into a fused score. This fusion is the central analytical narrative of the demo.
+The Query Agent produces per-entity scores across an 8-module pipeline, then blends core lenses into a fused monitor score. This fusion is the central analytical narrative of the demo.
 
-| Lens                     | Score Range | Primary Signals                                                                                       | Elemental Source                        |
-| ------------------------ | ----------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------- |
-| **Solvency (FHS)**       | 0-100       | Leverage, equity erosion, margin compression, coverage ratios, staleness decay, distress events       | SEC XBRL facts, 8-K events              |
-| **Executive Risk (ERS)** | 0-100       | Officer/director departures (recency-weighted, C-suite premium), auditor changes, cumulative patterns | SEC relationships, 8-K Item 5.02 events |
-| **News Pressure**        | 0-100       | Sentiment trends, mention velocity, negative clusters, adverse media density                          | News sentiment layer                    |
-| **Market Signal**        | 0-100       | 30-day price change, volatility spike, RSI extremes, anomaly detection                                | Stock data layer                        |
+| Lens / Module            | Score Range | Primary Signals                                                                      | Elemental Source                        |
+| ------------------------ | ----------- | ------------------------------------------------------------------------------------ | --------------------------------------- |
+| **Solvency (FHS)**       | 0-100       | Multi-tier financial stress model with dynamic redistribution                        | SEC XBRL facts, 8-K events              |
+| **Executive Risk (ERS)** | 0-100       | Governance snapshot, recency-weighted departures, key-person and cumulative patterns | SEC relationships, 8-K Item 5.02 events |
+| **Adversarial Capital**  | 0-100       | Direct screening, ownership-path screening, jurisdiction and FOCI heuristics         | Elemental graph + demo screening list   |
+| **Event Pressure**       | 0-100       | Event type severity, recency decay, 14-day clustering bonus                          | Event layer                             |
+| **News Pressure**        | 0-100       | Sentiment trends, mention velocity, adverse media density                            | News sentiment layer                    |
+| **News 24h Summary**     | n/a         | Deterministic 24h rollup, mention-ratio labels                                       | Related article graph                   |
+| **CIK Velocity**         | n/a         | QoQ filing/event mention momentum and divergence                                     | Filing/event activity                   |
+| **Polymarket Outlook**   | n/a         | Market-linked prediction context for the entity (positive/neutral/negative)          | Polymarket MCP                          |
 
 **Fused Risk Score:**
 
 ```
-fused = solvency × w1 + executive × w2 + news × w3 + market × w4
+fused = solvency × w1 + executive × w2 + eventPressure × w3 + news × w4 (+ acs × w5 optional)
 ```
 
-Default weights: `w1=0.40, w2=0.25, w3=0.20, w4=0.15`
+Default weights: `w1=0.35, w2=0.25, w3=0.25, w4=0.15`
+
+With ACS enabled in monitor mode: `w1=0.30, w2=0.20, w3=0.20, w4=0.15, w5=0.15`
 
 When sources disagree (e.g., strong financials but deteriorating news), the Query Agent flags the **agreement/conflict indicator** and explains the divergence. This is a key demo moment — showing that fusion is not averaging; it's interpretive.
 
@@ -285,7 +291,7 @@ Every score includes:
 
 ### 8.1 Portfolio Overview (`/`)
 
-The entry point. Shows the portfolio as a ranked, scored entity list with agent activity.
+The entry point. It now hosts a tabbed Monitor surface (Monitor/FHS/ERS/ACS) with shared scan state and progressive row fill.
 
 **Layout:**
 
@@ -328,9 +334,10 @@ The entry point. Shows the portfolio as a ranked, scored entity list with agent 
 
 - Click entity row → opens Entity Deep Dive
 - Sort by any score column
-- Filter by risk tier, entity type, signal conflict
+- Filter by risk category (ALL/HIGH/MEDIUM/LOW/IGNORE), search, rows-per-page
 - Source Fusion Bar shows data coverage per source — demonstrates multi-source breadth
 - Agent Activity Feed streams live updates via SSE
+- Monitor table columns include signal agreement, CIK velocity, 24h news summary/activity, stock trend, and polymarket outlook
 
 ### 8.2 Entity Deep Dive (modal or route: `/entity/:neid`)
 
@@ -448,12 +455,14 @@ The control surface and conversational interface for the agent pipeline.
 
 ### Entity Data (Agent-Cached)
 
-| Method | Path                                             | Purpose                                                 |
-| ------ | ------------------------------------------------ | ------------------------------------------------------- |
-| GET    | `/api/portfolios/:id/entity/:neid/profile`       | Full entity profile (all lenses, relationships, events) |
-| GET    | `/api/portfolios/:id/entity/:neid/scores`        | Score breakdown with evidence                           |
-| GET    | `/api/portfolios/:id/entity/:neid/relationships` | Relationships by type                                   |
-| GET    | `/api/portfolios/:id/entity/:neid/events`        | Events timeline                                         |
+| Method | Path                                              | Purpose                                                 |
+| ------ | ------------------------------------------------- | ------------------------------------------------------- |
+| GET    | `/api/portfolios/:id/entity/:neid/profile`        | Full entity profile (all lenses, relationships, events) |
+| GET    | `/api/portfolios/:id/entity/:neid/scores`         | Score breakdown with evidence                           |
+| GET    | `/api/portfolios/:id/entity/:neid/relationships`  | Relationships by type                                   |
+| GET    | `/api/portfolios/:id/entity/:neid/events`         | Events timeline                                         |
+| GET    | `/api/portfolios/:id/entity/:neid/acs`            | ACS deep-dive breakdown                                 |
+| GET    | `/api/portfolios/:id/entity/:neid/event-pressure` | Event-pressure deep-dive breakdown                      |
 
 ### Relationship Explorer
 
@@ -701,6 +710,17 @@ The prototype never modifies Elemental. It reads from Elemental, applies analyti
 - Real-time market data streaming.
 - Custom extraction pipeline triggers.
 - Production governance/compliance controls beyond demo-level handling.
+
+## Appendix C: Demo Script (Agent-Driven Intelligence)
+
+1. Open `/` and select a portfolio from the dropdown.
+2. Trigger **Run scan** and narrate progressive row fill as SSE updates stream in.
+3. In the Monitor tab, sort by fused score and highlight a **Conflict** row.
+4. Explain signal disagreement using the Signal Agreement column and the row summary.
+5. Switch through **FHS / ERS / ACS** tabs to show focused lens slices.
+6. Open an entity row and walk through score strip, lens panels, and risk drivers.
+7. Call out CIK velocity, 24h news activity label, and polymarket outlook in the row.
+8. Conclude with provenance: every card/chip links to deterministic logic and source evidence.
 
 ## Status
 

@@ -14,11 +14,11 @@
                     </v-chip>
                     <span class="text-body-2">{{ lens.label }}</span>
                 </div>
-                <span class="font-mono text-body-1">{{ scores[lens.key] }}</span>
+                <span class="font-mono text-body-1">{{ scores[lens.key] ?? '—' }}</span>
             </div>
             <v-progress-linear
-                :model-value="scores[lens.key]"
-                :color="scoreColor(scores[lens.key])"
+                :model-value="scores[lens.key] ?? 0"
+                :color="scoreColor(scores[lens.key] ?? 0)"
                 height="6"
                 rounded
             />
@@ -65,6 +65,8 @@
     const lenses = [
         { key: 'solvency', label: 'Solvency (FHS)', source: 'SEC' },
         { key: 'executive', label: 'Executive Risk (ERS)', source: 'SEC' },
+        { key: 'compliance', label: 'Adversarial Capital (ACS)', source: 'CSL' },
+        { key: 'eventPressure', label: 'Event Pressure', source: 'NEWS' },
         { key: 'news', label: 'News Pressure', source: 'NEWS' },
         { key: 'market', label: 'Market Signal', source: 'STOCK' },
     ] as const;
@@ -86,6 +88,9 @@
                 return 'success';
             case 'POLY':
                 return 'warning';
+            case 'CSL':
+            case 'OFAC':
+                return 'error';
             default:
                 return 'grey';
         }

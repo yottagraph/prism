@@ -88,11 +88,19 @@ export function makeCacheKey(
         | 'executive'
         | 'news'
         | 'market'
+        | 'fhs'
+        | 'ers'
+        | 'acs'
+        | 'event-pressure'
+        | 'cik-velocity'
+        | 'news-24h'
+        | 'polymarket-outlook'
         | 'profile'
         | 'relationships'
         | 'events'
         | 'stock-profile-v2'
         | 'stock-profile-v3'
+        | 'stock-profile-v4'
 ) {
     return `${portfolioId}:${neid}:${dataType}`;
 }

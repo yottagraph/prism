@@ -10,7 +10,7 @@
                     <v-spacer />
                     <span
                         class="font-mono text-body-1 mr-4"
-                        :style="`color: var(--v-theme-${scoreColor(scores[lens.key])})`"
+                        :style="`color: var(--v-theme-${scoreColor(scores[lens.key] ?? 0)})`"
                     >
                         {{ scores[lens.key] }}
                     </span>
@@ -127,6 +127,22 @@
                 source: 'STOCK',
                 color: 'success',
                 description: 'Price, volatility, and anomaly detection from the market data layer.',
+            },
+            {
+                key: 'eventPressure' as const,
+                label: 'Event Pressure',
+                source: 'NEWS',
+                color: 'warning',
+                description:
+                    'Recency-weighted pressure score from adverse event clusters in the last 14 days.',
+            },
+            {
+                key: 'compliance' as const,
+                label: 'Adversarial Capital (ACS)',
+                source: 'CSL',
+                color: 'error',
+                description:
+                    'Ownership-path and screening-list exposure with FOCI-oriented jurisdiction breakdown.',
             },
         ];
         return generated.map((lens) => {

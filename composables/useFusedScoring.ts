@@ -6,13 +6,21 @@
  */
 
 export type RiskTier = 'critical' | 'high' | 'watch' | 'normal';
+export type RiskLevel = 'critical' | 'high' | 'medium' | 'low';
+export type ConfidenceLevel = 'High' | 'Medium' | 'Low';
+export type SignalAgreement = 'agreement' | 'conflict' | 'partial' | 'sec_only' | 'limited';
 
 export interface SubScores {
     solvency: number;
     executive: number;
     news: number;
     market: number;
+    eventPressure?: number;
+    compliance?: number;
 }
+
+export type CoreLensKey = 'solvency' | 'executive' | 'news' | 'market';
+export type LensKey = CoreLensKey | 'eventPressure' | 'compliance';
 
 export interface EntityRiskScore extends SubScores {
     fused: number;
@@ -26,6 +34,8 @@ export interface SourceFusionWeights {
     executive: number;
     news: number;
     market: number;
+    eventPressure?: number;
+    compliance?: number;
 }
 
 export interface CitationRef {
@@ -37,26 +47,39 @@ export interface CitationRef {
     snippet?: string;
 }
 
+export interface EvidenceCitation extends CitationRef {
+    id?: string;
+}
+
 export interface EvidenceItem {
     text: string;
     date?: string;
-    citations: CitationRef[];
+    citations: EvidenceCitation[];
 }
 
 export const DEFAULT_WEIGHTS: SourceFusionWeights = {
-    solvency: 0.4,
+    solvency: 0.35,
     executive: 0.25,
-    news: 0.2,
-    market: 0.15,
+    news: 0.15,
+    market: 0,
+    eventPressure: 0.25,
 };
 
 export function fuseScore(s: SubScores, w: SourceFusionWeights = DEFAULT_WEIGHTS): number {
-    const sum = w.solvency + w.executive + w.news + w.market || 1;
+    const sum =
+        w.solvency +
+            w.executive +
+            w.news +
+            w.market +
+            (w.eventPressure ?? 0) +
+            (w.compliance ?? 0) || 1;
     const raw =
         (s.solvency * w.solvency +
             s.executive * w.executive +
             s.news * w.news +
-            s.market * w.market) /
+            s.market * w.market +
+            (s.eventPressure ?? 0) * (w.eventPressure ?? 0) +
+            (s.compliance ?? 0) * (w.compliance ?? 0)) /
         sum;
     return Math.round(raw);
 }
@@ -93,10 +116,10 @@ export function tierLabel(tier: RiskTier): string {
 export function detectConflicts(
     s: SubScores,
     threshold = 20
-): Array<{ lens: keyof SubScores; delta: number }> {
+): Array<{ lens: CoreLensKey; delta: number }> {
     const mean = (s.solvency + s.executive + s.news + s.market) / 4;
-    const out: Array<{ lens: keyof SubScores; delta: number }> = [];
-    (['solvency', 'executive', 'news', 'market'] as Array<keyof SubScores>).forEach((k) => {
+    const out: Array<{ lens: CoreLensKey; delta: number }> = [];
+    (['solvency', 'executive', 'news', 'market'] as CoreLensKey[]).forEach((k) => {
         const delta = s[k] - mean;
         if (Math.abs(delta) >= threshold) out.push({ lens: k, delta: Math.round(delta) });
     });
@@ -115,8 +138,62 @@ export function confidence(s: SubScores): 'High' | 'Medium' | 'Low' {
 }
 
 export interface RiskDriver {
-    lens: keyof SubScores;
-    source: 'SEC' | 'NEWS' | 'STOCK' | 'POLY';
+    lens: LensKey;
+    source:
+        | 'SEC'
+        | 'NEWS'
+        | 'STOCK'
+        | 'POLY'
+        | 'CSL'
+        | 'OFAC'
+        | 'GLEIF'
+        | 'ownership_graph'
+        | 'jurisdiction';
     score: number;
     finding: EvidenceItem;
+}
+
+export interface MonitorEntity {
+    inputName: string;
+    resolvedName: string;
+    neid: string | null;
+    ticker?: string;
+    scores: EntityRiskScore | null;
+    riskCategory?: 'HIGH' | 'MEDIUM' | 'LOW' | 'IGNORE';
+    confidenceLevel?: ConfidenceLevel;
+    signalAgreement?: SignalAgreement | null;
+    sourcesAvailable?: number;
+    sourcesRisky?: number;
+    signalSummary?: string;
+    headlineSummary?: string | null;
+    mentionRatioLabel?: string | null;
+    mentionRatioToday?: number | null;
+    mentionDailyAvg30d?: number | null;
+    sentimentAvg30d?: number | null;
+    sentimentTrend?: string | null;
+    mentionVelocity?: number | null;
+    stockPrice?: number | null;
+    stockChangePercent?: number | null;
+    stockChange30dPercent?: number | null;
+    stockTrend30d?: 'positive' | 'negative' | 'stable' | null;
+    stockTrendSignal?: 'bullish' | 'bearish' | 'neutral' | null;
+    stockRsiSignal?: string | null;
+    stockMacdSignal?: string | null;
+    stockVolatility30d?: number | null;
+    edgarTrend?: 'accelerating' | 'declining' | 'stable' | 'new' | 'inactive' | null;
+    edgarQoqPct?: number | null;
+    edgarLatestMentions?: number | null;
+    edgarPrevMentions?: number | null;
+    edgarLatestQuarter?: string | null;
+    edgarPrevQuarter?: string | null;
+    edgarAvgMentions?: number | null;
+    edgarAvgDiffPct?: number | null;
+    edgarDivergenceScore?: number | null;
+    edgarDivergenceLabel?: 'gaining-attention' | 'fading' | 'in-sync' | null;
+    polymarketOutlook?: 'positive' | 'neutral' | 'negative' | null;
+    polymarketOutlookScore?: number | null;
+    polymarketCount?: number | null;
+    polymarketPositiveMarkets?: number | null;
+    polymarketNegativeMarkets?: number | null;
+    polymarketMarkets?: Array<{ question?: string; active?: boolean; category?: string }>;
 }

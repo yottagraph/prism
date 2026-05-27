@@ -1,0 +1,153 @@
+import type { H3Event } from 'h3';
+
+import { makeCacheKey, readScoringCache, writeScoringCache } from './cache';
+import { resolveRefs } from './citations';
+import { callMcpTool, extractMcpStructuredContent } from './mcpGateway';
+import { clampScore } from './hash';
+import type { EvidenceItem, LensDetail } from './types';
+
+export interface EventPressureResult {
+    score: number;
+    hasRealData: boolean;
+    detail: LensDetail;
+}
+
+const EVENT_WEIGHTS: Array<{ term: string; weight: number }> = [
+    { term: 'BANKRUPTCY', weight: 28 },
+    { term: 'DELIST', weight: 24 },
+    { term: 'DEFAULT', weight: 22 },
+    { term: 'AUDITOR', weight: 18 },
+    { term: 'RESTRUCTUR', weight: 16 },
+    { term: 'OFFICER', weight: 12 },
+    { term: 'DIRECTOR', weight: 10 },
+    { term: 'IMPAIR', weight: 12 },
+];
+
+function recencyMultiplier(date: string | undefined) {
+    if (!date) return 0.55;
+    const ts = Date.parse(date);
+    if (!Number.isFinite(ts)) return 0.55;
+    const days = Math.max(0, Math.round((Date.now() - ts) / 86_400_000));
+    if (days <= 14) return 1;
+    if (days <= 30) return 0.85;
+    if (days <= 90) return 0.6;
+    return 0.35;
+}
+
+export async function computeEventPressureScore(
+    event: H3Event,
+    portfolioId: string,
+    neid: string
+): Promise<EventPressureResult> {
+    const cacheKey = makeCacheKey(portfolioId, neid, 'event-pressure');
+    const cached = await readScoringCache<EventPressureResult>(event, cacheKey);
+    if (cached) return cached;
+
+    let score = 0;
+    let hasRealData = false;
+    const metrics: LensDetail['metrics'] = [];
+    const findings: EvidenceItem[] = [];
+
+    try {
+        const eventsResult = await callMcpTool(
+            'elemental',
+            'elemental_get_events',
+            {
+                entity_id: { id_type: 'neid', id: neid },
+                limit: 120,
+            },
+            event
+        );
+        const structured = extractMcpStructuredContent<{
+            events?: Array<{
+                name?: string;
+                properties?: Record<string, { value?: unknown; ref?: string }>;
+            }>;
+        }>(eventsResult);
+        const events = Array.isArray(structured?.events) ? structured.events : [];
+        if (events.length > 0) {
+            hasRealData = true;
+            const refs: string[] = [];
+            const recentEventDates: number[] = [];
+            const weightedEvents = events.map((row) => {
+                const eventType = String(
+                    row?.properties?.event_type?.value ??
+                        row?.properties?.category?.value ??
+                        row?.name ??
+                        ''
+                ).toUpperCase();
+                const date = String(
+                    row?.properties?.event_date?.value ?? row?.properties?.date?.value ?? ''
+                );
+                const weight =
+                    EVENT_WEIGHTS.find((entry) => eventType.includes(entry.term))?.weight ?? 6;
+                const multiplier = recencyMultiplier(date || undefined);
+                if (date) {
+                    const ts = Date.parse(date);
+                    if (Number.isFinite(ts)) recentEventDates.push(ts);
+                }
+                const ref =
+                    row?.properties?.description?.ref ||
+                    row?.properties?.event_type?.ref ||
+                    row?.properties?.date?.ref;
+                if (ref) refs.push(ref);
+                return {
+                    eventType,
+                    date,
+                    weight,
+                    value: weight * multiplier,
+                };
+            });
+
+            score = clampScore(20 + weightedEvents.reduce((sum, item) => sum + item.value, 0));
+            const recent14dCount = recentEventDates.filter(
+                (ts) => Date.now() - ts <= 14 * 86_400_000
+            ).length;
+            if (recent14dCount >= 5) score = clampScore(score + 40);
+            else if (recent14dCount >= 3) score = clampScore(score + 25);
+
+            metrics.push({ label: 'Events scanned', value: `${events.length}` });
+            metrics.push({ label: 'Events (14d)', value: `${recent14dCount}` });
+            const topType = weightedEvents.sort((a, b) => b.value - a.value)[0];
+            if (topType) metrics.push({ label: 'Top pressure driver', value: topType.eventType });
+
+            const citationMap = await resolveRefs(refs, event);
+            findings.push(
+                ...weightedEvents.slice(0, 5).map((item) => ({
+                    text: `${item.eventType} event${item.date ? ` on ${item.date}` : ''} contributes ${item.value.toFixed(
+                        1
+                    )} pressure points.`,
+                    date: item.date || undefined,
+                    citations: refs
+                        .map((ref) => citationMap.get(ref))
+                        .filter((citation): citation is NonNullable<typeof citation> =>
+                            Boolean(citation)
+                        )
+                        .slice(0, 2),
+                }))
+            );
+        }
+    } catch (error) {
+        console.warn('[event pressure] failed', error);
+    }
+
+    const out: EventPressureResult = {
+        score,
+        hasRealData,
+        detail: {
+            metrics: metrics.length
+                ? metrics
+                : [{ label: 'Status', value: 'No event-pressure signals available' }],
+            findings: findings.length
+                ? findings
+                : [
+                      {
+                          text: 'No event pressure signals were returned for this entity.',
+                          citations: [],
+                      },
+                  ],
+        },
+    };
+    await writeScoringCache(event, cacheKey, out, 6 * 60 * 60);
+    return out;
+}

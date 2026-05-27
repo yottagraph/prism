@@ -244,11 +244,16 @@ export default defineEventHandler(async (event) => {
                                     drivers: [],
                                     conflicts: [],
                                     confidenceLevel: 'Low',
+                                    monitor: null,
                                     coverage: {
                                         sec: false,
                                         news: false,
                                         stock: false,
                                         poly: false,
+                                        acs: false,
+                                        eventPressure: false,
+                                        velocity: false,
+                                        polymarket: false,
                                     },
                                 };
                                 if (resolved.neid) {
@@ -289,11 +294,16 @@ export default defineEventHandler(async (event) => {
                                     drivers: [],
                                     conflicts: [],
                                     confidenceLevel: 'Low',
+                                    monitor: null,
                                     coverage: {
                                         sec: false,
                                         news: false,
                                         stock: false,
                                         poly: false,
+                                        acs: false,
+                                        eventPressure: false,
+                                        velocity: false,
+                                        polymarket: false,
                                     },
                                     resolutionError: entityError?.message || 'Scoring failed',
                                 };

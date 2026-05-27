@@ -171,12 +171,32 @@
                 </v-col>
             </v-row>
 
-            <PortfolioTable
-                v-if="active"
-                :entities="sortedEntities"
-                :loading="scanning"
-                @open="goToEntity"
-            />
+            <v-tabs v-model="monitorTab" class="mb-3">
+                <v-tab value="monitor">Monitor</v-tab>
+                <v-tab value="fhs">FHS</v-tab>
+                <v-tab value="ers">ERS</v-tab>
+                <v-tab value="acs">ACS</v-tab>
+            </v-tabs>
+            <v-window v-model="monitorTab">
+                <v-window-item value="monitor">
+                    <MonitorTable
+                        v-if="active"
+                        :entities="sortedEntities"
+                        :loading="scanning"
+                        @open="goToEntity"
+                        @assess="onAssess"
+                    />
+                </v-window-item>
+                <v-window-item value="fhs">
+                    <FhsTable v-if="active" :entities="sortedEntities" :loading="scanning" />
+                </v-window-item>
+                <v-window-item value="ers">
+                    <ErsTable v-if="active" :entities="sortedEntities" :loading="scanning" />
+                </v-window-item>
+                <v-window-item value="acs">
+                    <AcsTable v-if="active" :entities="sortedEntities" :loading="scanning" />
+                </v-window-item>
+            </v-window>
 
             <AgentActivityFeed :entries="activity" class="mt-3" />
         </div>
@@ -233,11 +253,13 @@
         lastScanError: scanError,
         lastScanCoverage,
         createPortfolio,
+        saveAssessment,
     } = usePortfolio();
 
     const { runPipeline, activity, pushActivity } = useAgentPipeline();
 
     const lastScanError = ref('');
+    const monitorTab = ref<'monitor' | 'fhs' | 'ers' | 'acs'>('monitor');
     watch(scanError, (e) => {
         if (e) lastScanError.value = e;
     });
@@ -357,6 +379,12 @@
     function goToEntity(entity: PortfolioEntity) {
         if (!entity.neid) return;
         router.push(`/entity/${entity.neid}`);
+    }
+
+    function onAssess(entityRow: any, tier: 'HIGH' | 'MEDIUM' | 'LOW' | 'IGNORE' | null) {
+        if (!active.value?.id || !entityRow?.entity?.neid || !tier) return;
+        const mapped: RiskTier = tier === 'HIGH' ? 'high' : tier === 'MEDIUM' ? 'watch' : 'normal';
+        saveAssessment(active.value.id, entityRow.entity.neid, mapped, '');
     }
 
     const newPortfolioOpen = ref(false);

@@ -14,11 +14,12 @@ import { searchEntities } from '~/utils/elementalHelpers';
 import {
     type CitationRef,
     type EntityRiskScore,
+    type MonitorEntity,
     type RiskTier,
     type SourceFusionWeights,
 } from './useFusedScoring';
 
-export interface PortfolioEntity {
+export interface PortfolioEntity extends Pick<MonitorEntity, 'signalAgreement' | 'signalSummary'> {
     /** Name as provided by the user (before resolution). */
     inputName: string;
     /** Canonical name returned by Elemental entity resolution. */
@@ -39,6 +40,27 @@ export interface PortfolioEntity {
     };
     /** Resolution error message, if entity could not be resolved. */
     resolutionError?: string;
+    /** Monitor-table rollup fields emitted by scan pipeline. */
+    monitor?: Omit<MonitorEntity, 'inputName' | 'resolvedName' | 'neid' | 'scores'>;
+    /** Per-lens confidence and coverage metadata from scan output. */
+    confidenceLevel?: 'High' | 'Medium' | 'Low';
+    coverage?: {
+        sec: boolean;
+        news: boolean;
+        stock: boolean;
+        poly: boolean;
+        acs?: boolean;
+        eventPressure?: boolean;
+        velocity?: boolean;
+        polymarket?: boolean;
+    };
+    drivers?: Array<{
+        lens: string;
+        source: string;
+        score: number;
+        finding: { text: string; date?: string; citations: CitationRef[] };
+    }>;
+    conflicts?: Array<{ lens: string; delta: number }>;
 }
 
 export interface PortfolioDoc {
@@ -62,6 +84,7 @@ interface ScanEntityEventPayload {
         resolvedName: string;
         neid: string | null;
         scores: EntityRiskScore | null;
+        monitor?: PortfolioEntity['monitor'];
         drivers?: Array<{
             lens: string;
             source: string;
@@ -70,16 +93,17 @@ interface ScanEntityEventPayload {
         }>;
         conflicts?: Array<{ lens: string; delta: number }>;
         confidenceLevel?: 'High' | 'Medium' | 'Low';
-        coverage?: { sec: boolean; news: boolean; stock: boolean; poly: boolean };
+        coverage?: PortfolioEntity['coverage'];
         resolutionError?: string;
     };
 }
 
 const DEFAULT_WEIGHTS: SourceFusionWeights = {
-    solvency: 0.4,
+    solvency: 0.35,
     executive: 0.25,
-    news: 0.2,
-    market: 0.15,
+    news: 0.15,
+    market: 0,
+    eventPressure: 0.25,
 };
 
 const debugPrefs = useAppFeaturePrefs('debug-settings', {
@@ -395,6 +419,13 @@ export function usePortfolio() {
                     current.resolvedName = payload.entity.resolvedName || current.resolvedName;
                     current.resolutionError = payload.entity.resolutionError;
                     current.scores = payload.entity.scores;
+                    current.monitor = payload.entity.monitor;
+                    current.drivers = payload.entity.drivers;
+                    current.conflicts = payload.entity.conflicts;
+                    current.confidenceLevel = payload.entity.confidenceLevel;
+                    current.coverage = payload.entity.coverage;
+                    current.signalAgreement = payload.entity.monitor?.signalAgreement;
+                    current.signalSummary = payload.entity.monitor?.signalSummary;
                     p.portfolios[idx].entities = [...ents];
                     if (payload.entity.resolutionError) {
                         scanStatusMessage.value = `Issue loading ${payload.entity.inputName}: ${payload.entity.resolutionError}`;
@@ -429,6 +460,16 @@ export function usePortfolio() {
                         current.resolvedName = entityOut.resolvedName || current.resolvedName;
                         current.resolutionError = entityOut.resolutionError;
                         current.scores = entityOut.scores ?? current.scores;
+                        current.monitor = entityOut.monitor ?? current.monitor;
+                        current.drivers = entityOut.drivers ?? current.drivers;
+                        current.conflicts = entityOut.conflicts ?? current.conflicts;
+                        current.confidenceLevel =
+                            entityOut.confidenceLevel ?? current.confidenceLevel;
+                        current.coverage = entityOut.coverage ?? current.coverage;
+                        current.signalAgreement =
+                            entityOut.monitor?.signalAgreement ?? current.signalAgreement;
+                        current.signalSummary =
+                            entityOut.monitor?.signalSummary ?? current.signalSummary;
                         if (entityOut.resolutionError) {
                             failedNames.push(
                                 entityOut.resolvedName ||

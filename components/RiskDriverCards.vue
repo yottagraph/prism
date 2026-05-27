@@ -55,6 +55,15 @@
                 return 'success';
             case 'POLY':
                 return 'warning';
+            case 'CSL':
+            case 'OFAC':
+                return 'error';
+            case 'GLEIF':
+                return 'primary';
+            case 'ownership_graph':
+                return 'deep-purple';
+            case 'jurisdiction':
+                return 'orange';
             default:
                 return 'grey';
         }
