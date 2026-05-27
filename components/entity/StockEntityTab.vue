@@ -96,23 +96,9 @@
             </v-row>
 
             <v-card class="pa-4 stock-card mb-3">
-                <div class="text-subtitle-2 mb-3">Price Window</div>
-                <div v-if="chartPoints.length >= 2" class="chart-wrap">
-                    <svg viewBox="0 0 100 30" preserveAspectRatio="none" class="chart-svg">
-                        <polyline
-                            :points="chartPoints"
-                            fill="none"
-                            stroke="rgb(var(--v-theme-primary))"
-                            stroke-width="1.5"
-                            stroke-linecap="round"
-                        />
-                    </svg>
-                </div>
-                <v-alert v-else type="info" variant="tonal" density="compact">
-                    Not enough price samples to render chart.
-                </v-alert>
+                <PriceHistoryChart :ticker="stock.ticker" :prices="stock.prices" />
                 <div class="text-caption text-medium-emphasis mt-2">
-                    {{ stock.samples }} samples{{
+                    {{ stock.samples }} samples loaded{{
                         stock.latestDate ? ` · latest ${stock.latestDate}` : ''
                     }}
                 </div>
@@ -147,6 +133,7 @@
     import { computed } from 'vue';
 
     import CitationChip from '~/components/CitationChip.vue';
+    import PriceHistoryChart from '~/components/entity/PriceHistoryChart.vue';
     import type { StockEntityProfileData } from '~/composables/useEntityStockProfile';
 
     const props = defineProps<{
@@ -167,22 +154,6 @@
         const date = props.stock.latestDate ? ` (${props.stock.latestDate.slice(0, 10)})` : '';
         return `$${props.stock.latestClose.toFixed(2)}${ret}${date}`;
     });
-
-    const chartPoints = computed(() => {
-        const prices = props.stock?.prices || [];
-        if (prices.length < 2) return '';
-        const closes = prices.map((row) => row.close);
-        const min = Math.min(...closes);
-        const max = Math.max(...closes);
-        const spread = Math.max(max - min, 1e-6);
-        return prices
-            .map((row, idx) => {
-                const x = (idx / (prices.length - 1)) * 100;
-                const y = 28 - ((row.close - min) / spread) * 26;
-                return `${x.toFixed(2)},${y.toFixed(2)}`;
-            })
-            .join(' ');
-    });
 </script>
 
 <style scoped>
@@ -202,19 +173,6 @@
         background: rgba(255, 255, 255, 0.02);
         border-radius: 8px;
         padding: 8px 10px;
-    }
-
-    .chart-wrap {
-        height: 140px;
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        border-radius: 8px;
-        padding: 8px;
-        background: rgba(255, 255, 255, 0.01);
-    }
-
-    .chart-svg {
-        width: 100%;
-        height: 100%;
     }
 
     .data-gap-list {

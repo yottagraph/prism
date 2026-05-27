@@ -39,7 +39,10 @@
                             variant="flat"
                         >
                             <div class="text-body-2">{{ finding.text }}</div>
-                            <div v-if="finding.citations?.length" class="d-flex flex-wrap ga-2 mt-2">
+                            <div
+                                v-if="finding.citations?.length"
+                                class="d-flex flex-wrap ga-2 mt-2"
+                            >
                                 <CitationChip
                                     v-for="(citation, citationIdx) in finding.citations"
                                     :key="`${lens.key}-${idx}-${citationIdx}`"

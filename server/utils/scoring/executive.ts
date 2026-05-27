@@ -68,7 +68,9 @@ export async function computeExecutiveScore(
                 properties?: Record<string, { value?: unknown; ref?: string }>;
             }>;
         }>(eventsResult);
-        const governanceEvents = Array.isArray(eventsStructured?.events) ? eventsStructured.events : [];
+        const governanceEvents = Array.isArray(eventsStructured?.events)
+            ? eventsStructured.events
+            : [];
 
         if (relationships.length || governanceEvents.length) {
             hasRealData = true;
@@ -96,12 +98,15 @@ export async function computeExecutiveScore(
             const citationMap = await resolveRefs(refs, event);
 
             governanceEvents.slice(0, 6).forEach((eventRow) => {
-                const category = String(eventRow?.properties?.category?.value || 'Governance event');
+                const category = String(
+                    eventRow?.properties?.category?.value || 'Governance event'
+                );
                 const eventDate = String(eventRow?.properties?.date?.value || '');
                 const description = String(
                     eventRow?.properties?.description?.value || eventRow?.name || category
                 );
-                const eventRef = eventRow?.properties?.description?.ref || eventRow?.properties?.date?.ref;
+                const eventRef =
+                    eventRow?.properties?.description?.ref || eventRow?.properties?.date?.ref;
                 const citation = eventRef ? citationMap.get(eventRef) : undefined;
                 findings.push({
                     text: `${description} (${category})${eventDate ? ` on ${eventDate}` : ''}.`,
@@ -114,7 +119,8 @@ export async function computeExecutiveScore(
                 relationships.slice(0, 6).forEach((person) => {
                     const title = String(person?.properties?.title?.value || 'executive');
                     const departureDate = String(person?.properties?.departure_date?.value || '');
-                    const relationship = (person?.relationship_types || []).join(', ') || 'governance role';
+                    const relationship =
+                        (person?.relationship_types || []).join(', ') || 'governance role';
                     const refsForRow = Object.values(person.properties || {})
                         .map((prop) => prop?.ref)
                         .filter((ref): ref is string => typeof ref === 'string');

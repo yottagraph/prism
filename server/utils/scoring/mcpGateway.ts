@@ -70,7 +70,10 @@ async function ensureSession(serverName: string) {
     });
     const sessionId = initialize.returnedSessionId;
     if (!sessionId) {
-        throw createError({ statusCode: 502, statusMessage: 'MCP session id missing on initialize' });
+        throw createError({
+            statusCode: 502,
+            statusMessage: 'MCP session id missing on initialize',
+        });
     }
     mcpSessionIds.set(serverName, sessionId);
 

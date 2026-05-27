@@ -33,7 +33,8 @@
     }>();
 
     const chipLabel = computed(() => {
-        const source = props.citation.source || props.citation.title || props.citation.ref || 'Source';
+        const source =
+            props.citation.source || props.citation.title || props.citation.ref || 'Source';
         if (props.citation.date) return `${source} · ${props.citation.date}`;
         return source;
     });

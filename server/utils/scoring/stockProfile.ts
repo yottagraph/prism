@@ -384,8 +384,9 @@ export async function getStockEntityProfile(
                         : [],
                 });
 
-                // Trim to the most recent ~120 trading days for the panel.
-                series = ohlcv.slice(-120);
+                // Keep up to ~1 year of bars for the panel; the chart can window
+                // down per the user's selected period.
+                series = ohlcv.slice(-500);
 
                 const identityCites: Array<CitationRef | null> = [
                     buildCitation('Elemental · ticker', tickerFacts[0]),

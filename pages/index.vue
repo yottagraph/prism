@@ -37,7 +37,10 @@
                 <span v-if="active" class="text-caption text-medium-emphasis mr-3">
                     <strong>{{ active.entities.length }}</strong> entities
                 </span>
-                <span v-if="scanning" class="d-inline-flex align-center text-caption text-medium-emphasis">
+                <span
+                    v-if="scanning"
+                    class="d-inline-flex align-center text-caption text-medium-emphasis"
+                >
                     <v-progress-circular
                         size="14"
                         width="2"
@@ -47,7 +50,9 @@
                     />
                     {{ scanStatusMessage }}
                     <span class="ml-1">({{ scanProgress.done }}/{{ scanProgress.total }})</span>
-                    <span v-if="scanElapsedText" class="ml-2 font-mono">· {{ scanElapsedText }}</span>
+                    <span v-if="scanElapsedText" class="ml-2 font-mono"
+                        >· {{ scanElapsedText }}</span
+                    >
                 </span>
                 <span v-else-if="allResolved" class="text-caption text-success">
                     <v-icon size="x-small" class="mr-1">mdi-check-circle</v-icon>
@@ -99,7 +104,13 @@
                                 <v-chip
                                     size="x-small"
                                     variant="tonal"
-                                    :color="item.phase === 'error' ? 'error' : item.phase === 'warning' ? 'warning' : 'info'"
+                                    :color="
+                                        item.phase === 'error'
+                                            ? 'error'
+                                            : item.phase === 'warning'
+                                              ? 'warning'
+                                              : 'info'
+                                    "
                                     label
                                 >
                                     {{ item.phase }}
@@ -299,7 +310,7 @@
     const scanElapsedText = computed(() => {
         const startedAt = scanStartedAt.value;
         if (!startedAt) return null;
-        const end = scanning.value ? nowMs.value : scanCompletedAt.value ?? nowMs.value;
+        const end = scanning.value ? nowMs.value : (scanCompletedAt.value ?? nowMs.value);
         const elapsedSec = Math.max(0, Math.floor((end - startedAt) / 1000));
         const minutes = Math.floor(elapsedSec / 60);
         const seconds = elapsedSec % 60;

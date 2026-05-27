@@ -430,7 +430,11 @@ export function usePortfolio() {
                         current.resolutionError = entityOut.resolutionError;
                         current.scores = entityOut.scores ?? current.scores;
                         if (entityOut.resolutionError) {
-                            failedNames.push(entityOut.resolvedName || entityOut.inputName || `row ${entityIndex + 1}`);
+                            failedNames.push(
+                                entityOut.resolvedName ||
+                                    entityOut.inputName ||
+                                    `row ${entityIndex + 1}`
+                            );
                         }
                     });
                     p.portfolios[idx].entities = [...ents];

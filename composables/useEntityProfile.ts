@@ -8,11 +8,7 @@
 
 import { computed, ref, watch } from 'vue';
 
-import {
-    type EntityRiskScore,
-    type RiskDriver,
-    type SourceFusionWeights,
-} from './useFusedScoring';
+import { type EntityRiskScore, type RiskDriver, type SourceFusionWeights } from './useFusedScoring';
 
 export interface EntityProperty {
     pid: number;

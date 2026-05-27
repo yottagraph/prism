@@ -55,7 +55,12 @@ function extractCitationRows(result: any): CitationPayload[] {
 
 async function fetchOneRef(ref: string, event: H3Event): Promise<CitationRef | null> {
     try {
-        const result = await callMcpTool('elemental', 'elemental_get_citations', { refs: [ref] }, event);
+        const result = await callMcpTool(
+            'elemental',
+            'elemental_get_citations',
+            { refs: [ref] },
+            event
+        );
         const rows = extractCitationRows(result);
         if (rows.length > 0) return normalizeCitation(rows[0], ref);
     } catch (error) {
@@ -71,9 +76,14 @@ async function fetchOneRef(ref: string, event: H3Event): Promise<CitationRef | n
     return null;
 }
 
-export async function resolveRefs(refs: string[], event: H3Event): Promise<Map<string, CitationRef>> {
+export async function resolveRefs(
+    refs: string[],
+    event: H3Event
+): Promise<Map<string, CitationRef>> {
     const uniqueRefs = Array.from(
-        new Set(refs.filter((ref): ref is string => typeof ref === 'string' && ref.trim().length > 0))
+        new Set(
+            refs.filter((ref): ref is string => typeof ref === 'string' && ref.trim().length > 0)
+        )
     );
     const out = new Map<string, CitationRef>();
     if (!uniqueRefs.length) return out;
@@ -91,7 +101,12 @@ export async function resolveRefs(refs: string[], event: H3Event): Promise<Map<s
     if (!missing.length) return out;
 
     try {
-        const result = await callMcpTool('elemental', 'elemental_get_citations', { refs: missing }, event);
+        const result = await callMcpTool(
+            'elemental',
+            'elemental_get_citations',
+            { refs: missing },
+            event
+        );
         const rows = extractCitationRows(result);
         rows.forEach((row) => {
             const normalized = normalizeCitation(row, row?.ref || row?.hash || '');
