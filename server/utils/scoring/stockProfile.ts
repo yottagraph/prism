@@ -53,22 +53,41 @@ interface RelatedInstrument {
     flavor?: string;
 }
 
-const TICKER_NAME_RE = /^(NYSE|NASDAQ|AMEX|NYSEARCA|BATS|OTC):\s*([A-Z][A-Z0-9\-\.]*)$/i;
+const PREFIXED_TICKER_RE = /^(NYSE|NASDAQ|AMEX|NYSEARCA|BATS|OTC):\s*([A-Z][A-Z0-9\-\.]*)$/i;
+// Bare US equity tickers: 1-5 uppercase letters, optionally with a class suffix
+// like BRK.B, BRK-B, EXE.O. Excludes pure digits and longer strings (ISINs are
+// always 12 chars with two-letter country prefix, e.g. US693070AD69).
+const BARE_TICKER_RE = /^\$?[A-Z]{1,5}(?:[.\-][A-Z]{1,2})?$/;
+// ISIN/CUSIP detector to explicitly de-prioritise debt instruments.
+const ISIN_RE = /^[A-Z]{2}[A-Z0-9]{9}\d$/;
 
 function parseInstrumentName(name: string): { ticker: string | null; exchange: string | null } {
     if (!name) return { ticker: null, exchange: null };
-    const match = name.match(TICKER_NAME_RE);
-    if (!match) return { ticker: null, exchange: null };
-    return { exchange: match[1].toUpperCase(), ticker: match[2].toUpperCase() };
+    const prefixed = name.match(PREFIXED_TICKER_RE);
+    if (prefixed) return { exchange: prefixed[1].toUpperCase(), ticker: prefixed[2].toUpperCase() };
+    if (BARE_TICKER_RE.test(name)) {
+        return { exchange: null, ticker: name.replace(/^\$/, '').toUpperCase() };
+    }
+    return { ticker: null, exchange: null };
+}
+
+function isEquityCandidate(name: string): boolean {
+    if (!name) return false;
+    if (ISIN_RE.test(name)) return false;
+    return PREFIXED_TICKER_RE.test(name) || BARE_TICKER_RE.test(name);
 }
 
 function rankInstrumentCandidates(items: RelatedInstrument[]): RelatedInstrument[] {
-    // Prefer entries whose name parses as "EXCHANGE: TICKER" (equities) over
-    // bond ISINs/CUSIPs and miscellany.
+    // Equities first, then everything else. Within equities, prefer prefixed
+    // names (NASDAQ:CCL) over bare tickers (CCL) — but we'll later probe both
+    // for actual price data and choose whichever has OHLCV populated.
     return [...items].sort((a, b) => {
-        const aHit = TICKER_NAME_RE.test(a.name) ? 0 : 1;
-        const bHit = TICKER_NAME_RE.test(b.name) ? 0 : 1;
-        return aHit - bHit;
+        const aEq = isEquityCandidate(a.name) ? 0 : 1;
+        const bEq = isEquityCandidate(b.name) ? 0 : 1;
+        if (aEq !== bEq) return aEq - bEq;
+        const aPref = PREFIXED_TICKER_RE.test(a.name) ? 0 : 1;
+        const bPref = PREFIXED_TICKER_RE.test(b.name) ? 0 : 1;
+        return aPref - bPref;
     });
 }
 
@@ -244,8 +263,60 @@ export async function getStockEntityProfile(
         dataGaps.push('No related financial instruments returned by Elemental');
     }
     const ranked = rankInstrumentCandidates(allInstruments);
-    const equityCandidates = ranked.filter((row) => TICKER_NAME_RE.test(row.name));
-    const primary = equityCandidates[0] || ranked[0] || null;
+    const equityCandidates = ranked.filter((row) => isEquityCandidate(row.name));
+
+    // Pick the equity candidate that actually has close_price history. The
+    // graph often has *two* CCL-style entities — a pretty alias like
+    // "NASDAQ:CCL" with no atomized prices, plus a bare-ticker entity ("CCL")
+    // populated by the Alpha Vantage pipeline. Batch-probe close_price across
+    // every equity candidate so we land on the one with real data instead of
+    // picking the first match alphabetically.
+    let primary: RelatedInstrument | null = null;
+    let primaryClosePid: string | undefined;
+    let primaryCloseProbe: Array<{ eid: string; close: number; date: string }> = [];
+    try {
+        const schema = await getSchema(event);
+        const pidMap = normalizePidMap(schema);
+        primaryClosePid = pidMap.close_price;
+        if (primaryClosePid && equityCandidates.length > 0) {
+            const probeNeids = equityCandidates.slice(0, 8).map((row) => row.neid);
+            const probeRows = await getPropertyValues(probeNeids, [primaryClosePid], false, event);
+            const countByEid = new Map<string, number>();
+            for (const row of probeRows) {
+                if (!row.eid) continue;
+                if (String(row.pid) !== primaryClosePid) continue;
+                if (typeof row.value !== 'number') continue;
+                countByEid.set(row.eid, (countByEid.get(row.eid) || 0) + 1);
+            }
+            // Pick the candidate with the most close_price rows. Fall back to
+            // first-in-ranking if every candidate is empty.
+            primary =
+                equityCandidates
+                    .slice()
+                    .sort(
+                        (a, b) => (countByEid.get(b.neid) || 0) - (countByEid.get(a.neid) || 0)
+                    )[0] || null;
+            // Build a tiny seed series from the probe so we can keep going
+            // without a second roundtrip if there's data.
+            if (primary && (countByEid.get(primary.neid) || 0) > 0) {
+                primaryCloseProbe = probeRows
+                    .filter(
+                        (row) =>
+                            row.eid === primary!.neid &&
+                            String(row.pid) === primaryClosePid &&
+                            typeof row.value === 'number'
+                    )
+                    .map((row) => ({
+                        eid: String(row.eid),
+                        close: row.value as number,
+                        date: String((row as any).recorded_at || ''),
+                    }));
+            }
+        }
+    } catch (error) {
+        console.warn('[stock profile] equity OHLCV probe failed', error);
+    }
+    if (!primary) primary = equityCandidates[0] || ranked[0] || null;
 
     let instrumentNeid = primary?.neid ?? null;
     let instrumentName = primary?.name ?? null;
