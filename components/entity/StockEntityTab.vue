@@ -48,10 +48,57 @@
                     <v-spacer />
                     <div class="text-body-2 text-medium-emphasis">{{ latestPriceText }}</div>
                 </div>
+                <div class="d-flex align-center flex-wrap ga-2 mt-2">
+                    <v-chip v-if="stock.sector" size="x-small" variant="outlined">{{
+                        stock.sector
+                    }}</v-chip>
+                    <v-chip v-if="stock.industry" size="x-small" variant="outlined">{{
+                        stock.industry
+                    }}</v-chip>
+                </div>
                 <div v-if="stock.instrumentName" class="text-caption text-medium-emphasis mt-2">
                     Instrument: {{ stock.instrumentName }}
                 </div>
             </v-card>
+
+            <v-row dense class="mb-3">
+                <v-col cols="6" md="3">
+                    <v-sheet class="stat-strip pa-3 rounded">
+                        <div class="text-caption text-medium-emphasis">Last Price</div>
+                        <div class="text-body-1 font-mono">
+                            {{ formatPrice(stock.latestClose) }}
+                        </div>
+                    </v-sheet>
+                </v-col>
+                <v-col cols="6" md="3">
+                    <v-sheet class="stat-strip pa-3 rounded">
+                        <div class="text-caption text-medium-emphasis">Window Return</div>
+                        <div class="text-body-1 font-mono" :class="returnClass">
+                            {{ formatSignedPercent(stock.returnPct) }}
+                        </div>
+                    </v-sheet>
+                </v-col>
+                <v-col cols="6" md="3">
+                    <v-sheet class="stat-strip pa-3 rounded">
+                        <div class="text-caption text-medium-emphasis">Market Cap</div>
+                        <div class="text-body-1 font-mono">
+                            {{ formatMoney(stock.fundamentals.marketCap) }}
+                        </div>
+                    </v-sheet>
+                </v-col>
+                <v-col cols="6" md="3">
+                    <v-sheet class="stat-strip pa-3 rounded">
+                        <div class="text-caption text-medium-emphasis">P/E</div>
+                        <div class="text-body-1 font-mono">
+                            {{
+                                stock.fundamentals.peRatio != null
+                                    ? stock.fundamentals.peRatio.toFixed(2)
+                                    : '—'
+                            }}
+                        </div>
+                    </v-sheet>
+                </v-col>
+            </v-row>
 
             <v-tabs v-model="stockTab" class="mb-3">
                 <v-tab value="overview">Overview</v-tab>
@@ -283,6 +330,14 @@
         if (value == null || !Number.isFinite(value)) return '—';
         return `${(value * 100).toFixed(2)}%`;
     }
+    function formatSignedPercent(value?: number | null) {
+        if (value == null || !Number.isFinite(value)) return '—';
+        return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
+    }
+    function formatPrice(value?: number | null) {
+        if (value == null || !Number.isFinite(value)) return '—';
+        return `$${value.toFixed(2)}`;
+    }
     function formatRatio(value?: number) {
         if (value == null || !Number.isFinite(value)) return '—';
         return `${value.toFixed(2)}x`;
@@ -335,6 +390,12 @@
             .filter((row) => row[1] !== '—')
             .map(([label, value]) => ({ label, value }));
     });
+
+    const returnClass = computed(() => {
+        const value = props.stock?.returnPct;
+        if (value == null) return '';
+        return value >= 0 ? 'text-success' : 'text-error';
+    });
 </script>
 
 <style scoped>
@@ -359,5 +420,9 @@
     }
     .font-mono {
         font-family: var(--font-mono, ui-monospace, monospace);
+    }
+    .stat-strip {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.05);
     }
 </style>

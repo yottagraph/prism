@@ -245,9 +245,9 @@
     }>();
 
     const periods = [
-        { value: '1W', label: '1W', days: 7 },
-        { value: '1M', label: '1M', days: 30 },
-        { value: '3M', label: '3M', days: 90 },
+        { value: '1W', label: '7D', days: 7 },
+        { value: '1M', label: '30D', days: 30 },
+        { value: '3M', label: '90D', days: 90 },
         { value: '6M', label: '6M', days: 180 },
         { value: '1Y', label: '1Y', days: 365 },
         { value: 'ALL', label: 'All', days: Infinity },
