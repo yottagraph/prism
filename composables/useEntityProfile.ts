@@ -84,15 +84,40 @@ export function useEntityProfile(neid: import('vue').Ref<string | null>) {
     const data = ref<EntityProfileData | null>(null);
     const loading = ref(false);
     const error = ref<string | null>(null);
+    const statusMessage = ref('Idle');
+    let statusTimer: ReturnType<typeof setInterval> | null = null;
+
+    function startStatusTicker(messages: string[]) {
+        let idx = 0;
+        statusMessage.value = messages[idx];
+        if (statusTimer) clearInterval(statusTimer);
+        statusTimer = setInterval(() => {
+            idx = (idx + 1) % messages.length;
+            statusMessage.value = messages[idx];
+        }, 1200);
+    }
+
+    function stopStatusTicker(finalMessage?: string) {
+        if (statusTimer) clearInterval(statusTimer);
+        statusTimer = null;
+        if (finalMessage) statusMessage.value = finalMessage;
+    }
 
     async function load(forNeid: string, weights: SourceFusionWeights) {
         const cacheKey = `${forNeid}|${JSON.stringify(weights)}`;
         if (cache.has(cacheKey)) {
             data.value = cache.get(cacheKey)!;
+            statusMessage.value = 'Overview loaded from cache';
             return;
         }
         loading.value = true;
         error.value = null;
+        startStatusTicker([
+            'Resolving entity overview…',
+            'Loading risk lenses…',
+            'Loading relationships and events…',
+            'Finalizing overview…',
+        ]);
         try {
             const { activePortfolio } = usePortfolio();
             const activePortfolioId = activePortfolio.value?.id || 'default';
@@ -101,8 +126,10 @@ export function useEntityProfile(neid: import('vue').Ref<string | null>) {
             );
             cache.set(cacheKey, profile);
             data.value = profile;
+            stopStatusTicker('Overview ready');
         } catch (e: any) {
             error.value = e?.message || 'Failed to load entity profile';
+            stopStatusTicker('Overview load failed');
         } finally {
             loading.value = false;
         }
@@ -131,6 +158,7 @@ export function useEntityProfile(neid: import('vue').Ref<string | null>) {
         data: computed(() => data.value),
         loading: computed(() => loading.value),
         error: computed(() => error.value),
+        statusMessage: computed(() => statusMessage.value),
         refresh,
     };
 }

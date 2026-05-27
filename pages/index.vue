@@ -47,6 +47,7 @@
                     />
                     {{ scanStatusMessage }}
                     <span class="ml-1">({{ scanProgress.done }}/{{ scanProgress.total }})</span>
+                    <span v-if="scanElapsedText" class="ml-2 font-mono">· {{ scanElapsedText }}</span>
                 </span>
                 <span v-else-if="allResolved" class="text-caption text-success">
                     <v-icon size="x-small" class="mr-1">mdi-check-circle</v-icon>
@@ -197,7 +198,7 @@
 </template>
 
 <script setup lang="ts">
-    import { computed, ref, watch } from 'vue';
+    import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
     import type { PortfolioEntity } from '~/composables/usePortfolio';
     import type { RiskTier } from '~/composables/useFusedScoring';
@@ -216,6 +217,8 @@
         scanProgress,
         scanStatusMessage,
         scanStatusHistory,
+        scanStartedAt,
+        scanCompletedAt,
         lastScanError: scanError,
         lastScanCoverage,
         createPortfolio,
@@ -279,6 +282,29 @@
     });
 
     const recentScanStatus = computed(() => scanStatusHistory.value.slice(-10).reverse());
+    const nowMs = ref(Date.now());
+    let clockTimer: ReturnType<typeof setInterval> | null = null;
+
+    onMounted(() => {
+        clockTimer = setInterval(() => {
+            nowMs.value = Date.now();
+        }, 1000);
+    });
+
+    onUnmounted(() => {
+        if (clockTimer) clearInterval(clockTimer);
+        clockTimer = null;
+    });
+
+    const scanElapsedText = computed(() => {
+        const startedAt = scanStartedAt.value;
+        if (!startedAt) return null;
+        const end = scanning.value ? nowMs.value : scanCompletedAt.value ?? nowMs.value;
+        const elapsedSec = Math.max(0, Math.floor((end - startedAt) / 1000));
+        const minutes = Math.floor(elapsedSec / 60);
+        const seconds = elapsedSec % 60;
+        return `${minutes}:${String(seconds).padStart(2, '0')}`;
+    });
 
     const { signals: macroSignals } = useMacroContext();
     const { signals: fredMacroSignals } = useFredMacroContext();

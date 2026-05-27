@@ -39,6 +39,13 @@
                     Refresh
                 </v-btn>
             </div>
+            <div
+                v-if="loading || stockLoading"
+                class="d-inline-flex align-center text-caption text-medium-emphasis mt-2"
+            >
+                <v-progress-circular size="12" width="2" indeterminate color="primary" class="mr-2" />
+                {{ activeTab === 'stock' ? stockStatusMessage : overviewStatusMessage }}
+            </div>
         </div>
 
         <div class="flex-grow-1 overflow-y-auto pa-4">
@@ -230,11 +237,18 @@
 
     const neidRef = ref(neid.value);
     watch(neid, (v) => (neidRef.value = v));
-    const { data, loading, error, refresh } = useEntityProfile(neidRef);
+    const {
+        data,
+        loading,
+        error,
+        refresh,
+        statusMessage: overviewStatusMessage,
+    } = useEntityProfile(neidRef);
     const {
         data: stockData,
         loading: stockLoading,
         error: stockError,
+        statusMessage: stockStatusMessage,
         load: loadStockProfile,
         clear: clearStockCache,
     } = useEntityStockProfile();

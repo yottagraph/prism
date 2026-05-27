@@ -83,7 +83,15 @@ export async function writeScoringCache<T = unknown>(
 export function makeCacheKey(
     portfolioId: string,
     neid: string,
-    dataType: 'solvency' | 'executive' | 'news' | 'market' | 'profile' | 'relationships' | 'events'
+    dataType:
+        | 'solvency'
+        | 'executive'
+        | 'news'
+        | 'market'
+        | 'profile'
+        | 'relationships'
+        | 'events'
+        | 'stock-profile-v2'
 ) {
     return `${portfolioId}:${neid}:${dataType}`;
 }

@@ -8,9 +8,10 @@ export interface ElementalSearchMatch {
 
 export interface ElementalPropertyValue {
     eid?: string;
-    pid?: number;
+    pid?: string;
     value?: unknown;
     ref?: string;
+    recorded_at?: string;
     attributes?: Record<string, unknown>;
     values?: Array<{ value?: unknown; [key: string]: unknown }>;
     [key: string]: unknown;
@@ -24,8 +25,14 @@ export interface ElementalPropertyFact {
 }
 
 export interface ElementalSchema {
-    flavors: Array<{ fid?: number; findex?: number; name: string }>;
-    properties: Array<{ pid?: number; pindex?: number; name: string; type?: string }>;
+    flavors: Array<{ fid?: string; findex?: string; name: string }>;
+    properties: Array<{
+        pid?: string;
+        pindex?: string;
+        name: string;
+        type?: string;
+        domain_flavors?: string[];
+    }>;
 }
 
 const SCHEMA_TTL_MS = 5 * 60_000;
@@ -79,20 +86,60 @@ function headers() {
     };
 }
 
+// Elemental returns int64 IDs (pid, eid, fid, efid) as unquoted JSON numbers.
+// JavaScript Number only preserves 53 bits, so anything ~> 9e15 silently rounds
+// (e.g. close_price pid 7627506139678298689 -> 7627506139678299000). The rounded
+// PID will never match an existing property and the response comes back empty.
+//
+// Strategy: read the raw response text and rewrite any unquoted >=16-digit
+// integer literal to a JSON string before parsing. We only rewrite values
+// preceded by `:` (object value), `[` (array start), or `,` (array element)
+// and followed by `,`, `]`, `}` or whitespace, so price floats like 77.62 are
+// untouched.
+const BIG_INT_LITERAL_RE = /([:\[,]\s*)(-?\d{16,})(?=\s*[,\]}])/g;
+
+function parseBigIntSafe<T = unknown>(text: string): T {
+    const sanitised = text.replace(
+        BIG_INT_LITERAL_RE,
+        (_match, lead, digits) => `${lead}"${digits}"`
+    );
+    return JSON.parse(sanitised) as T;
+}
+
+async function fetchJsonBig<T = any>(
+    url: string,
+    init?: { method?: 'GET' | 'POST'; headers?: Record<string, string>; body?: string }
+): Promise<T> {
+    const response = await fetch(url, {
+        method: init?.method ?? 'GET',
+        headers: init?.headers,
+        body: init?.body,
+    });
+    const text = await response.text();
+    if (!response.ok) {
+        throw createError({
+            statusCode: response.status,
+            statusMessage: text || `Elemental request failed (${response.status})`,
+        });
+    }
+    if (!text) return undefined as unknown as T;
+    return parseBigIntSafe<T>(text);
+}
+
 export async function searchEntitiesByName(
     query: string,
     maxResults = 3,
     event?: H3Event
 ): Promise<ElementalSearchMatch[]> {
     recordElementalCall(event, 'entities/search', 'POST', { queries: 1, maxResults });
-    const res = await $fetch<any>(buildUrl('entities/search'), {
+    const res = await fetchJsonBig<any>(buildUrl('entities/search'), {
         method: 'POST',
         headers: headers(),
-        body: {
+        body: JSON.stringify({
             queries: [{ queryId: 1, query }],
             includeNames: true,
             maxResults,
-        },
+        }),
     });
     const matches: any[] = res?.results?.[0]?.matches ?? [];
     return matches.map((m) => ({ neid: m.neid, name: m.name || m.neid, score: m.score }));
@@ -110,14 +157,14 @@ export async function searchEntitiesByNames(
         maxResults,
         mode: 'batch',
     });
-    const res = await $fetch<any>(buildUrl('entities/search'), {
+    const res = await fetchJsonBig<any>(buildUrl('entities/search'), {
         method: 'POST',
         headers: headers(),
-        body: {
+        body: JSON.stringify({
             queries: payloadQueries,
             includeNames: true,
             maxResults,
-        },
+        }),
     });
     const out: Record<string, ElementalSearchMatch[]> = {};
     const results: any[] = Array.isArray(res?.results) ? res.results : [];
@@ -132,7 +179,7 @@ export async function searchEntitiesByNames(
 
 export async function getEntityName(neid: string, event?: H3Event): Promise<string> {
     recordElementalCall(event, `entities/${neid}/name`, 'GET');
-    const res = await $fetch<{ name?: string }>(buildUrl(`entities/${neid}/name`), {
+    const res = await fetchJsonBig<{ name?: string }>(buildUrl(`entities/${neid}/name`), {
         headers: headers(),
     });
     return res?.name || neid;
@@ -146,7 +193,7 @@ export async function getSchema(event?: H3Event): Promise<ElementalSchema> {
 
     try {
         recordElementalCall(event, 'elemental/metadata/schema', 'GET', { cache: 'miss' });
-        const res = await $fetch<any>(buildUrl('elemental/metadata/schema'), {
+        const res = await fetchJsonBig<any>(buildUrl('elemental/metadata/schema'), {
             headers: headers(),
         });
         const schema = res?.schema ?? res ?? {};
@@ -166,6 +213,14 @@ export async function getSchema(event?: H3Event): Promise<ElementalSchema> {
     }
 }
 
+// Build the "pids" JSON-array body parameter without going through JSON.stringify
+// on JavaScript numbers (which would corrupt 64-bit integer PIDs). The values
+// are inserted as raw int64 literals so the Go-side json.Unmarshal sees the
+// exact bit-for-bit integer Elemental gave us in the schema.
+function pidListLiteral(pids: string[]): string {
+    return `[${pids.join(',')}]`;
+}
+
 export async function findEntities(
     expression: object,
     limit = 50,
@@ -173,10 +228,12 @@ export async function findEntities(
 ): Promise<string[]> {
     recordElementalCall(event, 'elemental/find', 'POST', { limit });
     const form = new URLSearchParams();
-    form.set('expression', JSON.stringify(expression));
+    // expression may itself contain PIDs that need to survive serialization. We
+    // do a final pass to swap any string PID literals back to bare integers.
+    form.set('expression', encodeExpressionPreservingBigInts(expression));
     form.set('limit', String(limit));
     const { qsApiKey } = getGatewayConfig();
-    const res = await $fetch<any>(buildUrl('elemental/find'), {
+    const res = await fetchJsonBig<any>(buildUrl('elemental/find'), {
         method: 'POST',
         headers: {
             ...(qsApiKey ? { 'X-Api-Key': qsApiKey } : {}),
@@ -187,9 +244,17 @@ export async function findEntities(
     return (res?.eids ?? []) as string[];
 }
 
+// Encode a `linked.pids` style expression where PIDs may be string-form int64
+// values. We JSON.stringify, then unquote any "<digits>" that sits inside a
+// numeric context so the backend parses them as int64.
+function encodeExpressionPreservingBigInts(expression: object): string {
+    const text = JSON.stringify(expression);
+    return text.replace(/"(-?\d{16,})"/g, (_m, digits) => digits);
+}
+
 export async function getPropertyValues(
     eids: string[],
-    pids: number[],
+    pids: string[],
     includeAttributes = true,
     event?: H3Event
 ): Promise<ElementalPropertyValue[]> {
@@ -200,10 +265,10 @@ export async function getPropertyValues(
     });
     const form = new URLSearchParams();
     form.set('eids', JSON.stringify(eids));
-    form.set('pids', JSON.stringify(pids));
+    form.set('pids', pidListLiteral(pids));
     form.set('include_attributes', String(includeAttributes));
     const { qsApiKey } = getGatewayConfig();
-    const res = await $fetch<any>(buildUrl('elemental/entities/properties'), {
+    const res = await fetchJsonBig<any>(buildUrl('elemental/entities/properties'), {
         method: 'POST',
         headers: {
             ...(qsApiKey ? { 'X-Api-Key': qsApiKey } : {}),
@@ -214,19 +279,24 @@ export async function getPropertyValues(
     return (res?.values ?? []) as ElementalPropertyValue[];
 }
 
-export function normalizePidMap(schema: ElementalSchema): Record<string, number> {
-    const map: Record<string, number> = {};
+export function normalizePidMap(schema: ElementalSchema): Record<string, string> {
+    const map: Record<string, string> = {};
     for (const p of schema.properties ?? []) {
         const pid = p.pid ?? p.pindex;
-        if (typeof pid === 'number' && p.name) map[p.name] = pid;
+        if (pid !== undefined && pid !== null && p.name) map[p.name] = String(pid);
     }
     return map;
 }
 
-export function extractNumeric(values: ElementalPropertyValue[], pid: number): number[] {
+function pidMatches(row: ElementalPropertyValue, pid: string): boolean {
+    return row.pid !== undefined && String(row.pid) === pid;
+}
+
+export function extractNumeric(values: ElementalPropertyValue[], pid: string): number[] {
+    if (!pid) return [];
     const out: number[] = [];
     for (const row of values) {
-        if (row.pid !== pid) continue;
+        if (!pidMatches(row, pid)) continue;
         const direct = row.value;
         if (typeof direct === 'number' && Number.isFinite(direct)) out.push(direct);
         const nested = Array.isArray(row.values) ? row.values : [];
@@ -239,10 +309,11 @@ export function extractNumeric(values: ElementalPropertyValue[], pid: number): n
     return out;
 }
 
-export function extractDates(values: ElementalPropertyValue[], pid: number): Date[] {
+export function extractDates(values: ElementalPropertyValue[], pid: string): Date[] {
+    if (!pid) return [];
     const out: Date[] = [];
     for (const row of values) {
-        if (row.pid !== pid) continue;
+        if (!pidMatches(row, pid)) continue;
         const direct = row.value;
         if (typeof direct === 'string') {
             const d = new Date(direct);
@@ -261,7 +332,7 @@ export function extractDates(values: ElementalPropertyValue[], pid: number): Dat
 
 function coerceFactDate(row: Record<string, unknown> | undefined): string | undefined {
     if (!row) return undefined;
-    const direct = row.date;
+    const direct = row.date ?? row.recorded_at;
     if (typeof direct === 'string' && direct.trim()) return direct;
     const attributes =
         row.attributes && typeof row.attributes === 'object'
@@ -273,14 +344,19 @@ function coerceFactDate(row: Record<string, unknown> | undefined): string | unde
         attributes.filing_date ??
         attributes.report_date ??
         attributes.published_date ??
-        attributes.timestamp;
+        attributes.timestamp ??
+        attributes.recorded_at;
     return typeof candidate === 'string' && candidate.trim() ? candidate : undefined;
 }
 
-export function extractPropertyFacts(values: ElementalPropertyValue[], pid: number): ElementalPropertyFact[] {
+export function extractPropertyFacts(
+    values: ElementalPropertyValue[],
+    pid: string
+): ElementalPropertyFact[] {
+    if (!pid) return [];
     const out: ElementalPropertyFact[] = [];
     for (const row of values) {
-        if (row.pid !== pid) continue;
+        if (!pidMatches(row, pid)) continue;
         const rowRef = typeof row.ref === 'string' ? row.ref : undefined;
         const rowDate = coerceFactDate(row as Record<string, unknown>);
         const rowAttributes =

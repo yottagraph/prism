@@ -43,6 +43,17 @@
                 <div v-if="stock.instrumentName" class="text-caption text-medium-emphasis mt-2">
                     Instrument: {{ stock.instrumentName }}
                 </div>
+                <div v-if="stock.relatedInstruments.length" class="d-flex flex-wrap ga-1 mt-2">
+                    <v-chip
+                        v-for="rel in stock.relatedInstruments"
+                        :key="rel.neid"
+                        size="x-small"
+                        variant="outlined"
+                        density="comfortable"
+                    >
+                        {{ rel.name }}
+                    </v-chip>
+                </div>
             </v-card>
 
             <v-row dense class="mb-3">
@@ -90,7 +101,9 @@
                     Not enough price samples to render chart.
                 </v-alert>
                 <div class="text-caption text-medium-emphasis mt-2">
-                    {{ stock.samples }} samples{{ stock.latestDate ? ` · latest ${stock.latestDate}` : '' }}
+                    {{ stock.samples }} samples{{
+                        stock.latestDate ? ` · latest ${stock.latestDate}` : ''
+                    }}
                 </div>
             </v-card>
 
@@ -137,10 +150,11 @@
         if (!props.stock) return '';
         if (typeof props.stock.latestClose !== 'number') return 'No latest close available';
         const ret =
-            typeof props.stock.returnPct45d === 'number'
-                ? ` · ${props.stock.returnPct45d >= 0 ? '+' : ''}${props.stock.returnPct45d.toFixed(1)}%`
+            typeof props.stock.returnPct === 'number'
+                ? ` · ${props.stock.returnPct >= 0 ? '+' : ''}${props.stock.returnPct.toFixed(1)}%`
                 : '';
-        return `$${props.stock.latestClose.toFixed(2)}${ret}`;
+        const date = props.stock.latestDate ? ` (${props.stock.latestDate.slice(0, 10)})` : '';
+        return `$${props.stock.latestClose.toFixed(2)}${ret}${date}`;
     });
 
     const chartPoints = computed(() => {

@@ -2,7 +2,13 @@ import type { H3Event } from 'h3';
 
 import { makeCacheKey, readScoringCache, writeScoringCache } from './cache';
 import { callMcpTool, extractMcpStructuredContent } from './mcpGateway';
-import { extractNumeric, getEntityName, getPropertyValues, getSchema, normalizePidMap } from './elemental';
+import {
+    extractNumeric,
+    getEntityName,
+    getPropertyValues,
+    getSchema,
+    normalizePidMap,
+} from './elemental';
 import { clampScore } from './hash';
 import type { EvidenceItem, LensDetail } from './types';
 
@@ -34,15 +40,15 @@ export async function computeMarketSignalScore(
         const rsiPid = pid.rsi_14 ?? pid.rsi;
         const anomalyPid = pid.market_anomaly ?? pid.anomaly_flag;
         const candidatePids = [returnPid, volPid, rsiPid, anomalyPid].filter(
-            (v): v is number => typeof v === 'number'
+            (v): v is string => typeof v === 'string' && v.length > 0
         );
 
         if (candidatePids.length) {
             const values = await getPropertyValues([neid], candidatePids, true, event);
-            const return30 = extractNumeric(values, returnPid ?? -1)[0];
-            const vol30 = extractNumeric(values, volPid ?? -1)[0];
-            const rsi = extractNumeric(values, rsiPid ?? -1)[0];
-            const anomaly = extractNumeric(values, anomalyPid ?? -1)[0];
+            const return30 = extractNumeric(values, returnPid ?? '')[0];
+            const vol30 = extractNumeric(values, volPid ?? '')[0];
+            const rsi = extractNumeric(values, rsiPid ?? '')[0];
+            const anomaly = extractNumeric(values, anomalyPid ?? '')[0];
 
             if (
                 [return30, vol30, rsi, anomaly].some(
@@ -68,7 +74,9 @@ export async function computeMarketSignalScore(
 
                 findings.push({
                     text: `Market signals indicate ${
-                        typeof return30 === 'number' ? `${return30.toFixed(1)}% 30-day return` : 'unknown return'
+                        typeof return30 === 'number'
+                            ? `${return30.toFixed(1)}% 30-day return`
+                            : 'unknown return'
                     }, ${
                         typeof vol30 === 'number'
                             ? `${vol30.toFixed(1)}% realized volatility`
@@ -102,7 +110,9 @@ export async function computeMarketSignalScore(
             const prices = Array.isArray(structured?.prices) ? structured!.prices : [];
             const closes = prices
                 .map((row) => row?.close)
-                .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+                .filter(
+                    (value): value is number => typeof value === 'number' && Number.isFinite(value)
+                );
 
             if ((structured?.found ?? false) && closes.length >= 5) {
                 const first = closes[0];
@@ -126,7 +136,9 @@ export async function computeMarketSignalScore(
                 const annualizedVolPct = Math.sqrt(variance) * Math.sqrt(252) * 100;
 
                 hasRealData = true;
-                score = clampScore(35 + Math.max(0, -returnPct) * 1.4 + Math.max(0, annualizedVolPct - 22));
+                score = clampScore(
+                    35 + Math.max(0, -returnPct) * 1.4 + Math.max(0, annualizedVolPct - 22)
+                );
                 metrics.push({ label: '30-45d return', value: `${returnPct.toFixed(1)}%` });
                 metrics.push({ label: 'Annualized vol', value: `${annualizedVolPct.toFixed(1)}%` });
                 if (structured?.ticker_info?.ticker) {
@@ -150,7 +162,9 @@ export async function computeMarketSignalScore(
                             source: 'stocks-mcp',
                             date: lastDate || undefined,
                             url: tickerUrl,
-                            title: ticker ? `${ticker} price history` : `${companyName} price history`,
+                            title: ticker
+                                ? `${ticker} price history`
+                                : `${companyName} price history`,
                         },
                     ],
                 });

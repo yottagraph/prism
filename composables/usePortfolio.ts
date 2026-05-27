@@ -214,6 +214,8 @@ const scanning = ref(false);
 const scanProgress = ref<{ done: number; total: number }>({ done: 0, total: 0 });
 const scanStatusMessage = ref('Idle');
 const scanStatusHistory = ref<Array<{ at: number; phase: string; message: string }>>([]);
+const scanStartedAt = ref<number | null>(null);
+const scanCompletedAt = ref<number | null>(null);
 const lastScanError = ref<string | null>(null);
 const lastScanCoverage = ref<{ sec: number; news: number; stock: number; poly: number }>({
     sec: 0,
@@ -353,6 +355,8 @@ export function usePortfolio() {
         const idx = p.portfolios.findIndex((pp) => pp.id === portfolioId);
         if (idx < 0) return;
         scanning.value = true;
+        scanStartedAt.value = Date.now();
+        scanCompletedAt.value = null;
         lastScanError.value = null;
         scanStatusMessage.value = 'Starting scan…';
         scanStatusHistory.value = [];
@@ -476,6 +480,7 @@ export function usePortfolio() {
             p.portfolios[idx].entities = [...ents];
         } finally {
             scanning.value = false;
+            scanCompletedAt.value = Date.now();
             if (!lastScanError.value && scanStatusMessage.value === 'Idle') {
                 scanStatusMessage.value = 'Scan complete.';
             }
@@ -490,6 +495,8 @@ export function usePortfolio() {
         scanProgress: computed(() => scanProgress.value),
         scanStatusMessage: computed(() => scanStatusMessage.value),
         scanStatusHistory: computed(() => scanStatusHistory.value),
+        scanStartedAt: computed(() => scanStartedAt.value),
+        scanCompletedAt: computed(() => scanCompletedAt.value),
         lastScanError: computed(() => lastScanError.value),
         lastScanCoverage: computed(() => lastScanCoverage.value),
         setActivePortfolio,

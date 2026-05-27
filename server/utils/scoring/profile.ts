@@ -31,7 +31,7 @@ async function getRelationships(event: H3Event, neid: string) {
     };
 
     async function linkedBy(
-        propertyPid?: number,
+        propertyPid?: string,
         relationship = 'related_to',
         bucket?: keyof typeof links
     ) {
@@ -65,7 +65,11 @@ async function getRelationships(event: H3Event, neid: string) {
 
     await Promise.all([
         linkedBy(pid.subsidiary_of ?? pid.compensation_peer_of, 'subsidiary_of', 'companies'),
-        linkedBy(pid.is_officer ?? pid.is_director ?? pid.officer_of ?? pid.director_of, 'officer_of', 'people'),
+        linkedBy(
+            pid.is_officer ?? pid.is_director ?? pid.officer_of ?? pid.director_of,
+            'officer_of',
+            'people'
+        ),
         linkedBy(pid.issued_by ?? pid.lender_of, 'issued_by', 'instruments'),
         linkedBy(pid.is_located_at ?? pid.located_at, 'located_at', 'locations'),
     ]);
@@ -107,7 +111,10 @@ export async function getEntityProfile(event: H3Event, portfolioId: string, neid
     ).catch(() => null);
     const eventRows =
         extractMcpStructuredContent<{
-            events?: Array<{ name?: string; properties?: Record<string, { value?: unknown; ref?: string }> }>;
+            events?: Array<{
+                name?: string;
+                properties?: Record<string, { value?: unknown; ref?: string }>;
+            }>;
         }>(eventsResult)?.events ?? [];
     const eventRefs = eventRows.flatMap((eventRow) =>
         Object.values(eventRow.properties || {})
@@ -128,11 +135,15 @@ export async function getEntityProfile(event: H3Event, portfolioId: string, neid
         neid,
         name,
         ticker:
-            (entityData?.entity?.properties?.ticker_symbol?.value as string | null | undefined) ?? null,
-        cik: (entityData?.entity?.properties?.company_cik?.value as string | null | undefined) ?? null,
-        sector: (entityData?.entity?.properties?.industry?.value as string | null | undefined) ?? null,
+            (entityData?.entity?.properties?.ticker_symbol?.value as string | null | undefined) ??
+            null,
+        cik:
+            (entityData?.entity?.properties?.company_cik?.value as string | null | undefined) ??
+            null,
+        sector:
+            (entityData?.entity?.properties?.industry?.value as string | null | undefined) ?? null,
         entityType: (entityData?.entity?.flavor as string | null | undefined) ?? null,
-        properties: [] as Array<{ pid: number; name: string; value: string | number | null }>,
+        properties: [] as Array<{ pid: string; name: string; value: string | number | null }>,
         relationships,
         events: eventRows.slice(0, 25).map((eventRow) => {
             const category = String(eventRow?.properties?.category?.value || 'Event');
@@ -150,8 +161,9 @@ export async function getEntityProfile(event: H3Event, portfolioId: string, neid
                 date,
                 category,
                 title,
-                severity:
-                    /bankrupt|default|fraud|regulator|litig/i.test(title) ? ('high' as const) : ('medium' as const),
+                severity: /bankrupt|default|fraud|regulator|litig/i.test(title)
+                    ? ('high' as const)
+                    : ('medium' as const),
                 citations,
             };
         }) as Array<{
@@ -159,7 +171,14 @@ export async function getEntityProfile(event: H3Event, portfolioId: string, neid
             category: string;
             title: string;
             severity: 'low' | 'medium' | 'high';
-            citations: Array<{ ref?: string; url?: string; title?: string; source?: string; date?: string; snippet?: string }>;
+            citations: Array<{
+                ref?: string;
+                url?: string;
+                title?: string;
+                source?: string;
+                date?: string;
+                snippet?: string;
+            }>;
         }>,
         scores: scored?.scores ?? {
             solvency: 0,

@@ -34,13 +34,13 @@ export async function computeNewsPressureScore(
         const mentionPid = pid.mention_velocity ?? pid.mentions_30d ?? pid.article_count;
         const articlePid = pid.article_count ?? pid.news_count;
         const candidatePids = [sentimentPid, mentionPid, articlePid].filter(
-            (v): v is number => typeof v === 'number'
+            (v): v is string => typeof v === 'string' && v.length > 0
         );
         if (candidatePids.length) {
             const values = await getPropertyValues([neid], candidatePids, true, event);
-            const sentimentValues = extractNumeric(values, sentimentPid ?? -1);
-            const mentionValues = extractNumeric(values, mentionPid ?? -1);
-            const articleValues = extractNumeric(values, articlePid ?? -1);
+            const sentimentValues = extractNumeric(values, sentimentPid ?? '');
+            const mentionValues = extractNumeric(values, mentionPid ?? '');
+            const articleValues = extractNumeric(values, articlePid ?? '');
 
             if (sentimentValues.length || mentionValues.length || articleValues.length) {
                 hasRealData = true;
@@ -89,12 +89,22 @@ export async function computeNewsPressureScore(
             const events = Array.isArray(structured?.events) ? structured!.events : [];
             if (events.length > 0) {
                 hasRealData = true;
-                const adverseKeywords = ['bankruptcy', 'default', 'legal', 'regulatory', 'restructuring'];
+                const adverseKeywords = [
+                    'bankruptcy',
+                    'default',
+                    'legal',
+                    'regulatory',
+                    'restructuring',
+                ];
                 const adverseCount = events.filter((eventRow) => {
-                    const category = String(eventRow?.properties?.category?.value || '').toLowerCase();
+                    const category = String(
+                        eventRow?.properties?.category?.value || ''
+                    ).toLowerCase();
                     return adverseKeywords.some((keyword) => category.includes(keyword));
                 }).length;
-                score = clampScore(28 + Math.min(35, adverseCount * 8) + Math.min(20, events.length));
+                score = clampScore(
+                    28 + Math.min(35, adverseCount * 8) + Math.min(20, events.length)
+                );
                 metrics.push({ label: 'Events (25)', value: `${events.length}` });
                 metrics.push({ label: 'Adverse events', value: `${adverseCount}` });
                 const eventRefs = events
@@ -159,7 +169,9 @@ export async function computeNewsPressureScore(
                 .slice(0, 24);
             const citationMap = await resolveRefs(refs, event);
             relatedArticles.slice(0, 6).forEach((article) => {
-                const headline = String(article?.properties?.headline?.value || article?.name || 'Article');
+                const headline = String(
+                    article?.properties?.headline?.value || article?.name || 'Article'
+                );
                 const source = String(article?.properties?.source?.value || '');
                 const publishedDate = String(article?.properties?.published_date?.value || '');
                 const url = String(article?.properties?.url?.value || '');
@@ -171,9 +183,9 @@ export async function computeNewsPressureScore(
                     .filter((citation): citation is NonNullable<typeof citation> => !!citation)
                     .map((citation) => ({
                         ...citation,
-                        url: citation.url || (url || undefined),
-                        source: citation.source || (source || undefined),
-                        date: citation.date || (publishedDate || undefined),
+                        url: citation.url || url || undefined,
+                        source: citation.source || source || undefined,
+                        date: citation.date || publishedDate || undefined,
                         title: citation.title || headline,
                     }));
                 if (citations.length === 0 && url) {
@@ -193,7 +205,8 @@ export async function computeNewsPressureScore(
                 });
             });
             const existing = metrics.find((metric) => metric.label === 'Articles (window)');
-            if (!existing) metrics.push({ label: 'Articles (window)', value: `${relatedArticles.length}` });
+            if (!existing)
+                metrics.push({ label: 'Articles (window)', value: `${relatedArticles.length}` });
         }
     } catch (error) {
         console.warn('[news pressure] related articles lookup failed', error);

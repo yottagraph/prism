@@ -2,12 +2,7 @@ import type { H3Event } from 'h3';
 
 import { makeCacheKey, readScoringCache, writeScoringCache } from './cache';
 import { resolveRefs } from './citations';
-import {
-    extractPropertyFacts,
-    getPropertyValues,
-    getSchema,
-    normalizePidMap,
-} from './elemental';
+import { extractPropertyFacts, getPropertyValues, getSchema, normalizePidMap } from './elemental';
 import { clampScore } from './hash';
 import type { EvidenceItem, LensDetail } from './types';
 
@@ -62,7 +57,8 @@ export async function computeSolvencyScore(
         const marginPid = pid.operating_margin ?? pid['us_gaap:operating_margin'];
         const interestPid = pid.interest_expense ?? pid['us_gaap:interest_expense'];
         const assetsPid = pid.assets ?? pid.total_assets ?? pid['us_gaap:assets'];
-        const liabilitiesPid = pid.liabilities ?? pid.total_liabilities ?? pid['us_gaap:liabilities'];
+        const liabilitiesPid =
+            pid.liabilities ?? pid.total_liabilities ?? pid['us_gaap:liabilities'];
         const filingPid = pid.filing_date ?? pid.report_date;
         const candidatePids = [
             debtPid,
@@ -72,7 +68,7 @@ export async function computeSolvencyScore(
             assetsPid,
             liabilitiesPid,
             filingPid,
-        ].filter((v): v is number => typeof v === 'number');
+        ].filter((v): v is string => typeof v === 'string' && v.length > 0);
 
         if (candidatePids.length) {
             const values = await getPropertyValues([neid], candidatePids, true, event);
@@ -81,7 +77,9 @@ export async function computeSolvencyScore(
             const marginFacts = marginPid ? extractPropertyFacts(values, marginPid) : [];
             const interestFacts = interestPid ? extractPropertyFacts(values, interestPid) : [];
             const assetsFacts = assetsPid ? extractPropertyFacts(values, assetsPid) : [];
-            const liabilitiesFacts = liabilitiesPid ? extractPropertyFacts(values, liabilitiesPid) : [];
+            const liabilitiesFacts = liabilitiesPid
+                ? extractPropertyFacts(values, liabilitiesPid)
+                : [];
             const filingFacts = filingPid ? extractPropertyFacts(values, filingPid) : [];
 
             const debt = parseFactNumber(debtFacts[0]?.value ?? '');
@@ -91,7 +89,11 @@ export async function computeSolvencyScore(
             const assets = parseFactNumber(assetsFacts[0]?.value ?? '');
             const liabilities = parseFactNumber(liabilitiesFacts[0]?.value ?? '');
             const filingDates = filingFacts
-                .map((fact) => parseFactDate(fact.date ?? (typeof fact.value === 'string' ? fact.value : undefined)))
+                .map((fact) =>
+                    parseFactDate(
+                        fact.date ?? (typeof fact.value === 'string' ? fact.value : undefined)
+                    )
+                )
                 .filter((d): d is Date => !!d);
 
             const leverage = debt && ebitda ? Math.max(0, debt / Math.max(1, ebitda)) : null;
@@ -102,7 +104,8 @@ export async function computeSolvencyScore(
             const freshestDays =
                 filingDates.length > 0
                     ? Math.round(
-                          (Date.now() - Math.max(...filingDates.map((d) => d.getTime()))) / 86_400_000
+                          (Date.now() - Math.max(...filingDates.map((d) => d.getTime()))) /
+                              86_400_000
                       )
                     : null;
 
@@ -117,7 +120,8 @@ export async function computeSolvencyScore(
                 let raw = 45;
                 if (leverage !== null) raw += Math.min(35, leverage * 4);
                 if (coverage !== null) raw += Math.max(-20, 12 - coverage * 3);
-                if (liabilityRatio !== null) raw += Math.min(20, Math.max(0, liabilityRatio - 0.5) * 30);
+                if (liabilityRatio !== null)
+                    raw += Math.min(20, Math.max(0, liabilityRatio - 0.5) * 30);
                 if (typeof opMargin === 'number') raw += opMargin < 0 ? 18 : opMargin < 8 ? 10 : 0;
                 if (freshestDays !== null)
                     raw += Math.min(15, Math.max(0, freshestDays - 120) / 12);
@@ -128,7 +132,10 @@ export async function computeSolvencyScore(
                 if (coverage !== null)
                     metrics.push({ label: 'Interest Coverage', value: `${coverage.toFixed(2)}x` });
                 if (liabilityRatio !== null)
-                    metrics.push({ label: 'Liabilities / Assets', value: `${(liabilityRatio * 100).toFixed(1)}%` });
+                    metrics.push({
+                        label: 'Liabilities / Assets',
+                        value: `${(liabilityRatio * 100).toFixed(1)}%`,
+                    });
                 if (typeof opMargin === 'number')
                     metrics.push({ label: 'Operating Margin', value: `${opMargin.toFixed(1)}%` });
                 if (freshestDays !== null)

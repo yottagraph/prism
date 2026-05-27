@@ -49,7 +49,7 @@ async function resolveNames(event: H3Event, eids: string[], limit = 20) {
 async function linked(
     event: H3Event,
     centerEid: string,
-    pid?: number,
+    pid?: string,
     direction: 'incoming' | 'outgoing' = 'outgoing'
 ) {
     if (!pid) return [] as string[];
