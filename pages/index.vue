@@ -301,17 +301,30 @@
 
     const coverage = computed(() => {
         if (!active.value) return { sec: 0, news: 0, stock: 0, poly: 0 };
-        if (lastScanCoverage.value.poly > 0) {
+        const counts = { sec: 0, news: 0, stock: 0, poly: 0 };
+        let anyPerEntityCoverage = false;
+        for (const entity of active.value.entities) {
+            if (!entity.coverage) continue;
+            anyPerEntityCoverage = true;
+            if (entity.coverage.sec) counts.sec++;
+            if (entity.coverage.news) counts.news++;
+            if (entity.coverage.stock) counts.stock++;
+            if (entity.coverage.poly) counts.poly++;
+        }
+        // Per-entity coverage is the source of truth. Fall back to the scan-summary
+        // block only when no entity has streamed coverage yet (e.g. a freshly loaded
+        // portfolio with cached scores but no coverage payload).
+        if (
+            !anyPerEntityCoverage &&
+            lastScanCoverage.value.poly +
+                lastScanCoverage.value.sec +
+                lastScanCoverage.value.news +
+                lastScanCoverage.value.stock >
+                0
+        ) {
             return lastScanCoverage.value;
         }
-        const resolved = active.value.entities.filter((entity) => entity.neid).length;
-        const scored = active.value.entities.filter((entity) => entity.scores).length;
-        return {
-            sec: resolved,
-            news: scored,
-            stock: scored,
-            poly: scored > 0 ? active.value.entities.length : 0,
-        };
+        return counts;
     });
 
     const recentScanStatus = computed(() => scanStatusHistory.value.slice(-10).reverse());
