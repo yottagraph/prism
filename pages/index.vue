@@ -361,20 +361,21 @@
             if (!cd) continue;
             anyDetail = true;
 
-            if (cd.sec.filings > 0) {
+            const cov = entity.coverage;
+            if (cd.sec.filings > 0 || cov?.sec) {
                 agg.sec.entities++;
                 agg.sec.filings += cd.sec.filings;
                 agg.sec.earliest = minDate(agg.sec.earliest, cd.sec.earliest);
                 agg.sec.latest = maxDate(agg.sec.latest, cd.sec.latest);
             }
-            if (cd.news.articles > 0 || cd.news.events > 0) {
+            if (cd.news.articles > 0 || cd.news.events > 0 || cov?.news) {
                 agg.news.entities++;
                 agg.news.articles += cd.news.articles;
                 agg.news.events += cd.news.events;
                 agg.news.earliest = minDate(agg.news.earliest, cd.news.earliest);
                 agg.news.latest = maxDate(agg.news.latest, cd.news.latest);
             }
-            if (cd.stock.readings > 0) {
+            if (cd.stock.readings > 0 || cov?.stock) {
                 agg.stock.entities++;
                 agg.stock.readings += cd.stock.readings;
                 agg.stock.earliest = minDate(agg.stock.earliest, cd.stock.earliest);

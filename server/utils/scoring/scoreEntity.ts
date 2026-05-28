@@ -183,13 +183,23 @@ export async function scoreEntity(
     });
 
     // --- Build per-entity coverage detail from ContextPackage + lens outputs ---
-    const filingDates = [
-        ...(ctx.financials['filing_date'] ?? []),
-        ...(ctx.financials['report_date'] ?? []),
-    ]
-        .map((f) => (f.date ? String(f.date) : typeof f.value === 'string' ? f.value : null))
-        .filter((d): d is string => d != null && d.length > 0)
-        .sort();
+
+    // SEC filings: collect dates from all financial properties (each date-stamped
+    // fact originates from a filing). Deduplicate to approximate unique filings.
+    const allFinancialDates = new Set<string>();
+    for (const facts of Object.values(ctx.financials)) {
+        for (const f of facts) {
+            const d = f.date ?? (typeof f.value === 'string' ? f.value : null);
+            if (d && d.length >= 7) allFinancialDates.add(d);
+        }
+    }
+    // Also pull dates from lens evidence when ctx.financials is sparse
+    if (allFinancialDates.size === 0 && (solvency.hasRealData || executive.hasRealData)) {
+        for (const finding of [...solvency.detail.findings, ...executive.detail.findings]) {
+            if (finding.date) allFinancialDates.add(finding.date);
+        }
+    }
+    const filingDates = [...allFinancialDates].sort();
     const filingCount = filingDates.length;
 
     const articleDates = ctx.articles
@@ -201,6 +211,22 @@ export async function scoreEntity(
         .filter((d): d is string => d != null && d.length > 0)
         .sort();
     const allNewsDates = [...articleDates, ...eventDates].sort();
+
+    // Stock readings: use MCP price count if available (Path B fallback),
+    // otherwise count Elemental data points from the market signal scoring path
+    // and context instruments.
+    let stockReadings = market.priceCount;
+    let stockEarliest = market.earliestPriceDate;
+    let stockLatest = market.latestPriceDate;
+    if (stockReadings === 0 && market.hasRealData) {
+        // Path A yielded scalar aggregates (return_30d, vol, rsi) — count metrics
+        stockReadings = market.detail.metrics.filter(
+            (m) => m.value !== 'timeout' && m.value !== 'Elemental market data unavailable'
+        ).length;
+    }
+    if (stockReadings === 0 && ctx.instruments.length > 0) {
+        stockReadings = ctx.instruments.length;
+    }
 
     const coverageDetail: SourceCoverageDetail = {
         sec: {
@@ -215,9 +241,9 @@ export async function scoreEntity(
             latest: allNewsDates[allNewsDates.length - 1] ?? null,
         },
         stock: {
-            readings: market.priceCount,
-            earliest: market.earliestPriceDate,
-            latest: market.latestPriceDate,
+            readings: stockReadings,
+            earliest: stockEarliest,
+            latest: stockLatest,
         },
         poly: {
             markets: polymarket.marketCount,

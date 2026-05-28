@@ -37,7 +37,7 @@
                                 class="mb-1"
                             />
                             <div
-                                v-if="src.detail"
+                                v-if="src.detail.length"
                                 class="d-flex align-center flex-wrap source-detail"
                             >
                                 <span
@@ -130,7 +130,11 @@
 
         // SEC
         const secDetail: string[] = [];
-        if (cd.sec.filings > 0) secDetail.push(`${formatCount(cd.sec.filings)} filings`);
+        if (cd.sec.filings > 0) {
+            secDetail.push(`${formatCount(cd.sec.filings)} filings`);
+        } else if (cd.sec.entities > 0) {
+            secDetail.push(`${cd.sec.entities} entities with SEC data`);
+        }
         const secSpan = dateSpan(cd.sec.earliest, cd.sec.latest);
         if (secSpan) secDetail.push(secSpan);
         rows.push({
@@ -146,6 +150,9 @@
         const newsDetail: string[] = [];
         if (cd.news.articles > 0) newsDetail.push(`${formatCount(cd.news.articles)} articles`);
         if (cd.news.events > 0) newsDetail.push(`${formatCount(cd.news.events)} events`);
+        if (newsDetail.length === 0 && cd.news.entities > 0) {
+            newsDetail.push(`${cd.news.entities} entities with news data`);
+        }
         const newsSpan = dateSpan(cd.news.earliest, cd.news.latest);
         if (newsSpan) newsDetail.push(newsSpan);
         rows.push({
@@ -159,7 +166,11 @@
 
         // Stock
         const stockDetail: string[] = [];
-        if (cd.stock.readings > 0) stockDetail.push(`${formatCount(cd.stock.readings)} readings`);
+        if (cd.stock.readings > 0) {
+            stockDetail.push(`${formatCount(cd.stock.readings)} readings`);
+        } else if (cd.stock.entities > 0) {
+            stockDetail.push(`${cd.stock.entities} entities with market data`);
+        }
         const stockSpan = dateSpan(cd.stock.earliest, cd.stock.latest);
         if (stockSpan) stockDetail.push(stockSpan);
         rows.push({

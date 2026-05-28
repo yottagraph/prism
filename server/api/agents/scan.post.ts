@@ -401,7 +401,7 @@ export default defineEventHandler(async (event) => {
                                     coverage.poly += scored.coverage.poly ? 1 : 0;
 
                                     const cd = scored.coverageDetail;
-                                    if (cd.sec.filings > 0) {
+                                    if (cd.sec.filings > 0 || scored.coverage.sec) {
                                         coverageDetail.sec.entities++;
                                         coverageDetail.sec.filings += cd.sec.filings;
                                         coverageDetail.sec.earliest = minDate(
@@ -413,7 +413,11 @@ export default defineEventHandler(async (event) => {
                                             cd.sec.latest
                                         );
                                     }
-                                    if (cd.news.articles > 0 || cd.news.events > 0) {
+                                    if (
+                                        cd.news.articles > 0 ||
+                                        cd.news.events > 0 ||
+                                        scored.coverage.news
+                                    ) {
                                         coverageDetail.news.entities++;
                                         coverageDetail.news.articles += cd.news.articles;
                                         coverageDetail.news.events += cd.news.events;
@@ -426,7 +430,7 @@ export default defineEventHandler(async (event) => {
                                             cd.news.latest
                                         );
                                     }
-                                    if (cd.stock.readings > 0) {
+                                    if (cd.stock.readings > 0 || scored.coverage.stock) {
                                         coverageDetail.stock.entities++;
                                         coverageDetail.stock.readings += cd.stock.readings;
                                         coverageDetail.stock.earliest = minDate(
