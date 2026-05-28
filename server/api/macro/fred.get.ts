@@ -5,6 +5,7 @@ interface MacroSignal {
     value: number;
     trend: 'up' | 'down' | 'flat';
     note: string;
+    macroScore?: number;
 }
 
 interface FredSeriesConfig {
@@ -12,14 +13,21 @@ interface FredSeriesConfig {
     label: string;
     unit: string;
     invertTrend?: boolean;
+    macroDirection: 'rising_good' | 'rising_bad' | 'neutral';
 }
 
 const CURATED_SERIES: FredSeriesConfig[] = [
-    { seriesId: 'GDP', label: 'GDP (nominal)', unit: 'B$' },
-    { seriesId: 'UNRATE', label: 'Unemployment Rate', unit: '%', invertTrend: true },
-    { seriesId: 'CPIAUCSL', label: 'CPI (All Urban)', unit: 'index' },
-    { seriesId: 'DFF', label: 'Fed Funds Rate', unit: '%' },
-    { seriesId: 'T10Y2Y', label: 'Yield Spread 10Y-2Y', unit: '%' },
+    { seriesId: 'GDP', label: 'GDP (nominal)', unit: 'B$', macroDirection: 'rising_good' },
+    {
+        seriesId: 'UNRATE',
+        label: 'Unemployment Rate',
+        unit: '%',
+        invertTrend: true,
+        macroDirection: 'rising_bad',
+    },
+    { seriesId: 'CPIAUCSL', label: 'CPI (All Urban)', unit: 'index', macroDirection: 'rising_bad' },
+    { seriesId: 'DFF', label: 'Fed Funds Rate', unit: '%', macroDirection: 'neutral' },
+    { seriesId: 'T10Y2Y', label: 'Yield Spread 10Y-2Y', unit: '%', macroDirection: 'rising_good' },
 ];
 
 let cachedSignals: { signals: MacroSignal[]; expiresAt: number } | null = null;
@@ -111,6 +119,19 @@ function formatNote(
     return parts.join(' · ') || config.unit;
 }
 
+function computeFredMacroScore(
+    latest: number,
+    previous: number | null,
+    direction: FredSeriesConfig['macroDirection']
+): number {
+    if (direction === 'neutral' || previous == null) return 0;
+    const delta = latest - previous;
+    const pctChange = previous !== 0 ? Math.abs(delta / previous) : Math.abs(delta);
+    if (pctChange < 0.001) return 0;
+    const dirSign = direction === 'rising_good' ? 1 : -1;
+    return Math.sign(delta) * dirSign;
+}
+
 export default defineEventHandler(async (event) => {
     if (cachedSignals && Date.now() < cachedSignals.expiresAt) {
         return cachedSignals.signals;
@@ -125,6 +146,7 @@ export default defineEventHandler(async (event) => {
                 value: formatValue(obs.latest, config.unit),
                 trend: computeTrend(obs.latest, obs.previous, config.invertTrend ?? false),
                 note: formatNote(config, obs.latest, obs.previous, obs.date),
+                macroScore: computeFredMacroScore(obs.latest, obs.previous, config.macroDirection),
             } satisfies MacroSignal;
         })
     );

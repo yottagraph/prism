@@ -5,6 +5,7 @@ interface MacroSignal {
     value: number;
     trend: 'up' | 'down' | 'flat';
     note: string;
+    macroScore?: number;
 }
 
 /**
@@ -55,6 +56,7 @@ interface IndicatorConfig {
     slugIncludes?: string;
     slugExcludes?: string[];
     marketIncludes?: string;
+    scoreDirection: 'higher_is_better' | 'lower_is_better' | 'neutral';
 }
 
 const COMMENT_FRAGMENT = '#commentsinner';
@@ -64,29 +66,34 @@ const INDICATORS: IndicatorConfig[] = [
         label: 'Recession Risk',
         searchQueries: ['US recession 2026'],
         slugIncludes: 'us-recession-by-end-of-2026',
+        scoreDirection: 'lower_is_better',
     },
     {
         label: 'Fed Rate Cut',
         searchQueries: ['fed rate cut by next meeting', 'fed rate cut'],
         slugIncludes: 'fed-rate-cut-by',
+        scoreDirection: 'neutral',
     },
     {
         label: 'Inflation Outlook',
         searchQueries: ['how high inflation 2026'],
         slugIncludes: 'how-high-will-inflation',
         marketIncludes: 'more than 5%',
+        scoreDirection: 'lower_is_better',
     },
     {
         label: 'Market Direction',
         searchQueries: ['spx up or down', 'sp500 up or down'],
         slugIncludes: 'spx-up-or-down-on-',
         slugExcludes: ['opens-up-or-down'],
+        scoreDirection: 'higher_is_better',
     },
     {
         label: 'GDP Growth',
         searchQueries: ['US GDP growth 2026'],
         slugIncludes: 'gdp-growth-in-2026',
         marketIncludes: 'greater than 2.5%',
+        scoreDirection: 'higher_is_better',
     },
 ];
 
@@ -97,6 +104,15 @@ function deriveTrend(probability: number): 'up' | 'down' | 'flat' {
     if (probability > 0.6) return 'up';
     if (probability < 0.4) return 'down';
     return 'flat';
+}
+
+function computeMacroScore(
+    probability: number,
+    direction: IndicatorConfig['scoreDirection']
+): number {
+    if (direction === 'neutral') return 0;
+    const raw = Math.max(-1, Math.min(1, 2 * (probability - 0.5)));
+    return direction === 'lower_is_better' ? -raw : raw;
 }
 
 function lc(s: string | undefined | null): string {
@@ -206,6 +222,7 @@ async function fetchMacroSignal(event: any, config: IndicatorConfig): Promise<Ma
             value: pct,
             trend: deriveTrend(probability),
             note: market.question || eventData.title || candidate.result.title || config.label,
+            macroScore: computeMacroScore(probability, config.scoreDirection),
         };
     } catch {
         return null;

@@ -430,27 +430,39 @@
     const { signals: fredMacroSignals } = useFredMacroContext();
 
     const alignmentChip = computed(() => {
-        const polyTrend = macroSignals.value[0]?.trend ?? 'flat';
-        const fredTrend = fredMacroSignals.value[0]?.trend ?? 'flat';
-        if (polyTrend === fredTrend) {
-            return {
-                label: 'Aligned',
-                color: 'success',
-                note: 'Market-implied probabilities and macro fundamentals are moving in the same direction.',
-            };
-        }
-        if (polyTrend === 'flat' || fredTrend === 'flat') {
-            return {
-                label: 'Mixed',
-                color: 'warning',
-                note: 'One source is neutral while the other trends, indicating partial agreement.',
-            };
-        }
-        return {
-            label: 'Divergent',
-            color: 'error',
-            note: 'Polymarket outlook and FRED fundamentals are pointing in different directions.',
+        const polySum = macroSignals.value.reduce((a, s) => a + (s.macroScore ?? 0), 0);
+        const fredSum = fredMacroSignals.value.reduce((a, s) => a + (s.macroScore ?? 0), 0);
+        const polySign = Math.sign(polySum);
+        const fredSign = Math.sign(fredSum);
+
+        const tally = (signals: typeof macroSignals.value, label: string) => {
+            let pos = 0,
+                neg = 0,
+                neutral = 0;
+            for (const s of signals) {
+                const sign = Math.sign(s.macroScore ?? 0);
+                if (sign > 0) pos++;
+                else if (sign < 0) neg++;
+                else neutral++;
+            }
+            return `${label} +${pos} / -${neg} / ${neutral} neutral`;
         };
+        const note = [
+            tally(macroSignals.value, 'Polymarket'),
+            tally(fredMacroSignals.value, 'FRED'),
+        ].join(' · ');
+
+        if (polySign === 0 && fredSign === 0) {
+            return { label: 'Neutral', color: 'default', note };
+        }
+        if (polySign === fredSign) {
+            const direction = polySign > 0 ? 'improving' : 'deteriorating';
+            return { label: `Aligned · ${direction}`, color: 'success', note };
+        }
+        if (polySign === 0 || fredSign === 0) {
+            return { label: 'Mixed', color: 'warning', note };
+        }
+        return { label: 'Divergent', color: 'error', note };
     });
 
     async function onScan() {

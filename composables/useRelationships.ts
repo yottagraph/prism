@@ -229,6 +229,7 @@ export interface MacroSignal {
     value: number;
     trend: 'up' | 'down' | 'flat';
     note: string;
+    macroScore?: number; // -1..+1; positive = improving macro
 }
 
 function useMacroSignals(stateKey: string, endpoint: string) {
