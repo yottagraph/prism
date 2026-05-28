@@ -122,53 +122,49 @@
                 </v-expansion-panel>
             </v-expansion-panels>
 
-            <SourceFusionBar
-                :total="active?.entities.length ?? 0"
-                :coverage="coverage"
-                :coverage-detail="coverageDetail"
-                class="mb-3"
-            />
-
             <v-row dense class="mb-3">
                 <v-col cols="12" md="6">
-                    <RiskDistribution :counts="tierCounts" />
+                    <SourceFusionBar
+                        :total="active?.entities.length ?? 0"
+                        :coverage="coverage"
+                        :coverage-detail="coverageDetail"
+                        :scanning="scanning"
+                    />
                 </v-col>
                 <v-col cols="12" md="6">
-                    <v-row dense>
-                        <v-col cols="12">
-                            <MacroContext
-                                :signals="fredMacroSignals"
-                                title="Macro Fundamentals"
-                                source="FRED"
-                            />
-                        </v-col>
-                        <v-col cols="12">
-                            <MacroContext
-                                :signals="macroSignals"
-                                title="Macro Outlook"
-                                source="Polymarket"
-                            />
-                        </v-col>
-                        <v-col cols="12">
-                            <v-card class="pa-3">
-                                <div class="d-flex align-center">
-                                    <v-icon size="small" class="mr-2">mdi-compare</v-icon>
-                                    <span class="text-subtitle-2">Macro Signal Alignment</span>
-                                    <v-spacer />
-                                    <v-chip
-                                        :color="alignmentChip.color"
-                                        size="small"
-                                        variant="tonal"
-                                    >
-                                        {{ alignmentChip.label }}
-                                    </v-chip>
-                                </div>
-                                <div class="text-caption text-medium-emphasis mt-2">
-                                    {{ alignmentChip.note }}
-                                </div>
-                            </v-card>
-                        </v-col>
-                    </v-row>
+                    <RiskDistribution :counts="tierCounts" :scanning="scanning" />
+                </v-col>
+            </v-row>
+
+            <v-row dense class="mb-3">
+                <v-col cols="12" md="4">
+                    <MacroContext
+                        :signals="fredMacroSignals"
+                        title="Macro Fundamentals"
+                        source="FRED"
+                    />
+                </v-col>
+                <v-col cols="12" md="4">
+                    <MacroContext
+                        :signals="macroSignals"
+                        title="Macro Outlook"
+                        source="Polymarket"
+                    />
+                </v-col>
+                <v-col cols="12" md="4">
+                    <v-card class="pa-3 fill-height">
+                        <div class="d-flex align-center">
+                            <v-icon size="small" class="mr-2">mdi-compare</v-icon>
+                            <span class="text-subtitle-2">Macro Signal Alignment</span>
+                            <v-spacer />
+                            <v-chip :color="alignmentChip.color" size="small" variant="tonal">
+                                {{ alignmentChip.label }}
+                            </v-chip>
+                        </div>
+                        <div class="text-caption text-medium-emphasis mt-2">
+                            {{ alignmentChip.note }}
+                        </div>
+                    </v-card>
                 </v-col>
             </v-row>
 
@@ -292,8 +288,8 @@
         const counts: Record<RiskTier, number> = {
             critical: 0,
             high: 0,
-            watch: 0,
-            normal: 0,
+            medium: 0,
+            low: 0,
         };
         active.value?.entities.forEach((e) => {
             if (e.scores?.tier) counts[e.scores.tier]++;

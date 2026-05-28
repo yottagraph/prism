@@ -1,8 +1,13 @@
 <template>
-    <v-card class="pa-4">
+    <v-card class="pa-4 fill-height">
         <div class="d-flex align-center mb-3">
             <v-icon size="small" class="mr-2">mdi-layers-triple-outline</v-icon>
             <span class="text-subtitle-2">Source Fusion Coverage</span>
+            <v-spacer />
+            <span v-if="scanning" class="d-inline-flex align-center scan-live">
+                <span class="scan-live-dot mr-1" />
+                <span class="text-caption">Fusing</span>
+            </span>
         </div>
 
         <div class="source-rows">
@@ -23,7 +28,7 @@
                                     <span class="type-label">{{ src.label }}</span>
                                 </div>
                                 <span class="text-caption text-medium-emphasis coverage-count">
-                                    {{ src.coverage }}/{{ total }}
+                                    <AnimatedNumber :value="src.coverage" />/{{ total }}
                                 </span>
                             </div>
                             <v-progress-linear
@@ -31,7 +36,8 @@
                                 :color="src.color"
                                 height="4"
                                 rounded
-                                class="mb-1"
+                                class="mb-1 fusion-bar"
+                                :class="{ 'fusion-bar--live': scanning && src.coverage > 0 }"
                             />
                             <div
                                 v-if="src.detail.length"
@@ -73,11 +79,15 @@
     import { computed } from 'vue';
     import type { PortfolioCoverageDetail } from '~/composables/usePortfolio';
 
-    const props = defineProps<{
-        total: number;
-        coverage: { sec: number; news: number; stock: number; poly: number };
-        coverageDetail: PortfolioCoverageDetail;
-    }>();
+    const props = withDefaults(
+        defineProps<{
+            total: number;
+            coverage: { sec: number; news: number; stock: number; poly: number };
+            coverageDetail: PortfolioCoverageDetail;
+            scanning?: boolean;
+        }>(),
+        { scanning: false }
+    );
 
     const EMPTY_EXPLANATIONS: Record<string, string> = {
         sec: 'No portfolio entities resolved with SEC filings. Check that entity names match SEC-registered issuers.',
@@ -283,5 +293,68 @@
 
     .sub-flags-border {
         border-top: 1px solid rgba(var(--dynamic-fg-rgb, 128, 128, 128), 0.08);
+    }
+
+    /* Smooth, eased fill so coverage growth during a scan reads as a deliberate
+       "filling up" rather than a hard jump. */
+    .fusion-bar :deep(.v-progress-linear__determinate) {
+        transition: width 0.7s cubic-bezier(0.22, 1, 0.36, 1) !important;
+        overflow: hidden;
+    }
+
+    /* Light sweep across the filled portion while a scan is in flight. */
+    .fusion-bar--live :deep(.v-progress-linear__determinate)::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+            90deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.55) 50%,
+            transparent 100%
+        );
+        animation: fusion-sweep 1.5s ease-in-out infinite;
+    }
+
+    @keyframes fusion-sweep {
+        0% {
+            transform: translateX(-100%);
+        }
+        100% {
+            transform: translateX(200%);
+        }
+    }
+
+    .scan-live {
+        color: rgb(var(--dynamic-primary-rgb, 63, 234, 0));
+    }
+
+    .scan-live-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: rgb(var(--dynamic-primary-rgb, 63, 234, 0));
+        animation: scan-pulse 1.2s ease-in-out infinite;
+    }
+
+    @keyframes scan-pulse {
+        0%,
+        100% {
+            opacity: 1;
+            box-shadow: 0 0 0 0 rgba(var(--dynamic-primary-rgb, 63, 234, 0), 0.5);
+        }
+        50% {
+            opacity: 0.5;
+            box-shadow: 0 0 0 4px rgba(var(--dynamic-primary-rgb, 63, 234, 0), 0);
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .fusion-bar--live :deep(.v-progress-linear__determinate)::after {
+            animation: none;
+        }
+        .scan-live-dot {
+            animation: none;
+        }
     }
 </style>
