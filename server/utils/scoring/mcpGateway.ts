@@ -3,6 +3,75 @@ import { beginElementalLog } from '../elementalLogger';
 
 const mcpSessionIds = new Map<string, string>();
 
+/* ------------------------------------------------------------------- *
+ * Per-server concurrency semaphore
+ * ------------------------------------------------------------------- */
+
+const SERVER_CONCURRENCY_CAPS: Record<string, number> = {
+    stocks: 5,
+    polymarket: 5,
+    elemental: 10,
+};
+const DEFAULT_CONCURRENCY_CAP = 8;
+
+class Semaphore {
+    private running = 0;
+    private queue: Array<() => void> = [];
+    constructor(private readonly max: number) {}
+
+    acquire(): Promise<void> {
+        if (this.running < this.max) {
+            this.running++;
+            return Promise.resolve();
+        }
+        return new Promise<void>((resolve) => this.queue.push(resolve));
+    }
+
+    release(): void {
+        const next = this.queue.shift();
+        if (next) {
+            next();
+        } else {
+            this.running--;
+        }
+    }
+}
+
+const semaphores = new Map<string, Semaphore>();
+
+function getSemaphore(serverName: string): Semaphore {
+    let sem = semaphores.get(serverName);
+    if (!sem) {
+        const cap = SERVER_CONCURRENCY_CAPS[serverName] ?? DEFAULT_CONCURRENCY_CAP;
+        sem = new Semaphore(cap);
+        semaphores.set(serverName, sem);
+    }
+    return sem;
+}
+
+/* ------------------------------------------------------------------- *
+ * Retry helpers
+ * ------------------------------------------------------------------- */
+
+const RETRIABLE_STATUS_CODES = new Set([429, 502, 503, 504]);
+const MAX_ATTEMPTS = 3;
+const BASE_DELAY_MS = 500;
+
+function isRetriable(error: any): boolean {
+    const code = error?.statusCode ?? error?.status;
+    return typeof code === 'number' && RETRIABLE_STATUS_CODES.has(code);
+}
+
+function backoffMs(attempt: number): number {
+    const base = BASE_DELAY_MS * Math.pow(3, attempt - 1);
+    const jitter = base * 0.2 * (Math.random() * 2 - 1);
+    return Math.round(base + jitter);
+}
+
+function sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function gatewayConfig() {
     const { public: config } = useRuntimeConfig();
     return {
@@ -31,7 +100,12 @@ function parseSseJson(text: string): any {
     return JSON.parse(payload);
 }
 
-async function postRpc(serverName: string, payload: Record<string, unknown>, sessionId?: string) {
+async function postRpcOnce(
+    serverName: string,
+    payload: Record<string, unknown>,
+    sessionId: string | undefined,
+    attempt: number
+) {
     const { qsApiKey } = gatewayConfig();
     const headers: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -50,6 +124,7 @@ async function postRpc(serverName: string, payload: Record<string, unknown>, ses
         reqSummary.args = argKeys.length;
         if (argKeys.length) reqSummary.argKeys = argKeys.join(',');
     }
+    if (attempt > 1) reqSummary.attempt = attempt;
 
     const logCtx = beginElementalLog({
         surface: 'mcp',
@@ -85,10 +160,11 @@ async function postRpc(serverName: string, payload: Record<string, unknown>, ses
             resBody: responseText,
             error: responseText,
         });
-        throw createError({
+        const err = createError({
             statusCode: response.status,
             statusMessage: responseText || `MCP request failed (${response.status})`,
         });
+        throw err;
     }
 
     let frame: any = {};
@@ -108,6 +184,7 @@ async function postRpc(serverName: string, payload: Record<string, unknown>, ses
     const rpcError = frame?.error;
     const resSummary = summarizeMcpFrame(rpcMethod, tool, frame);
     if (returnedSessionId && !sessionId) resSummary.newSession = true;
+    if (attempt > 1) resSummary.attempt = attempt;
     logCtx.finish({
         status: response.status,
         ok: !rpcError,
@@ -117,6 +194,24 @@ async function postRpc(serverName: string, payload: Record<string, unknown>, ses
         error: rpcError ? rpcError : undefined,
     });
     return { frame, returnedSessionId };
+}
+
+async function postRpc(serverName: string, payload: Record<string, unknown>, sessionId?: string) {
+    let lastError: any;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        try {
+            return await postRpcOnce(serverName, payload, sessionId, attempt);
+        } catch (err: any) {
+            lastError = err;
+            if (attempt < MAX_ATTEMPTS && isRetriable(err)) {
+                const delay = backoffMs(attempt);
+                await sleep(delay);
+                continue;
+            }
+            throw err;
+        }
+    }
+    throw lastError;
 }
 
 function summarizeMcpFrame(
@@ -213,18 +308,27 @@ export async function callMcpTool(
             sessionId
         );
 
-    const sessionId = await ensureSession(serverName);
+    const sem = getSemaphore(serverName);
+    await sem.acquire();
     try {
-        const res = await run(sessionId);
-        return res.frame?.result;
-    } catch (error: any) {
-        if (String(error?.statusMessage || '').includes('session') || error?.statusCode === 404) {
-            mcpSessionIds.delete(serverName);
-            const fresh = await ensureSession(serverName);
-            const res = await run(fresh);
+        const sessionId = await ensureSession(serverName);
+        try {
+            const res = await run(sessionId);
             return res.frame?.result;
+        } catch (error: any) {
+            if (
+                String(error?.statusMessage || '').includes('session') ||
+                error?.statusCode === 404
+            ) {
+                mcpSessionIds.delete(serverName);
+                const fresh = await ensureSession(serverName);
+                const res = await run(fresh);
+                return res.frame?.result;
+            }
+            throw error;
         }
-        throw error;
+    } finally {
+        sem.release();
     }
 }
 

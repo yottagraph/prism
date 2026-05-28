@@ -1,11 +1,17 @@
 import type { H3Event } from 'h3';
-import type { SourceFusionWeights } from '~/server/utils/scoring/types';
+import type {
+    PortfolioCoverageDetail,
+    ScoringSettings,
+    SourceFusionWeights,
+} from '~/server/utils/scoring/types';
+import { DEFAULT_SCORING_SETTINGS } from '~/server/utils/scoring/types';
 import { pushActivity } from '~/server/utils/scoring/activity';
 import { isGalaxyEnabled, getPropertyQuadsForEntities } from '~/server/utils/scoring/galaxy';
 import { getSchema, normalizePidMap } from '~/server/utils/scoring/elemental';
 import { scoreEntity } from '~/server/utils/scoring/scoreEntity';
 import { writeCoverage } from '~/server/utils/scoring/state';
 import { resetPolymarketLogging } from '~/server/utils/scoring/polymarketOutlook';
+import { resetMarketSignalDiagnostics } from '~/server/utils/scoring/marketSignal';
 import {
     getEntityName,
     searchEntitiesByName,
@@ -24,6 +30,7 @@ interface ScanRequest {
     force?: boolean;
     debugLogs?: boolean;
     weights?: SourceFusionWeights;
+    scoring?: ScoringSettings;
 }
 
 interface ScanDiagnostics {
@@ -43,6 +50,31 @@ interface ScanDiagnostics {
         at: number;
         details?: Record<string, unknown>;
     }>;
+}
+
+function minDate(a: string | null, b: string | null): string | null {
+    if (!a) return b;
+    if (!b) return a;
+    return a < b ? a : b;
+}
+
+function maxDate(a: string | null, b: string | null): string | null {
+    if (!a) return b;
+    if (!b) return a;
+    return a > b ? a : b;
+}
+
+function emptyPortfolioCoverageDetail(): PortfolioCoverageDetail {
+    return {
+        sec: { entities: 0, filings: 0, earliest: null, latest: null },
+        news: { entities: 0, articles: 0, events: 0, earliest: null, latest: null },
+        stock: { entities: 0, readings: 0, earliest: null, latest: null },
+        poly: { entities: 0, markets: 0, active: 0 },
+        fred: { entities: 0, series: 0, earliest: null, latest: null },
+        acs: 0,
+        eventPressure: 0,
+        velocity: 0,
+    };
 }
 
 function makeTraceId() {
@@ -163,6 +195,7 @@ export default defineEventHandler(async (event) => {
     // fresh scan can re-emit its diagnostic warn/error if the same condition
     // recurs across scans.
     resetPolymarketLogging();
+    resetMarketSignalDiagnostics();
 
     const encoder = new TextEncoder();
 
@@ -180,6 +213,7 @@ export default defineEventHandler(async (event) => {
                 let done = 0;
                 const output: any[] = Array.from({ length: total }).map(() => null);
                 const coverage = { sec: 0, news: 0, stock: 0, poly: 0 };
+                const coverageDetail = emptyPortfolioCoverageDetail();
                 emit('status', {
                     phase: 'init',
                     message: `Initializing scan for ${total} entities`,
@@ -343,11 +377,16 @@ export default defineEventHandler(async (event) => {
                                         entity: resolved.resolvedName,
                                         detail: 'Fetching multi-source context',
                                     });
+                                    const resolvedScoring: ScoringSettings = body.scoring
+                                        ? { ...DEFAULT_SCORING_SETTINGS, ...body.scoring }
+                                        : body.weights
+                                          ? { ...DEFAULT_SCORING_SETTINGS, weights: body.weights }
+                                          : DEFAULT_SCORING_SETTINGS;
                                     const scored = await scoreEntity(
                                         event,
                                         body.portfolioId,
                                         resolved.neid,
-                                        body.weights
+                                        resolvedScoring
                                     );
                                     pushActivity({
                                         portfolioId: body.portfolioId,
@@ -360,6 +399,65 @@ export default defineEventHandler(async (event) => {
                                     coverage.news += scored.coverage.news ? 1 : 0;
                                     coverage.stock += scored.coverage.stock ? 1 : 0;
                                     coverage.poly += scored.coverage.poly ? 1 : 0;
+
+                                    const cd = scored.coverageDetail;
+                                    if (cd.sec.filings > 0) {
+                                        coverageDetail.sec.entities++;
+                                        coverageDetail.sec.filings += cd.sec.filings;
+                                        coverageDetail.sec.earliest = minDate(
+                                            coverageDetail.sec.earliest,
+                                            cd.sec.earliest
+                                        );
+                                        coverageDetail.sec.latest = maxDate(
+                                            coverageDetail.sec.latest,
+                                            cd.sec.latest
+                                        );
+                                    }
+                                    if (cd.news.articles > 0 || cd.news.events > 0) {
+                                        coverageDetail.news.entities++;
+                                        coverageDetail.news.articles += cd.news.articles;
+                                        coverageDetail.news.events += cd.news.events;
+                                        coverageDetail.news.earliest = minDate(
+                                            coverageDetail.news.earliest,
+                                            cd.news.earliest
+                                        );
+                                        coverageDetail.news.latest = maxDate(
+                                            coverageDetail.news.latest,
+                                            cd.news.latest
+                                        );
+                                    }
+                                    if (cd.stock.readings > 0) {
+                                        coverageDetail.stock.entities++;
+                                        coverageDetail.stock.readings += cd.stock.readings;
+                                        coverageDetail.stock.earliest = minDate(
+                                            coverageDetail.stock.earliest,
+                                            cd.stock.earliest
+                                        );
+                                        coverageDetail.stock.latest = maxDate(
+                                            coverageDetail.stock.latest,
+                                            cd.stock.latest
+                                        );
+                                    }
+                                    if (cd.poly.markets > 0) {
+                                        coverageDetail.poly.entities++;
+                                        coverageDetail.poly.markets += cd.poly.markets;
+                                        coverageDetail.poly.active += cd.poly.active;
+                                    }
+                                    if (cd.fred.series > 0) {
+                                        coverageDetail.fred.entities++;
+                                        coverageDetail.fred.series += cd.fred.series;
+                                        coverageDetail.fred.earliest = minDate(
+                                            coverageDetail.fred.earliest,
+                                            cd.fred.earliest
+                                        );
+                                        coverageDetail.fred.latest = maxDate(
+                                            coverageDetail.fred.latest,
+                                            cd.fred.latest
+                                        );
+                                    }
+                                    if (cd.acs) coverageDetail.acs++;
+                                    if (cd.eventPressure) coverageDetail.eventPressure++;
+                                    if (cd.velocity) coverageDetail.velocity++;
                                 }
                                 output[idx] = result;
                                 emit('entity', { index: idx, entity: result });
@@ -418,6 +516,7 @@ export default defineEventHandler(async (event) => {
                 emit('done', {
                     entities: output,
                     coverage,
+                    coverageDetail,
                     failedEntities,
                     ...(diagnosticsEnabled ? { diagnostics: summary } : {}),
                 });

@@ -13,10 +13,19 @@ import {
 import { clampScore } from './hash';
 import type { EvidenceItem, LensDetail } from './types';
 
-interface MarketResult {
+export interface MarketResult {
     score: number;
     hasRealData: boolean;
+    priceCount: number;
+    earliestPriceDate: string | null;
+    latestPriceDate: string | null;
     detail: LensDetail;
+}
+
+let loggedPathADiag = false;
+
+export function resetMarketSignalDiagnostics(): void {
+    loggedPathADiag = false;
 }
 
 export async function computeMarketSignalScore(
@@ -31,6 +40,9 @@ export async function computeMarketSignalScore(
 
     let score = 0;
     let hasRealData = false;
+    let priceCount = 0;
+    let earliestPriceDate: string | null = null;
+    let latestPriceDate: string | null = null;
     const metrics: LensDetail['metrics'] = [];
     const findings: EvidenceItem[] = [];
 
@@ -45,6 +57,19 @@ export async function computeMarketSignalScore(
             (v): v is string => typeof v === 'string' && v.length > 0
         );
 
+        if (!loggedPathADiag && candidatePids.length === 0) {
+            loggedPathADiag = true;
+            const matchingKeys = Object.keys(pid)
+                .filter((k) => /return|volat|rsi|anomaly/i.test(k))
+                .join(', ');
+            console.warn(
+                `[market signal] Path A skipped: schema exposes no PIDs for return_30d/volatility_30d/rsi_14/market_anomaly aliases. ` +
+                    `Falling through to stocks MCP for every entity. First seen for ${neid}. ` +
+                    `Schema keys matching /return|volat|rsi|anomaly/: ${matchingKeys || '(none)'}. ` +
+                    `Suppressing further occurrences this scan.`
+            );
+        }
+
         if (candidatePids.length) {
             const values = await getPropertyValues([neid], candidatePids, true, event);
             const return30 = extractNumeric(values, returnPid ?? '')[0];
@@ -52,11 +77,20 @@ export async function computeMarketSignalScore(
             const rsi = extractNumeric(values, rsiPid ?? '')[0];
             const anomaly = extractNumeric(values, anomalyPid ?? '')[0];
 
-            if (
-                [return30, vol30, rsi, anomaly].some(
-                    (v) => typeof v === 'number' && Number.isFinite(v)
-                )
-            ) {
+            const hasFiniteScalar = [return30, vol30, rsi, anomaly].some(
+                (v) => typeof v === 'number' && Number.isFinite(v)
+            );
+
+            if (!loggedPathADiag && !hasFiniteScalar) {
+                loggedPathADiag = true;
+                console.warn(
+                    `[market signal] Path A returned no finite data despite schema PIDs being present. ` +
+                        `Resolved PIDs: ${JSON.stringify({ returnPid, volPid, rsiPid, anomalyPid })}. ` +
+                        `First seen for ${neid}. Suppressing further occurrences this scan.`
+                );
+            }
+
+            if (hasFiniteScalar) {
                 hasRealData = true;
                 const drawdownRisk =
                     typeof return30 === 'number' ? Math.max(0, -return30) * 1.5 : 6;
@@ -117,6 +151,16 @@ export async function computeMarketSignalScore(
                 );
 
             if ((structured?.found ?? false) && closes.length >= 5) {
+                const priceDates = prices
+                    .map((row) => row?.date)
+                    .filter((d): d is string => typeof d === 'string' && d.length > 0)
+                    .sort();
+                priceCount = prices.length;
+                if (priceDates.length > 0) {
+                    earliestPriceDate = priceDates[0];
+                    latestPriceDate = priceDates[priceDates.length - 1];
+                }
+
                 const first = closes[0];
                 const last = closes[closes.length - 1];
                 const returnPct = first ? ((last - first) / first) * 100 : 0;
@@ -179,6 +223,9 @@ export async function computeMarketSignalScore(
     const result: MarketResult = {
         score,
         hasRealData,
+        priceCount,
+        earliestPriceDate,
+        latestPriceDate,
         detail: {
             metrics: metrics.length
                 ? metrics
