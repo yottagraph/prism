@@ -78,10 +78,23 @@ interface QueryPolymarketResult {
 }
 
 // One-shot warnings so a 50-entity scan doesn't flood the server log with
-// the same message 50 times. Reset at module load (i.e. per dev server boot
-// or per cold serverless invocation).
+// the same message 50 times. Reset at the start of each scan via
+// resetPolymarketLogging() so a fresh scan still gets to emit its own
+// up-to-one warn + up-to-one error.
 let loggedReachableEmpty = false;
 let loggedAllFailed = false;
+
+/**
+ * Reset the one-shot polymarket log suppression flags. Call at the start of
+ * each scan (or any other batch-scoped operation) so the next reachable_empty
+ * and the next unreachable both produce a single log line again. Without this
+ * the flags survive the lifetime of the worker process and a long-running dev
+ * server would only ever surface them once.
+ */
+export function resetPolymarketLogging(): void {
+    loggedReachableEmpty = false;
+    loggedAllFailed = false;
+}
 
 async function queryPolymarket(
     serverEvent: H3Event,

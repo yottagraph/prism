@@ -5,6 +5,7 @@ import { isGalaxyEnabled, getPropertyQuadsForEntities } from '~/server/utils/sco
 import { getSchema, normalizePidMap } from '~/server/utils/scoring/elemental';
 import { scoreEntity } from '~/server/utils/scoring/scoreEntity';
 import { writeCoverage } from '~/server/utils/scoring/state';
+import { resetPolymarketLogging } from '~/server/utils/scoring/polymarketOutlook';
 import {
     getEntityName,
     searchEntitiesByName,
@@ -158,6 +159,10 @@ export default defineEventHandler(async (event) => {
     setHeader(event, 'Connection', 'keep-alive');
     const diagnosticsEnabled = !!body.debugLogs;
     (event.context as any).forceScoring = !!body.force;
+    // Per-scan reset of the one-shot polymarket log suppression flags so a
+    // fresh scan can re-emit its diagnostic warn/error if the same condition
+    // recurs across scans.
+    resetPolymarketLogging();
 
     const encoder = new TextEncoder();
 
