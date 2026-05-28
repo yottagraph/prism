@@ -53,16 +53,83 @@
                     </v-alert>
                 </v-col>
             </v-row>
+
+            <v-divider class="my-4" />
+
+            <div class="text-subtitle-2 mb-3">Distress Events (Tier 2)</div>
+            <v-row>
+                <v-col v-for="field in distressFields" :key="field.key" cols="12" sm="6" md="4">
+                    <div class="text-caption font-weight-medium mb-1">{{ field.label }}</div>
+                    <v-row dense>
+                        <v-col cols="6">
+                            <v-text-field
+                                :model-value="
+                                    fhs.distressEvents[field.key as keyof typeof fhs.distressEvents]
+                                        .baseScore
+                                "
+                                type="number"
+                                density="comfortable"
+                                variant="outlined"
+                                label="Base score"
+                                step="5"
+                                min="0"
+                                max="100"
+                                @update:model-value="
+                                    updateDistressEntry(field.key, 'baseScore', $event)
+                                "
+                            />
+                        </v-col>
+                        <v-col cols="6">
+                            <v-text-field
+                                :model-value="
+                                    fhs.distressEvents[field.key as keyof typeof fhs.distressEvents]
+                                        .weight
+                                "
+                                type="number"
+                                density="comfortable"
+                                variant="outlined"
+                                label="Signal weight"
+                                step="0.1"
+                                min="0"
+                                max="5"
+                                @update:model-value="
+                                    updateDistressEntry(field.key, 'weight', $event)
+                                "
+                            />
+                        </v-col>
+                    </v-row>
+                </v-col>
+            </v-row>
+            <v-text-field
+                :model-value="fhs.distressEvents.recencyWindowDays"
+                type="number"
+                density="comfortable"
+                variant="outlined"
+                label="Recency window (days)"
+                hint="Linear decay denominator — events older than this get 0.25x weight"
+                persistent-hint
+                step="30"
+                min="30"
+                max="2555"
+                style="max-width: 320px"
+                @update:model-value="updateDistressWindow($event)"
+            />
         </v-card-text>
     </v-card>
 </template>
 
 <script setup lang="ts">
     import { computed } from 'vue';
-    import type { FhsThresholds } from '~/composables/useFusedScoring';
+    import type {
+        ScoringSettings,
+        DistressEventConfig,
+        DistressEventEntry,
+    } from '~/composables/useFusedScoring';
 
-    const props = defineProps<{ fhs: FhsThresholds }>();
-    const emit = defineEmits<{ 'update:fhs': [value: FhsThresholds] }>();
+    type FhsWithDistress = ScoringSettings['fhs'];
+
+    const props = defineProps<{ fhs: FhsWithDistress }>();
+    const emit = defineEmits<{ 'update:fhs': [value: FhsWithDistress] }>();
 
     const metricFields = [
         {
@@ -116,6 +183,15 @@
         return tw.t1 + tw.t2 + tw.t3 + tw.t4 + tw.t5;
     });
 
+    const distressFields = [
+        { key: 'bankruptcy', label: 'Bankruptcy' },
+        { key: 'delisting', label: 'Delisting' },
+        { key: 'nonReliance', label: 'Non-reliance' },
+        { key: 'triggering', label: 'Triggering events' },
+        { key: 'impairment', label: 'Impairment' },
+        { key: 'termination', label: 'Termination' },
+    ];
+
     function updateField(key: string, raw: unknown) {
         emit('update:fhs', { ...props.fhs, [key]: Number(raw) || 0 });
     }
@@ -124,6 +200,26 @@
         emit('update:fhs', {
             ...props.fhs,
             tierWeights: { ...props.fhs.tierWeights, [key]: Number(raw) || 0 },
+        });
+    }
+
+    function updateDistressEntry(key: string, field: keyof DistressEventEntry, raw: unknown) {
+        const current = props.fhs.distressEvents[
+            key as keyof Omit<DistressEventConfig, 'recencyWindowDays'>
+        ] as DistressEventEntry;
+        emit('update:fhs', {
+            ...props.fhs,
+            distressEvents: {
+                ...props.fhs.distressEvents,
+                [key]: { ...current, [field]: Number(raw) || 0 },
+            },
+        });
+    }
+
+    function updateDistressWindow(raw: unknown) {
+        emit('update:fhs', {
+            ...props.fhs,
+            distressEvents: { ...props.fhs.distressEvents, recencyWindowDays: Number(raw) || 730 },
         });
     }
 </script>

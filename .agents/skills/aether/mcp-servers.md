@@ -1,8 +1,18 @@
 # MCP Server Development (FastMCP)
 
-This project supports developing and deploying custom MCP (Model Context Protocol) servers alongside the UI. Servers live in the `mcp-servers/` directory and deploy to Google Cloud Run via the `/deploy_mcp` command.
+> **Are you trying to USE the Lovelace platform MCP servers (`elemental`,
+> `stocks`, `wiki`, `polymarket`), not build a new one?** Wrong file —
+> see [data.md](data.md) § "Lovelace MCP Servers" for how to call them
+> programmatically, interpret responses, and translate the
+> `.agents/mcp.json` `lovelace-*` aliases into real URLs.
 
-MCP servers expose tools that agents can call. They act as bridges between AI agents and external data sources or APIs.
+This project supports developing and deploying **custom** MCP (Model
+Context Protocol) servers alongside the UI. Servers live in the
+`mcp-servers/` directory and deploy to Google Cloud Run via the
+`/deploy_mcp` command.
+
+MCP servers expose tools that agents can call. They act as bridges
+between AI agents and external data sources or APIs.
 
 ## Directory Structure
 

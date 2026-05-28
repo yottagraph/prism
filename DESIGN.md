@@ -772,12 +772,15 @@ geographic clusters.
 
 Per-portfolio scoring configuration workspace. Users set fusion lens weights,
 tier bands (critical/high/watch cutoffs), risk-category bands (HIGH/MEDIUM
-cutoffs), and per-module thresholds for FHS (leverage, equity, tier sub-weights),
-ERS (officer count, C-suite coverage, departures), and ACS (sub-weights, OFAC
-override, hop decay). Includes presets (Conservative / Moderate / Aggressive),
-a live preview table that re-ranks the top 10 entities client-side as settings
-change, and a Re-scan button to commit new thresholds to the server-side scoring
-calculators. Settings persist per-portfolio via `PortfolioDoc.scoring`.
+cutoffs), and per-module thresholds for FHS (leverage, equity, tier sub-weights,
+distress-event base scores and weights), ERS (officer count, C-suite coverage,
+departures, Signal 8 / 8-K Item 5.02 settings), ACS (sub-weights, OFAC
+override, hop decay), and Event Pressure (per-type keyword weights, recency
+decay curve, clustering bonuses). Includes presets (Conservative / Moderate /
+Aggressive), a live preview table that re-ranks the top 10 entities client-side
+as settings change, and a Re-scan button to commit new thresholds to the
+server-side scoring calculators. Settings persist per-portfolio via
+`PortfolioDoc.scoring`.
 
 ### Agent Workspace (`pages/agents.vue`)
 
@@ -794,7 +797,8 @@ Includes suggestion chips for the typical demo questions.
 - `useFusedScoring` — weighted fusion, tier derivation, confidence proxy,
   conflict detection, risk-driver library. Also exports `ScoringSettings`,
   `DEFAULT_SCORING_SETTINGS`, and sub-threshold interfaces (`FhsThresholds`,
-  `ErsThresholds`, `AcsThresholds`, `TierBands`, `CategoryBands`).
+  `ErsThresholds`, `AcsThresholds`, `TierBands`, `CategoryBands`,
+  `EventPressureSettings`, `DistressEventConfig`, `ErsSignal8Settings`).
 - `useScoringSettings` — per-portfolio scoring configuration CRUD, presets
   (Conservative / Moderate / Aggressive), section/all reset, and re-scan trigger.
 - `useEntityProfile` — single-entity deep dive from server profile routes with
@@ -810,8 +814,9 @@ Includes suggestion chips for the typical demo questions.
 `MacroContext`, `EntityScoreStrip`, `LensDetailPanel`, `RiskDriverCards`,
 `AssessmentBlock`, `RelationshipGraph`, `PatternCards`, `AgentPipelineViewer`,
 `AgentActivityFeed`, `scoring/ScoringFusionPanel`, `scoring/ScoringFhsPanel`,
-`scoring/ScoringErsPanel`, `scoring/ScoringAcsPanel`, `scoring/ScoringBandsPanel`,
-`scoring/ScoringPreviewTable`, `scoring/ScoringPresetPicker`.
+`scoring/ScoringErsPanel`, `scoring/ScoringEventsPanel`, `scoring/ScoringAcsPanel`,
+`scoring/ScoringBandsPanel`, `scoring/ScoringPreviewTable`,
+`scoring/ScoringPresetPicker`.
 
 ### Known follow-ups
 

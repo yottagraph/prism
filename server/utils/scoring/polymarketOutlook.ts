@@ -25,29 +25,63 @@ export interface PolymarketOutlookResult {
 }
 
 type CandidatePayload = {
+    results?: Array<Record<string, unknown>>;
     markets?: Array<Record<string, unknown>>;
     data?: Array<Record<string, unknown>>;
     items?: Array<Record<string, unknown>>;
 };
 
+const CORPORATE_SUFFIXES =
+    /\s*,?\s*\b(Inc\.?|Corp\.?|Corporation|LLC|Ltd\.?|L\.?P\.?|Co\.?|Group|Holdings|Bancorp|plc|S\.?A\.?|N\.?V\.?|SE|AG)\s*$/gi;
+
+function buildQueryVariants(name: string): string[] {
+    const stripped = name.replace(CORPORATE_SUFFIXES, '').trim();
+    const words = stripped.split(/\s+/);
+    const variants: string[] = [];
+
+    if (stripped && stripped !== name) variants.push(stripped);
+    else variants.push(name);
+
+    if (words.length > 2) variants.push(words.slice(0, 2).join(' '));
+    if (words.length > 1) variants.push(words[0]);
+
+    const seen = new Set<string>();
+    return variants.filter((v) => {
+        const key = v.toLowerCase();
+        if (seen.has(key) || !v) return false;
+        seen.add(key);
+        return true;
+    });
+}
+
+function parseProbability(raw: unknown): number | null {
+    let n: number;
+    if (typeof raw === 'number') {
+        n = raw;
+    } else if (typeof raw === 'string') {
+        n = Number(raw.replace(/%/g, '').trim());
+    } else {
+        return null;
+    }
+    if (!Number.isFinite(n)) return null;
+    return n > 1 ? n / 100 : n;
+}
+
 function normalizeMarkets(payload: CandidatePayload | null) {
-    const rows = payload?.markets ?? payload?.data ?? payload?.items ?? [];
+    const rows = payload?.results ?? payload?.markets ?? payload?.data ?? payload?.items ?? [];
     return rows.map((row) => {
-        const question = String(row.question || row.title || row.market || '').trim();
+        const question = String(row.title || row.question || row.market || '').trim();
         const active = Boolean(row.active ?? row.is_active ?? true);
-        const category = row.category ? String(row.category) : undefined;
-        const probabilityRaw = row.probability ?? row.price ?? row.outcome_probability;
-        const probability =
-            typeof probabilityRaw === 'number'
-                ? probabilityRaw
-                : typeof probabilityRaw === 'string'
-                  ? Number(probabilityRaw)
-                  : NaN;
+        const tags = Array.isArray(row.tags) ? row.tags.join(', ') : undefined;
+        const category = row.category ? String(row.category) : tags;
+        const probability = parseProbability(
+            row.probability ?? row.price ?? row.outcome_probability
+        );
         return {
             question: question || 'Market',
             active,
             category,
-            probability: Number.isFinite(probability) ? probability : null,
+            probability,
         };
     });
 }
@@ -100,17 +134,21 @@ async function queryPolymarket(
     serverEvent: H3Event,
     entityName: string
 ): Promise<QueryPolymarketResult> {
-    const toolAttempts: Array<{ name: string; args: Record<string, unknown> }> = [
-        { name: 'polymarket_get_context', args: { entity: entityName } },
-        { name: 'polymarket_search_markets', args: { query: entityName, limit: 20 } },
-        { name: 'get_markets', args: { query: entityName, limit: 20 } },
-    ];
+    const queries = buildQueryVariants(entityName);
+    const toolAttempts = queries.map((q) => ({
+        name: 'polymarket_web_search',
+        args: { query: q, max_results: 20 },
+    }));
     const failures: Array<{ tool: string; error: string }> = [];
     let lastSuccessfulTool: string | null = null;
 
     for (const attempt of toolAttempts) {
         try {
             const result = await callMcpTool('polymarket', attempt.name, attempt.args, serverEvent);
+            if (!result) {
+                failures.push({ tool: attempt.name, error: 'empty MCP result' });
+                continue;
+            }
             lastSuccessfulTool = attempt.name;
             const structured = extractMcpStructuredContent<CandidatePayload>(result);
             const markets = normalizeMarkets(structured);
@@ -118,7 +156,10 @@ async function queryPolymarket(
                 return { markets, mcpStatus: 'ok', lastSuccessfulTool, failures };
             }
         } catch (err: any) {
-            failures.push({ tool: attempt.name, error: err?.message || String(err) });
+            failures.push({
+                tool: `${attempt.name}(${(attempt.args as any).query})`,
+                error: err?.message || String(err),
+            });
         }
     }
 

@@ -308,13 +308,31 @@ export async function callMcpTool(
             sessionId
         );
 
+    function extractResult(res: { frame: any }) {
+        const { frame } = res;
+        if (frame?.error) {
+            throw createError({
+                statusCode: 502,
+                statusMessage: `MCP ${toolName}: [${frame.error.code}] ${frame.error.message}`,
+            });
+        }
+        const result = frame?.result;
+        if (result?.isError) {
+            const msg = result?.content?.find?.((c: any) => c?.type === 'text')?.text ?? 'unknown';
+            throw createError({
+                statusCode: 502,
+                statusMessage: `MCP tool ${toolName} returned error: ${msg}`,
+            });
+        }
+        return result;
+    }
+
     const sem = getSemaphore(serverName);
     await sem.acquire();
     try {
         const sessionId = await ensureSession(serverName);
         try {
-            const res = await run(sessionId);
-            return res.frame?.result;
+            return extractResult(await run(sessionId));
         } catch (error: any) {
             if (
                 String(error?.statusMessage || '').includes('session') ||
@@ -322,8 +340,7 @@ export async function callMcpTool(
             ) {
                 mcpSessionIds.delete(serverName);
                 const fresh = await ensureSession(serverName);
-                const res = await run(fresh);
-                return res.frame?.result;
+                return extractResult(await run(fresh));
             }
             throw error;
         }

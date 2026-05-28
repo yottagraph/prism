@@ -1,5 +1,5 @@
 import type { ContextEvent } from '../contextPackage';
-import type { ErsThresholds } from '../types';
+import type { ErsSignal8Settings, ErsThresholds } from '../types';
 import type { ErsSignal, GovernanceSnapshot } from './types';
 
 function classifyScore(score: number): ErsSignal['severity'] {
@@ -27,7 +27,7 @@ function recencyMultiplier(dateStr: string | null): number {
 export function computeErsSignals(
     snapshot: GovernanceSnapshot,
     events?: ContextEvent[],
-    thresholds?: ErsThresholds
+    thresholds?: ErsThresholds & { signal8?: ErsSignal8Settings }
 ): ErsSignal[] {
     const minOfficers = thresholds?.minOfficers ?? 3;
     const minCSuite = thresholds?.minCSuite ?? 2;
@@ -51,6 +51,7 @@ export function computeErsSignals(
         });
     }
 
+    const cSuiteCoveragePct = thresholds?.cSuiteCoverageLow ?? 50;
     if (snapshot.officerCount > 0 && snapshot.cSuiteCount < minCSuite) {
         signals.push({
             signalType: 'c_suite_coverage',
@@ -59,11 +60,25 @@ export function computeErsSignals(
             description: `Limited C-suite coverage (${snapshot.cSuiteCount} role${snapshot.cSuiteCount === 1 ? '' : 's'}, threshold: ${minCSuite}).`,
             evidence: [],
         });
+    } else if (
+        snapshot.officerCount > 0 &&
+        snapshot.cSuiteCount >= minCSuite &&
+        (snapshot.cSuiteCount / snapshot.officerCount) * 100 < cSuiteCoveragePct
+    ) {
+        signals.push({
+            signalType: 'c_suite_coverage_ratio',
+            severity: 'medium',
+            score: 15,
+            description: `C-suite coverage ratio ${((snapshot.cSuiteCount / snapshot.officerCount) * 100).toFixed(0)}% below threshold ${cSuiteCoveragePct}%.`,
+            evidence: [],
+        });
     }
 
-    // Signal 3: Officer departures
+    // Signal 3: Officer departures — slope controlled by departures12mHigh
     if (snapshot.departures12m > 0) {
-        const baseDepartureScore = Math.min(60, snapshot.departures12m * 15);
+        const depThreshold = thresholds?.departures12mHigh ?? 2;
+        const perDepartureSlope = Math.round(60 / Math.max(1, depThreshold * 2));
+        const baseDepartureScore = Math.min(60, snapshot.departures12m * perDepartureSlope);
         const recencyMult =
             snapshot.departures90d >= 3 ? 1 : snapshot.departures90d >= 1 ? 0.85 : 0.6;
         const cSuitePremium = snapshot.cSuiteCount > 0 ? 1.2 : 1;
@@ -111,6 +126,11 @@ export function computeErsSignals(
     }
 
     // Signal 8: 8-K Item 5.02 executive departure/appointment events
+    const s8: ErsSignal8Settings = thresholds?.signal8 ?? {
+        baseScore: 10,
+        cSuitePremium: 1.4,
+        cap: 50,
+    };
     if (events && events.length > 0) {
         const departureEvents = events.filter((ev) => {
             const type = ev.eventType.toUpperCase();
@@ -130,18 +150,18 @@ export function computeErsSignals(
             const snippetText = (ev.snippet ?? ev.description ?? '').toUpperCase();
             const isCsuite = C_SUITE_PATTERN.test(snippetText);
             const mult = recencyMultiplier(ev.date);
-            const baseScore = 10 * mult * (isCsuite ? 1.4 : 1.0);
-            signal8Total += baseScore;
+            const base = s8.baseScore * mult * (isCsuite ? s8.cSuitePremium : 1.0);
+            signal8Total += base;
         }
-        signal8Total = Math.min(50, Math.round(signal8Total));
+        signal8Total = Math.min(s8.cap, Math.round(signal8Total));
 
         if (signal8Total > 0) {
             const severity =
-                signal8Total >= 40
+                signal8Total >= s8.cap * 0.8
                     ? ('critical' as const)
-                    : signal8Total >= 25
+                    : signal8Total >= s8.cap * 0.5
                       ? ('high' as const)
-                      : signal8Total >= 10
+                      : signal8Total >= s8.cap * 0.2
                         ? ('medium' as const)
                         : ('low' as const);
             signals.push({

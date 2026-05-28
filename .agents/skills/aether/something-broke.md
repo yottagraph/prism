@@ -31,6 +31,28 @@ Show the user the combined result (current code + restored pieces) and have them
 
 Only after the user confirms the restored version is correct, follow the standard git workflow (see [git-support.md](git-support.md) in this skill) to commit the changes.
 
+# "The platform API is broken" — read this first
+
+If the symptom is **"the Query Server / Elemental MCP / Portal Gateway is
+returning errors,"** stop. The single most common cause of platform
+outage reports from build agents is the agent itself hitting a
+non-existent URL and misreading the resulting `404`, `401`, or HTML
+body as a server-side failure. Before patching any caller, probe the
+endpoint with curl and classify the response:
+
+1. Run `/diagnose <url>` (see `commands/diagnose.md`) — it walks you
+   through capturing the request, probing with curl, and classifying
+   the response before you change any code.
+2. Cross-reference [data.md](data.md) § "Interpreting portal-proxy
+   errors" for the status-code → cause mapping.
+3. Only after Step 1's probe shows a real `5xx` from the portal or a
+   captured timeout should you treat this as an upstream incident.
+   Patching the caller because "the API seems flaky" without a
+   captured failing response is how false bug reports get filed and
+   how silent regressions land in `useServerStatus`-style health
+   checks. See the cautionary tale in [data.md](data.md) § "Before
+   you 'fix' an apparent platform outage."
+
 # Common Build Errors
 
 When `npm run build` fails, check these common causes:

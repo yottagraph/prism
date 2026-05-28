@@ -5,6 +5,7 @@ import {
     type CategoryBands,
     DEFAULT_SCORING_SETTINGS,
     type ErsThresholds,
+    type EventPressureSettings,
     type FhsThresholds,
     type ScoringSettings,
     type SourceFusionWeights,
@@ -46,6 +47,15 @@ const PRESETS: ScoringPreset[] = [
                 stockDeclineThreshold: -8,
                 stockVolatilityThreshold: 4,
                 tierWeights: { t1: 0.5, t2: 0.2, t3: 0.1, t4: 0.05, t5: 0.15 },
+                distressEvents: {
+                    bankruptcy: { baseScore: 100, weight: 3.5 },
+                    delisting: { baseScore: 95, weight: 3.0 },
+                    nonReliance: { baseScore: 90, weight: 2.5 },
+                    triggering: { baseScore: 80, weight: 2.0 },
+                    impairment: { baseScore: 70, weight: 1.5 },
+                    termination: { baseScore: 60, weight: 1.5 },
+                    recencyWindowDays: 1095,
+                },
             },
             ers: {
                 minOfficers: 4,
@@ -53,6 +63,7 @@ const PRESETS: ScoringPreset[] = [
                 departures12mHigh: 1,
                 cSuiteCoverageLow: 60,
                 leadershipSentimentLow: 0.4,
+                signal8: { baseScore: 12, cSuitePremium: 1.6, cap: 60 },
             },
             acs: {
                 directWeight: 0.4,
@@ -62,6 +73,37 @@ const PRESETS: ScoringPreset[] = [
                 fociWeight: 0.08,
                 ofacExactOverride: 95,
                 hopDecay: 0.4,
+            },
+            events: {
+                baseOffset: 25,
+                defaultWeight: 8,
+                typeWeights: {
+                    bankruptcy: 35,
+                    delisting: 30,
+                    default: 26,
+                    auditor: 22,
+                    restructuring: 20,
+                    officer: 15,
+                    director: 12,
+                    impairment: 15,
+                },
+                recency: {
+                    daysFresh: 14,
+                    multFresh: 1.0,
+                    daysRecent: 30,
+                    multRecent: 0.9,
+                    daysModerate: 90,
+                    multModerate: 0.7,
+                    multStale: 0.45,
+                    multNoDate: 0.6,
+                },
+                cluster: {
+                    windowDays: 21,
+                    countHigh: 4,
+                    bonusHigh: 50,
+                    countMedium: 2,
+                    bonusMedium: 30,
+                },
             },
         },
     },
@@ -94,6 +136,15 @@ const PRESETS: ScoringPreset[] = [
                 stockDeclineThreshold: -15,
                 stockVolatilityThreshold: 7,
                 tierWeights: { t1: 0.4, t2: 0.2, t3: 0.15, t4: 0.1, t5: 0.15 },
+                distressEvents: {
+                    bankruptcy: { baseScore: 90, weight: 2.5 },
+                    delisting: { baseScore: 80, weight: 2.0 },
+                    nonReliance: { baseScore: 75, weight: 1.5 },
+                    triggering: { baseScore: 60, weight: 1.0 },
+                    impairment: { baseScore: 50, weight: 0.8 },
+                    termination: { baseScore: 40, weight: 0.8 },
+                    recencyWindowDays: 365,
+                },
             },
             ers: {
                 minOfficers: 2,
@@ -101,6 +152,7 @@ const PRESETS: ScoringPreset[] = [
                 departures12mHigh: 3,
                 cSuiteCoverageLow: 40,
                 leadershipSentimentLow: 0.2,
+                signal8: { baseScore: 8, cSuitePremium: 1.2, cap: 40 },
             },
             acs: {
                 directWeight: 0.3,
@@ -111,11 +163,49 @@ const PRESETS: ScoringPreset[] = [
                 ofacExactOverride: 85,
                 hopDecay: 0.6,
             },
+            events: {
+                baseOffset: 15,
+                defaultWeight: 4,
+                typeWeights: {
+                    bankruptcy: 22,
+                    delisting: 18,
+                    default: 16,
+                    auditor: 14,
+                    restructuring: 12,
+                    officer: 8,
+                    director: 6,
+                    impairment: 8,
+                },
+                recency: {
+                    daysFresh: 14,
+                    multFresh: 1.0,
+                    daysRecent: 30,
+                    multRecent: 0.8,
+                    daysModerate: 90,
+                    multModerate: 0.5,
+                    multStale: 0.25,
+                    multNoDate: 0.4,
+                },
+                cluster: {
+                    windowDays: 10,
+                    countHigh: 7,
+                    bonusHigh: 30,
+                    countMedium: 4,
+                    bonusMedium: 15,
+                },
+            },
         },
     },
 ];
 
-export type ScoringSection = 'weights' | 'tiers' | 'categoryBands' | 'fhs' | 'ers' | 'acs';
+export type ScoringSection =
+    | 'weights'
+    | 'tiers'
+    | 'categoryBands'
+    | 'fhs'
+    | 'ers'
+    | 'acs'
+    | 'events';
 
 export function useScoringSettings() {
     const { activeScoring, activePortfolio, scanPortfolio } = usePortfolio();
@@ -151,16 +241,20 @@ export function useScoringSettings() {
         scoring.value = { ...scoring.value, categoryBands: c };
     }
 
-    function setFhs(f: FhsThresholds) {
+    function setFhs(f: ScoringSettings['fhs']) {
         scoring.value = { ...scoring.value, fhs: f };
     }
 
-    function setErs(e: ErsThresholds) {
+    function setErs(e: ScoringSettings['ers']) {
         scoring.value = { ...scoring.value, ers: e };
     }
 
     function setAcs(a: AcsThresholds) {
         scoring.value = { ...scoring.value, acs: a };
+    }
+
+    function setEvents(e: EventPressureSettings) {
+        scoring.value = { ...scoring.value, events: e };
     }
 
     function resetSection(section: ScoringSection) {
@@ -190,6 +284,7 @@ export function useScoringSettings() {
         setFhs,
         setErs,
         setAcs,
+        setEvents,
         resetSection,
         resetAll,
         rescan,

@@ -45,6 +45,7 @@
                     <v-tab value="fusion">Fusion</v-tab>
                     <v-tab value="fhs">FHS</v-tab>
                     <v-tab value="ers">ERS</v-tab>
+                    <v-tab value="events">Events</v-tab>
                     <v-tab value="acs">ACS</v-tab>
                     <v-tab value="bands">Bands &amp; Tiers</v-tab>
                 </v-tabs>
@@ -61,6 +62,9 @@
                     </v-tabs-window-item>
                     <v-tabs-window-item value="ers">
                         <ScoringErsPanel :ers="scoring.ers" @update:ers="setErs" />
+                    </v-tabs-window-item>
+                    <v-tabs-window-item value="events">
+                        <ScoringEventsPanel :events="scoring.events" @update:events="setEvents" />
                     </v-tabs-window-item>
                     <v-tabs-window-item value="acs">
                         <ScoringAcsPanel :acs="scoring.acs" @update:acs="setAcs" />
@@ -126,6 +130,7 @@
         setFhs,
         setErs,
         setAcs,
+        setEvents,
         resetSection,
         resetAll,
         rescan,

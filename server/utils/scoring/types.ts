@@ -51,13 +51,73 @@ export interface CategoryBands {
     medium: number;
 }
 
+export interface EventPressureTypeWeights {
+    bankruptcy: number;
+    delisting: number;
+    default: number;
+    auditor: number;
+    restructuring: number;
+    officer: number;
+    director: number;
+    impairment: number;
+}
+
+export interface EventPressureRecency {
+    daysFresh: number;
+    multFresh: number;
+    daysRecent: number;
+    multRecent: number;
+    daysModerate: number;
+    multModerate: number;
+    multStale: number;
+    multNoDate: number;
+}
+
+export interface EventPressureCluster {
+    windowDays: number;
+    countHigh: number;
+    bonusHigh: number;
+    countMedium: number;
+    bonusMedium: number;
+}
+
+export interface EventPressureSettings {
+    baseOffset: number;
+    defaultWeight: number;
+    typeWeights: EventPressureTypeWeights;
+    recency: EventPressureRecency;
+    cluster: EventPressureCluster;
+}
+
+export interface DistressEventEntry {
+    baseScore: number;
+    weight: number;
+}
+
+export interface DistressEventConfig {
+    bankruptcy: DistressEventEntry;
+    delisting: DistressEventEntry;
+    nonReliance: DistressEventEntry;
+    triggering: DistressEventEntry;
+    impairment: DistressEventEntry;
+    termination: DistressEventEntry;
+    recencyWindowDays: number;
+}
+
+export interface ErsSignal8Settings {
+    baseScore: number;
+    cSuitePremium: number;
+    cap: number;
+}
+
 export interface ScoringSettings {
     weights: SourceFusionWeights;
     tiers: TierBands;
     categoryBands: CategoryBands;
-    fhs: FhsThresholds;
-    ers: ErsThresholds;
+    fhs: FhsThresholds & { distressEvents: DistressEventConfig };
+    ers: ErsThresholds & { signal8: ErsSignal8Settings };
     acs: AcsThresholds;
+    events: EventPressureSettings;
 }
 
 export const DEFAULT_SCORING_SETTINGS: ScoringSettings = {
@@ -78,6 +138,15 @@ export const DEFAULT_SCORING_SETTINGS: ScoringSettings = {
         stockDeclineThreshold: -10,
         stockVolatilityThreshold: 5,
         tierWeights: { t1: 0.45, t2: 0.2, t3: 0.12, t4: 0.08, t5: 0.15 },
+        distressEvents: {
+            bankruptcy: { baseScore: 100, weight: 3.0 },
+            delisting: { baseScore: 90, weight: 2.5 },
+            nonReliance: { baseScore: 85, weight: 2.0 },
+            triggering: { baseScore: 70, weight: 1.5 },
+            impairment: { baseScore: 60, weight: 1.0 },
+            termination: { baseScore: 50, weight: 1.0 },
+            recencyWindowDays: 730,
+        },
     },
     ers: {
         minOfficers: 3,
@@ -85,6 +154,7 @@ export const DEFAULT_SCORING_SETTINGS: ScoringSettings = {
         departures12mHigh: 2,
         cSuiteCoverageLow: 50,
         leadershipSentimentLow: 0.3,
+        signal8: { baseScore: 10, cSuitePremium: 1.4, cap: 50 },
     },
     acs: {
         directWeight: 0.35,
@@ -94,6 +164,37 @@ export const DEFAULT_SCORING_SETTINGS: ScoringSettings = {
         fociWeight: 0.08,
         ofacExactOverride: 90,
         hopDecay: 0.5,
+    },
+    events: {
+        baseOffset: 20,
+        defaultWeight: 6,
+        typeWeights: {
+            bankruptcy: 28,
+            delisting: 24,
+            default: 22,
+            auditor: 18,
+            restructuring: 16,
+            officer: 12,
+            director: 10,
+            impairment: 12,
+        },
+        recency: {
+            daysFresh: 14,
+            multFresh: 1.0,
+            daysRecent: 30,
+            multRecent: 0.85,
+            daysModerate: 90,
+            multModerate: 0.6,
+            multStale: 0.35,
+            multNoDate: 0.55,
+        },
+        cluster: {
+            windowDays: 14,
+            countHigh: 5,
+            bonusHigh: 40,
+            countMedium: 3,
+            bonusMedium: 25,
+        },
     },
 };
 

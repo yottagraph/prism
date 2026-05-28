@@ -16,11 +16,33 @@ import { computeMarketSignalScore } from './marketSignal';
 import { computeNewsPressureScore } from './newsPressure';
 import { computeNewsSummary24h } from './newsSummary24h';
 import { computePolymarketOutlook } from './polymarketOutlook';
+import { callMcpTool, extractMcpStructuredContent } from './mcpGateway';
 import { computeSignalAgreement } from './signalAgreement';
 import { computeSolvencyScore } from './solvency';
 import { readPreviousScore, writeLatestScore } from './state';
 import type { ScoringSettings, ScoreComputationResult, SourceCoverageDetail } from './types';
 import { DEFAULT_SCORING_SETTINGS } from './types';
+
+async function queryFredSeriesCount(event: H3Event, neid: string): Promise<number> {
+    try {
+        const result = await callMcpTool(
+            'elemental',
+            'elemental_get_related',
+            {
+                entity_id: { id_type: 'neid', id: neid },
+                related_flavor: 'fred_series',
+                relationship_types: ['appears_in_fred_series'],
+                direction: 'outgoing',
+                limit: 1,
+            },
+            event
+        );
+        const data = extractMcpStructuredContent<{ total?: number }>(result);
+        return data?.total ?? 0;
+    } catch {
+        return 0;
+    }
+}
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> {
     return new Promise((resolve) => {
@@ -58,7 +80,14 @@ export async function scoreEntity(
         polymarket,
     ] = await Promise.all([
         withTimeout(
-            computeSolvencyScore(event, portfolioId, neid, ctx, resolvedScoring.fhs),
+            computeSolvencyScore(
+                event,
+                portfolioId,
+                neid,
+                ctx,
+                resolvedScoring.fhs,
+                resolvedScoring.fhs.distressEvents
+            ),
             4_000,
             {
                 score: 0,
@@ -93,11 +122,15 @@ export async function scoreEntity(
             hasRealData: false,
             detail: { metrics: [{ label: 'Status', value: 'timeout' }], findings: [] },
         }),
-        withTimeout(computeEventPressureScore(event, portfolioId, neid, ctx), 3_000, {
-            score: 0,
-            hasRealData: false,
-            detail: { metrics: [{ label: 'Status', value: 'timeout' }], findings: [] },
-        }),
+        withTimeout(
+            computeEventPressureScore(event, portfolioId, neid, ctx, resolvedScoring.events),
+            3_000,
+            {
+                score: 0,
+                hasRealData: false,
+                detail: { metrics: [{ label: 'Status', value: 'timeout' }], findings: [] },
+            }
+        ),
         withTimeout(computeCikVelocity(event, portfolioId, neid, ctx), 3_000, {
             trend: null,
             qoqPct: null,
@@ -134,6 +167,8 @@ export async function scoreEntity(
             detail: { metrics: [{ label: 'Status', value: 'timeout' }], findings: [] },
         }),
     ]);
+
+    const fredSeriesCount = await withTimeout(queryFredSeriesCount(event, neid), 3_000, 0);
 
     const previous = readPreviousScore(portfolioId, neid);
     const subs = {
@@ -249,7 +284,7 @@ export async function scoreEntity(
             markets: polymarket.marketCount,
             active: polymarket.markets.filter((m) => m.active).length,
         },
-        fred: { series: 0, earliest: null, latest: null },
+        fred: { series: fredSeriesCount, earliest: null, latest: null },
         acs: acs.hasRealData,
         eventPressure: eventPressure.hasRealData,
         velocity: cikVelocity.hasRealData,

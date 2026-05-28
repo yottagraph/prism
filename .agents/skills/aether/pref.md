@@ -368,7 +368,7 @@ env vars on the Vercel project first.
 
 `hydrated.value` is `true` when every prefs scope a consumer has
 touched has completed its initial read — i.e. real user data is
-in memory, not just initial defaults.
+in memory, not just seeded defaults.
 
 - **`true` from the start** if a status banner mounts before any
   feature uses prefs (there's literally nothing to wait for).

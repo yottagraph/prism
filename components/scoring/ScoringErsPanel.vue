@@ -23,15 +23,74 @@
                     />
                 </v-col>
             </v-row>
+
+            <v-divider class="my-4" />
+
+            <div class="text-subtitle-2 mb-3">Signal 8 — 8-K Item 5.02 (Executive Departures)</div>
+            <v-row>
+                <v-col cols="12" sm="4">
+                    <v-text-field
+                        :model-value="ers.signal8.baseScore"
+                        type="number"
+                        density="comfortable"
+                        variant="outlined"
+                        label="Base score per event"
+                        hint="Score contribution before recency/premium"
+                        persistent-hint
+                        step="1"
+                        min="1"
+                        max="50"
+                        @update:model-value="updateSignal8('baseScore', $event)"
+                    />
+                </v-col>
+                <v-col cols="12" sm="4">
+                    <v-text-field
+                        :model-value="ers.signal8.cSuitePremium"
+                        type="number"
+                        density="comfortable"
+                        variant="outlined"
+                        label="C-suite premium (×)"
+                        hint="Multiplier for C-suite departure events"
+                        persistent-hint
+                        step="0.1"
+                        min="1"
+                        max="3"
+                        @update:model-value="updateSignal8('cSuitePremium', $event)"
+                    />
+                </v-col>
+                <v-col cols="12" sm="4">
+                    <v-text-field
+                        :model-value="ers.signal8.cap"
+                        type="number"
+                        density="comfortable"
+                        variant="outlined"
+                        label="Score cap"
+                        hint="Maximum total Signal 8 contribution"
+                        persistent-hint
+                        step="5"
+                        min="10"
+                        max="100"
+                        @update:model-value="updateSignal8('cap', $event)"
+                    />
+                </v-col>
+            </v-row>
+
+            <v-alert type="info" variant="tonal" density="compact" class="mt-2">
+                <strong>leadershipSentimentLow</strong> is reserved for a future
+                leadership-sentiment signal. The field is saved but has no effect on scoring until
+                the server signal is implemented.
+            </v-alert>
         </v-card-text>
     </v-card>
 </template>
 
 <script setup lang="ts">
-    import type { ErsThresholds } from '~/composables/useFusedScoring';
+    import type { ScoringSettings, ErsSignal8Settings } from '~/composables/useFusedScoring';
 
-    const props = defineProps<{ ers: ErsThresholds }>();
-    const emit = defineEmits<{ 'update:ers': [value: ErsThresholds] }>();
+    type ErsWithSignal8 = ScoringSettings['ers'];
+
+    const props = defineProps<{ ers: ErsWithSignal8 }>();
+    const emit = defineEmits<{ 'update:ers': [value: ErsWithSignal8] }>();
 
     const fields = [
         {
@@ -53,7 +112,7 @@
         {
             key: 'departures12mHigh',
             label: 'Departures threshold (12m count)',
-            hint: 'Departures at or above this treated as elevated',
+            hint: 'Controls the slope of the departure-score formula',
             step: 1,
             min: 1,
             max: 12,
@@ -61,15 +120,15 @@
         {
             key: 'cSuiteCoverageLow',
             label: 'C-suite coverage low (%)',
-            hint: 'Leadership bench below this raises concern',
+            hint: 'C-suite / total officers ratio below this raises concern',
             step: 5,
             min: 10,
             max: 100,
         },
         {
             key: 'leadershipSentimentLow',
-            label: 'Leadership sentiment low',
-            hint: 'Sentiment below this raises concern',
+            label: 'Leadership sentiment low (reserved)',
+            hint: 'Saved but not yet wired to a server signal',
             step: 0.05,
             min: 0,
             max: 1,
@@ -78,5 +137,12 @@
 
     function update(key: string, raw: unknown) {
         emit('update:ers', { ...props.ers, [key]: Number(raw) || 0 });
+    }
+
+    function updateSignal8(key: keyof ErsSignal8Settings, raw: unknown) {
+        emit('update:ers', {
+            ...props.ers,
+            signal8: { ...props.ers.signal8, [key]: Number(raw) || 0 },
+        });
     }
 </script>

@@ -3,67 +3,76 @@ import type { H3Event } from 'h3';
 import { resolveRefs } from '../citations';
 import type { ContextEvent, ContextPackage } from '../contextPackage';
 import { callMcpTool, extractMcpStructuredContent } from '../mcpGateway';
-import type { EvidenceItem } from '../types';
+import type { DistressEventConfig, EvidenceItem } from '../types';
+import { DEFAULT_SCORING_SETTINGS } from '../types';
 import type { FhsSignal, FhsTierResult } from './types';
 
-const DISTRESS_EVENT_MAP: Array<{
+interface DistressMapEntry {
     eventType: string;
     signalType: string;
     severity: FhsSignal['severity'];
     baseScore: number;
     weight: number;
-}> = [
-    {
-        eventType: 'FINANCING_BANKRUPTCY',
-        signalType: 'BANKRUPTCY_EVENT',
-        severity: 'critical',
-        baseScore: 100,
-        weight: 3.0,
-    },
-    {
-        eventType: 'DELISTING_NOTICE',
-        signalType: 'DELISTING_EVENT',
-        severity: 'critical',
-        baseScore: 90,
-        weight: 2.5,
-    },
-    {
-        eventType: 'ACCOUNTING_NON_RELIANCE',
-        signalType: 'NON_RELIANCE_EVENT',
-        severity: 'critical',
-        baseScore: 85,
-        weight: 2.0,
-    },
-    {
-        eventType: 'FINANCING_TRIGGERING_EVENTS',
-        signalType: 'TRIGGERING_EVENT',
-        severity: 'high',
-        baseScore: 70,
-        weight: 1.5,
-    },
-    {
-        eventType: 'FINANCIAL_IMPAIRMENT',
-        signalType: 'IMPAIRMENT_EVENT',
-        severity: 'high',
-        baseScore: 60,
-        weight: 1.0,
-    },
-    {
-        eventType: 'FINANCING_TERMINATION',
-        signalType: 'TERMINATION_EVENT',
-        severity: 'medium',
-        baseScore: 50,
-        weight: 1.0,
-    },
-];
+}
 
-function recencyMultiplier(eventDate: string | undefined, nowMs: number): number {
+function buildDistressMap(distress: DistressEventConfig): DistressMapEntry[] {
+    return [
+        {
+            eventType: 'FINANCING_BANKRUPTCY',
+            signalType: 'BANKRUPTCY_EVENT',
+            severity: 'critical',
+            baseScore: distress.bankruptcy.baseScore,
+            weight: distress.bankruptcy.weight,
+        },
+        {
+            eventType: 'DELISTING_NOTICE',
+            signalType: 'DELISTING_EVENT',
+            severity: 'critical',
+            baseScore: distress.delisting.baseScore,
+            weight: distress.delisting.weight,
+        },
+        {
+            eventType: 'ACCOUNTING_NON_RELIANCE',
+            signalType: 'NON_RELIANCE_EVENT',
+            severity: 'critical',
+            baseScore: distress.nonReliance.baseScore,
+            weight: distress.nonReliance.weight,
+        },
+        {
+            eventType: 'FINANCING_TRIGGERING_EVENTS',
+            signalType: 'TRIGGERING_EVENT',
+            severity: 'high',
+            baseScore: distress.triggering.baseScore,
+            weight: distress.triggering.weight,
+        },
+        {
+            eventType: 'FINANCIAL_IMPAIRMENT',
+            signalType: 'IMPAIRMENT_EVENT',
+            severity: 'high',
+            baseScore: distress.impairment.baseScore,
+            weight: distress.impairment.weight,
+        },
+        {
+            eventType: 'FINANCING_TERMINATION',
+            signalType: 'TERMINATION_EVENT',
+            severity: 'medium',
+            baseScore: distress.termination.baseScore,
+            weight: distress.termination.weight,
+        },
+    ];
+}
+
+function recencyMultiplier(
+    eventDate: string | undefined,
+    nowMs: number,
+    windowDays: number
+): number {
     if (!eventDate) return 0.25;
     const ts = Date.parse(eventDate);
     if (!Number.isFinite(ts)) return 0.25;
     const days = Math.max(0, Math.round((nowMs - ts) / 86_400_000));
-    if (days >= 730) return 0.25;
-    const progress = days / 730;
+    if (days >= windowDays) return 0.25;
+    const progress = days / windowDays;
     return 1 - progress * 0.75;
 }
 
@@ -71,14 +80,16 @@ function processEvents(
     contextEvents: ContextEvent[],
     nowMs: number,
     signals: FhsSignal[],
-    refs: string[]
+    refs: string[],
+    distress: DistressEventConfig
 ) {
+    const distressMap = buildDistressMap(distress);
     for (const ev of contextEvents) {
         const eventType = ev.eventType.toUpperCase();
-        const mapped = DISTRESS_EVENT_MAP.find((entry) => eventType.includes(entry.eventType));
+        const mapped = distressMap.find((entry) => eventType.includes(entry.eventType));
         if (!mapped) continue;
         const date = ev.date ?? '';
-        const multiplier = recencyMultiplier(date || undefined, nowMs);
+        const multiplier = recencyMultiplier(date || undefined, nowMs, distress.recencyWindowDays);
         const score = mapped.baseScore * multiplier;
         const description = ev.description ?? mapped.signalType;
         if (ev.ref) refs.push(ev.ref);
@@ -98,7 +109,8 @@ export async function computeTier2Events(
     event: H3Event,
     neid: string,
     nowMs: number,
-    ctx?: ContextPackage
+    ctx?: ContextPackage,
+    distress?: DistressEventConfig
 ): Promise<FhsTierResult> {
     const metrics: FhsTierResult['metrics'] = [];
     const findings: EvidenceItem[] = [];
@@ -107,8 +119,9 @@ export async function computeTier2Events(
     try {
         const refs: string[] = [];
 
+        const resolvedDistress = distress ?? DEFAULT_SCORING_SETTINGS.fhs.distressEvents;
         if (ctx) {
-            processEvents(ctx.events, nowMs, signals, refs);
+            processEvents(ctx.events, nowMs, signals, refs, resolvedDistress);
         } else {
             const result = await callMcpTool(
                 'elemental',
@@ -152,7 +165,7 @@ export async function computeTier2Events(
                     null,
                 raw: row as unknown as Record<string, unknown>,
             }));
-            processEvents(contextEvents, nowMs, signals, refs);
+            processEvents(contextEvents, nowMs, signals, refs, resolvedDistress);
         }
 
         const citationMap = await resolveRefs(refs, event);

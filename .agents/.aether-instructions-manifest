@@ -6,6 +6,7 @@ commands/deploy_agent.md
 commands/deploy_job.md
 commands/deploy_mcp.md
 commands/deploy_workflow.md
+commands/diagnose.md
 commands/manage_secrets.md
 commands/update_branding.md
 commands/update_instructions.md

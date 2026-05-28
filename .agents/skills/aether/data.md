@@ -16,6 +16,49 @@ the Query Server. Use it to search for entities, retrieve properties,
 explore relationships, and analyze sentiment. New data sources are added
 regularly — use the discovery-first pattern to find what's available.
 
+## Before you "fix" an apparent platform outage
+
+When a platform API (Query Server, MCP, Portal Gateway) appears to be
+returning errors, **probe the endpoint with curl before you patch the
+caller**. The single most common cause of "platform outage" reports
+from build agents is the agent itself hitting a non-existent URL and
+misreading the resulting `404`, `401`, or HTML body as a server-side
+failure.
+
+The smell test:
+
+- **Have you actually observed the failing response?** If you can only
+  describe the symptom in terms of the caller's behavior ("the page
+  returns a 500", "the composable throws"), you haven't observed the
+  failure — you've observed the _consequence_. The 500 might be your
+  own code re-raising a 401 from the portal because you forgot to send
+  `X-Api-Key`.
+- **Are you about to "harden" or short-circuit a working probe?** If
+  you're adding a branch that says "if the proxy is configured, treat
+  it as healthy" without an HTTP probe, you are about to suppress a
+  diagnostic signal. The result is a UI that reports "available" when
+  the data plane is broken, which is strictly worse than the original
+  bug.
+- **Do you have a comment in the new code claiming upstream behavior?**
+  Comments like "the proxy sometimes returns noisy 500s on `/status`"
+  must be backed by a captured 500 response from _this session_. If
+  they aren't, you're speculating, and the next agent will read your
+  comment and propagate the speculation.
+
+When any of those apply, **stop and run `/diagnose <url>`** before
+making code changes. The command walks you through capturing the
+actual request, probing it with curl, and classifying the response
+before you touch anything. See [`commands/diagnose.md`](../../commands/diagnose.md)
+or, equivalently, the "Interpreting portal-proxy errors" table later
+in this file.
+
+For tenant-side TypeScript that actually surfaces platform errors
+without inventing explanations, see the
+[`utils/apiErrorHandler.ts`](../../utils/apiErrorHandler.ts) helper
+shipped with the template — it preserves status, headers, and body
+shape on rejection so downstream code can react to the real upstream
+response.
+
 ## Skill Documentation
 
 For endpoint reference, response shapes, and edge cases, **read the
@@ -500,20 +543,82 @@ if (response.status === 404) {
 
 ## Lovelace MCP Servers
 
-Four MCP servers may be configured in `.agents/mcp.json` for interactive
-data exploration. **Check your tool list** — if tools like
-`elemental_get_schema` appear, use them as your primary testing and
-exploration interface before writing code. If they don't appear, the
-servers aren't connected; use curl and the skill docs instead.
+The Lovelace platform exposes **exactly four** MCP servers, all proxied
+through the Broadchurch Portal Gateway:
 
-| Server                | What it provides                                                              |
-| --------------------- | ----------------------------------------------------------------------------- |
-| `lovelace-elemental`  | Knowledge Graph: entities, relationships, events, sentiment, schema discovery |
-| `lovelace-stocks`     | Stock/financial market data                                                   |
-| `lovelace-wiki`       | Wikipedia entity enrichment                                                   |
-| `lovelace-polymarket` | Prediction market data                                                        |
+| Server       | What it provides                                                              |
+| ------------ | ----------------------------------------------------------------------------- |
+| `elemental`  | Knowledge Graph: entities, relationships, events, sentiment, schema discovery |
+| `stocks`     | Stock/financial market data                                                   |
+| `wiki`       | Wikipedia entity enrichment                                                   |
+| `polymarket` | Prediction market data                                                        |
 
-### MCP Tool Quick Reference
+> **Data sources are not separate MCP servers.** EDGAR filings, FRED
+> economic indicators, FDIC bank data, etc. are entity sources INSIDE
+> the Elemental knowledge graph — query them via the `elemental` server,
+> not via invented names like `fred`, `edgar`, or `lovelace-fred`. If
+> you generate a URL pointing at a server name outside the four above,
+> the portal will return a `404 JSON` with a `valid_paths` list.
+
+### The `lovelace-` prefix is a client-side alias, NOT part of the URL
+
+`.agents/mcp.json` declares each server with a `lovelace-` prefix
+(e.g. `lovelace-elemental`). That prefix is purely a **client-side
+alias** that Cursor and Claude Code use when surfacing tools in the
+IDE — it disambiguates platform MCP tools from any custom MCP servers
+the app might also configure. It is **NOT a URL segment**.
+
+```json
+{
+    "lovelace-elemental": {
+        "url": "https://broadchurch-portal-194773164895.us-central1.run.app/api/mcp/{org_id}/elemental/mcp"
+    }
+}
+```
+
+Note the URL path: `.../api/mcp/{org_id}/elemental/mcp` — just
+`elemental`, no `lovelace-` prefix. When calling MCP programmatically
+(server route, plugin, Python agent), always use the **un-prefixed**
+server name in the URL path.
+
+### MCP is JSON-RPC over a single endpoint per server — NOT REST
+
+Each MCP server exposes a single HTTP endpoint at `/mcp` that speaks
+JSON-RPC 2.0. There are no REST-shaped sub-paths like `/macro`,
+`/context`, `/latest`, `/search`, or `/tools/<name>`. Every operation —
+listing tools, calling a tool, opening a session — is a `POST` to the
+same `/mcp` URL with a JSON-RPC envelope in the body.
+
+```
+POST {gateway.url}/api/mcp/{tenant.org_id}/{server_name}/mcp
+Content-Type: application/json
+
+{"jsonrpc":"2.0","id":1,"method":"tools/list"}
+```
+
+```
+POST {gateway.url}/api/mcp/{tenant.org_id}/{server_name}/mcp
+Content-Type: application/json
+
+{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{
+  "name":"elemental_get_entity",
+  "arguments":{"entity":"Microsoft"}
+}}
+```
+
+If you find yourself constructing a URL like
+`/api/mcp/{org}/elemental/find` or `/api/mcp/{org}/stocks/quote/AAPL`,
+stop — those are not valid MCP paths and the portal will respond with
+a `404 JSON` body containing a `hint` and `valid_paths` list.
+
+### Interactive use — read your tool list first
+
+In Cursor and Claude Code, MCP tools appear in your tool list at startup
+(e.g. `elemental_get_schema`, `elemental_get_entity`). **If those tools
+appear, use them directly** — the IDE handles JSON-RPC for you. They
+are your primary discovery/exploration interface and replace most curl
+testing during research. If they don't appear, the connection failed;
+check `.agents/mcp.json`, then fall back to curl (below).
 
 | Tool                           | Purpose                                                        | Use to verify...                     |
 | ------------------------------ | -------------------------------------------------------------- | ------------------------------------ |
@@ -526,14 +631,95 @@ servers aren't connected; use curl and the skill docs instead.
 | `elemental_get_events`         | Events for an entity or by search query                        | Event categories and shapes          |
 | `elemental_health`             | Health check                                                   | Server connectivity                  |
 
-MCP tools handle entity resolution, PID lookups, and NEID formatting
-automatically. Use them to discover IDs and verify data exists before
-building REST-based features with `useElementalClient()`.
+### Programmatic use — calling MCP from app code
+
+When you need to call an MCP server from a Nitro server route,
+composable, or any code that runs in the app (not the IDE), use
+`$fetch` against the portal proxy with a JSON-RPC body:
+
+```typescript
+const { public: config } = useRuntimeConfig();
+const url = `${config.gatewayUrl}/api/mcp/${config.tenantOrgId}/elemental/mcp`;
+
+// Step 1: open the session (one initialize per process)
+const init = await $fetch<{ result: { sessionId?: string } }>(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: {
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: {
+            protocolVersion: '2025-03-26',
+            capabilities: {},
+            clientInfo: { name: 'aether-app', version: '1.0' },
+        },
+    },
+});
+
+// Step 2: call a tool
+const entity = await $fetch<{ result: any; error?: any }>(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: {
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'tools/call',
+        params: { name: 'elemental_get_entity', arguments: { entity: 'Microsoft' } },
+    },
+});
+
+if (entity.error) throw new Error(entity.error.message);
+const data = entity.result;
+```
+
+The portal injects upstream credentials, so no bearer tokens are needed
+client-side. Cross-origin requests from `*.yottagraph.app` are allowed
+by CORS on `/api/mcp/*` paths.
+
+> **For Python ADK agents** (in `agents/`), do NOT roll your own
+> JSON-RPC client — use `McpToolset` with `StreamableHTTPConnectionParams`.
+> See the `elemental-mcp-patterns` skill (`.agents/skills/elemental-mcp-patterns/SKILL.md`)
+> for the full wiring pattern. The URL shape is identical:
+> `{gateway.url}/api/mcp/{org_id}/{server_name}/mcp` with the un-prefixed
+> `server_name`.
+
+### Interpreting portal-proxy errors
+
+The portal proxies both `/api/qs/*` (Query Server REST) and
+`/api/mcp/*` (MCP JSON-RPC). When a proxied call fails, the status code
+tells you whether the problem is in your request, the portal, or
+upstream:
+
+| Status | Where it comes from      | Typical cause                                                  |
+| ------ | ------------------------ | -------------------------------------------------------------- |
+| `400`  | portal (validation)      | Missing path segment or malformed body                         |
+| `401`  | portal (auth)            | Missing/wrong `X-Api-Key` on QS, or missing/expired MCP bearer |
+| `403`  | portal (tenant state)    | Tenant suspended or in `deprovisioning`                        |
+| `404`  | portal (route mismatch)  | Bad URL path or unknown server/tenant; body has `hint` field   |
+| `502`  | portal (upstream fetch)  | Portal couldn't reach the QS or MCP server                     |
+| Other  | upstream QS / MCP server | Status passed through; treat per upstream's docs               |
+
+A `404 JSON` with a `data.hint` and `data.valid_paths` block is the
+portal telling you the URL is wrong — read the hint and adjust the URL
+shape rather than retrying. **The portal never returns HTML for `/api/*`
+paths**; if a caller is parsing HTML as JSON and surfacing a 500, the
+bug is in the caller's error handling (probably swallowing the real
+404/401 from the portal).
+
+If you can't classify a response against this table — or you're about
+to change code because a platform API "seems broken" — run
+`/diagnose <url>` first. The command captures the actual request and
+response with curl so the classification is grounded in observed bytes,
+not inferred behavior. See § "Before you 'fix' an apparent platform
+outage" near the top of this file for the reasoning.
 
 ### Setup
 
-`.agents/mcp.json` is auto-generated by `init-project.js`. If it's missing,
-run `node init-project.js --local` to regenerate it. For provisioned projects,
-the servers route through the Portal Gateway proxy (no credentials needed).
-For local development without a gateway, the servers require an
-`AUTH0_M2M_DEV_TOKEN` environment variable.
+`.agents/mcp.json` is auto-generated by `init-project.js` and rewritten
+on every `node init-project.js` run. If it's missing, run
+`node init-project.js --local` to regenerate it. For provisioned
+projects the servers route through the Portal Gateway proxy and need
+no local credentials. For local development without a gateway, the
+servers require an `AUTH0_M2M_DEV_TOKEN` environment variable and a
+direct (non-proxied) URL in `mcp.json`.

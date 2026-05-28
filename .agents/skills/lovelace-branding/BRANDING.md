@@ -84,33 +84,33 @@ Reference: https://accessibleweb.com/color-contrast-checker/
 
 | Role              | Font                | Fallbacks                              |
 |-------------------|---------------------|----------------------------------------|
-| Body / Primary    | Space Grotesk       | Inter, system-ui, sans-serif           |
-| Headlines         | Space Grotesk       | Inter, system-ui, sans-serif           |
-| Subheaders        | Space Grotesk       | Inter, system-ui, sans-serif           |
-| Buttons/Elements  | Space Mono          | JetBrains Mono, Fira Code, monospace   |
-| Brand wordmark    | Space Grotesk       | Inter, system-ui, sans-serif           |
-| Code/Data         | Space Mono          | JetBrains Mono, Fira Code, monospace   |
+| Body / Primary    | FK Grotesk          | Inter, system-ui, sans-serif           |
+| Headlines         | FK Grotesk SemiMono | Inter, system-ui, sans-serif           |
+| Subheaders        | FK Grotesk SemiMono | Inter, system-ui, sans-serif           |
+| Buttons/Elements  | FK Grotesk Mono     | JetBrains Mono, Fira Code, monospace   |
+| Brand wordmark    | Inter               | system-ui, sans-serif                  |
+| Code/Data         | FK Grotesk Mono     | JetBrains Mono, Fira Code, monospace   |
 
-The app uses open-license web fonts loaded from Google Fonts. No commercial font files are required in `public/fonts/`.
+FK Grotesk is a commercial font (licensed). Font files are **not committed to git**. See `public/fonts/README.md` for setup instructions.
 
 ### Type Hierarchy
 
 | Level                    | Font              | Weight  | Style      |
 |--------------------------|-------------------|---------|------------|
-| Headlines (h1)           | Space Grotesk     | Regular | Normal     |
-| Subheaders (h2, h3)      | Space Grotesk     | Regular | Normal     |
-| Body Copy                | Space Grotesk     | Regular | Normal     |
-| Body Strong / Highlighted | Space Grotesk    | Strong (700) | Normal  |
-| Buttons & UI Elements    | Space Mono        | Regular | UPPERCASE, letter-spacing 0.05em |
+| Headlines (h1)           | FK Grotesk SemiMono | Regular | Normal     |
+| Subheaders (h2, h3)      | FK Grotesk SemiMono | Regular | Normal     |
+| Body Copy                | FK Grotesk        | Regular | Normal     |
+| Body Strong / Highlighted | FK Grotesk       | Strong (700) | Normal  |
+| Buttons & UI Elements    | FK Grotesk Mono   | Regular | UPPERCASE, letter-spacing 0.05em |
 
 ### CSS Variables
 
 ```css
 :root {
-    --font-primary: 'Space Grotesk', 'Inter', system-ui, -apple-system, sans-serif;
-    --font-headline: 'Space Grotesk', 'Inter', system-ui, sans-serif;
-    --font-brand: 'Space Grotesk', 'Inter', system-ui, -apple-system, sans-serif;
-    --font-mono: 'Space Mono', 'JetBrains Mono', 'Fira Code', monospace;
+    --font-primary: 'FK Grotesk', 'Inter', system-ui, -apple-system, sans-serif;
+    --font-headline: 'FK Grotesk Mono', 'Inter', system-ui, sans-serif;
+    --font-brand: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-mono: 'FK Grotesk Mono', 'JetBrains Mono', 'Fira Code', monospace;
 }
 ```
 

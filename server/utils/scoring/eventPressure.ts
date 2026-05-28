@@ -5,7 +5,8 @@ import { resolveRefs } from './citations';
 import type { ContextEvent, ContextPackage } from './contextPackage';
 import { callMcpTool, extractMcpStructuredContent } from './mcpGateway';
 import { clampScore } from './hash';
-import type { EvidenceItem, LensDetail } from './types';
+import type { EventPressureSettings, EvidenceItem, LensDetail } from './types';
+import { DEFAULT_SCORING_SETTINGS } from './types';
 
 export interface EventPressureResult {
     score: number;
@@ -13,36 +14,37 @@ export interface EventPressureResult {
     detail: LensDetail;
 }
 
-const EVENT_WEIGHTS: Array<{ term: string; weight: number }> = [
-    { term: 'BANKRUPTCY', weight: 28 },
-    { term: 'DELIST', weight: 24 },
-    { term: 'DEFAULT', weight: 22 },
-    { term: 'AUDITOR', weight: 18 },
-    { term: 'RESTRUCTUR', weight: 16 },
-    { term: 'OFFICER', weight: 12 },
-    { term: 'DIRECTOR', weight: 10 },
-    { term: 'IMPAIR', weight: 12 },
+const TERM_TO_KEY: Array<{ term: string; key: keyof EventPressureSettings['typeWeights'] }> = [
+    { term: 'BANKRUPTCY', key: 'bankruptcy' },
+    { term: 'DELIST', key: 'delisting' },
+    { term: 'DEFAULT', key: 'default' },
+    { term: 'AUDITOR', key: 'auditor' },
+    { term: 'RESTRUCTUR', key: 'restructuring' },
+    { term: 'OFFICER', key: 'officer' },
+    { term: 'DIRECTOR', key: 'director' },
+    { term: 'IMPAIR', key: 'impairment' },
 ];
 
-function recencyMultiplier(date: string | undefined) {
-    if (!date) return 0.55;
+function recencyMultiplier(date: string | undefined, recency: EventPressureSettings['recency']) {
+    if (!date) return recency.multNoDate;
     const ts = Date.parse(date);
-    if (!Number.isFinite(ts)) return 0.55;
+    if (!Number.isFinite(ts)) return recency.multNoDate;
     const days = Math.max(0, Math.round((Date.now() - ts) / 86_400_000));
-    if (days <= 14) return 1;
-    if (days <= 30) return 0.85;
-    if (days <= 90) return 0.6;
-    return 0.35;
+    if (days <= recency.daysFresh) return recency.multFresh;
+    if (days <= recency.daysRecent) return recency.multRecent;
+    if (days <= recency.daysModerate) return recency.multModerate;
+    return recency.multStale;
 }
 
-function processContextEvents(contextEvents: ContextEvent[]) {
+function processContextEvents(contextEvents: ContextEvent[], settings: EventPressureSettings) {
     const refs: string[] = [];
     const recentEventDates: number[] = [];
     const weightedEvents = contextEvents.map((ev) => {
         const eventType = ev.eventType.toUpperCase();
         const date = ev.date ?? '';
-        const weight = EVENT_WEIGHTS.find((entry) => eventType.includes(entry.term))?.weight ?? 6;
-        const multiplier = recencyMultiplier(date || undefined);
+        const match = TERM_TO_KEY.find((entry) => eventType.includes(entry.term));
+        const weight = match ? settings.typeWeights[match.key] : settings.defaultWeight;
+        const multiplier = recencyMultiplier(date || undefined, settings.recency);
         if (date) {
             const ts = Date.parse(date);
             if (Number.isFinite(ts)) recentEventDates.push(ts);
@@ -57,7 +59,8 @@ export async function computeEventPressureScore(
     event: H3Event,
     portfolioId: string,
     neid: string,
-    ctx?: ContextPackage
+    ctx?: ContextPackage,
+    settings?: EventPressureSettings
 ): Promise<EventPressureResult> {
     const cacheKey = makeCacheKey(portfolioId, neid, 'event-pressure');
     const cached = await readScoringCache<EventPressureResult>(event, cacheKey);
@@ -111,19 +114,31 @@ export async function computeEventPressureScore(
                 raw: row as unknown as Record<string, unknown>,
             }));
         }
+        const ep = settings ?? DEFAULT_SCORING_SETTINGS.events;
         if (contextEvents.length > 0) {
             hasRealData = true;
-            const { refs, recentEventDates, weightedEvents } = processContextEvents(contextEvents);
+            const { refs, recentEventDates, weightedEvents } = processContextEvents(
+                contextEvents,
+                ep
+            );
 
-            score = clampScore(20 + weightedEvents.reduce((sum, item) => sum + item.value, 0));
-            const recent14dCount = recentEventDates.filter(
-                (ts) => Date.now() - ts <= 14 * 86_400_000
+            score = clampScore(
+                ep.baseOffset + weightedEvents.reduce((sum, item) => sum + item.value, 0)
+            );
+            const clusterWindowMs = ep.cluster.windowDays * 86_400_000;
+            const recentClusterCount = recentEventDates.filter(
+                (ts) => Date.now() - ts <= clusterWindowMs
             ).length;
-            if (recent14dCount >= 5) score = clampScore(score + 40);
-            else if (recent14dCount >= 3) score = clampScore(score + 25);
+            if (recentClusterCount >= ep.cluster.countHigh)
+                score = clampScore(score + ep.cluster.bonusHigh);
+            else if (recentClusterCount >= ep.cluster.countMedium)
+                score = clampScore(score + ep.cluster.bonusMedium);
 
             metrics.push({ label: 'Events scanned', value: `${contextEvents.length}` });
-            metrics.push({ label: 'Events (14d)', value: `${recent14dCount}` });
+            metrics.push({
+                label: `Events (${ep.cluster.windowDays}d)`,
+                value: `${recentClusterCount}`,
+            });
             const topType = weightedEvents.sort((a, b) => b.value - a.value)[0];
             if (topType) metrics.push({ label: 'Top pressure driver', value: topType.eventType });
 
