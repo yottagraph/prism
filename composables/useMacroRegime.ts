@@ -49,7 +49,7 @@ function formatPct(value: number): string {
 export function useMacroRegime(): { regime: ReturnType<typeof computed<MacroRegime>> } {
     const { signals: fredSignals } = useFredMacroContext();
     const { signals: polySignals } = useMacroContext();
-    const { active } = usePortfolio();
+    const { activePortfolio: active } = usePortfolio();
 
     const regime = computed<MacroRegime>(() => {
         const fred = fredSignals.value;
