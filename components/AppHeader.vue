@@ -1,7 +1,7 @@
 <template>
     <v-app-bar app density="default" class="app-header">
         <div class="d-flex align-center app-header-title">
-            <img src="/LL-logo-full-wht.svg" alt="Lovelace" class="header-logo" />
+            <img :src="logoSrc" alt="Lovelace" class="header-logo" />
             <span class="app-title-text">{{ appName }}</span>
             <span class="app-version-text">{{ buildString }}</span>
         </div>
@@ -87,6 +87,7 @@
 <script setup lang="ts">
     import { mergeProps, watch } from 'vue';
 
+    import { useBrandLogo } from '~/composables/useBrandLogo';
     import { useLovelaceTheme } from '~/composables/useLovelaceTheme';
     import { useUserState } from '~/composables/useUserState';
     import { useProxiedAvatar } from '~/composables/useProxiedAvatar';
@@ -95,6 +96,7 @@
     import { state } from '~/utils/appState';
 
     const { isDark } = useLovelaceTheme();
+    const { logoSrc } = useBrandLogo();
     const { clearUser, userPicture, userName } = useUserState();
     const { appName } = useAppInfo();
     const router = useRouter();
