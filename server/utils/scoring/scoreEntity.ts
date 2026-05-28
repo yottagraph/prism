@@ -17,6 +17,7 @@ import { computeNewsPressureScore } from './newsPressure';
 import { computeNewsSummary24h } from './newsSummary24h';
 import { computePolymarketOutlook } from './polymarketOutlook';
 import { callMcpTool, extractMcpStructuredContent } from './mcpGateway';
+import { getSchema, normalizePidMap } from './elemental';
 import { computeSignalAgreement } from './signalAgreement';
 import { computeSolvencyScore } from './solvency';
 import { readPreviousScore, writeLatestScore } from './state';
@@ -41,6 +42,32 @@ async function queryFredSeriesCount(event: H3Event, neid: string): Promise<numbe
         return data?.total ?? 0;
     } catch {
         return 0;
+    }
+}
+
+async function fetchEntityIndustry(event: H3Event, neid: string): Promise<string | null> {
+    try {
+        const schema = await getSchema(event);
+        const pid = normalizePidMap(schema);
+        const industryPid = pid.industry;
+        if (!industryPid) return null;
+
+        const result = await callMcpTool(
+            'elemental',
+            'elemental_get_entity',
+            {
+                entity_id: { id_type: 'neid', id: neid },
+                properties: [industryPid],
+            },
+            event
+        );
+        const data = extractMcpStructuredContent<{
+            entity?: { properties?: Record<string, { value?: unknown }> };
+        }>(result);
+        const val = data?.entity?.properties?.[industryPid]?.value;
+        return typeof val === 'string' && val.length > 0 ? val : null;
+    } catch {
+        return null;
     }
 }
 
@@ -171,7 +198,10 @@ export async function scoreEntity(
         }),
     ]);
 
-    const fredSeriesCount = await withTimeout(queryFredSeriesCount(event, neid), 3_000, 0);
+    const [fredSeriesCount, entityIndustry] = await Promise.all([
+        withTimeout(queryFredSeriesCount(event, neid), 3_000, 0),
+        withTimeout(fetchEntityIndustry(event, neid), 3_000, null),
+    ]);
 
     const previous = readPreviousScore(portfolioId, neid);
     const subs = {
@@ -360,6 +390,7 @@ export async function scoreEntity(
             polymarketPositiveMarkets: polymarket.positiveMarkets,
             polymarketNegativeMarkets: polymarket.negativeMarkets,
             polymarketMarkets: polymarket.markets,
+            sector: entityIndustry,
         },
     };
 }

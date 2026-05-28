@@ -327,6 +327,11 @@ export interface MonitorEntityPolymarketSummary {
     polymarketMarkets?: Array<{ question?: string; active?: boolean; category?: string }>;
 }
 
+export interface MonitorEntitySectorSummary {
+    /** Industry/sector string from Elemental (e.g. "Technology", "Financials"). Used for macro regime overlay. */
+    sector?: string | null;
+}
+
 export interface SourceCoverageDetail {
     sec: { filings: number; earliest: string | null; latest: string | null };
     news: { articles: number; events: number; earliest: string | null; latest: string | null };
@@ -378,7 +383,8 @@ export interface ScoreComputationResult {
         MonitorEntityNewsSummary &
         MonitorEntityStockSummary &
         MonitorEntityVelocitySummary &
-        MonitorEntityPolymarketSummary & {
+        MonitorEntityPolymarketSummary &
+        MonitorEntitySectorSummary & {
             riskCategory?: 'HIGH' | 'MEDIUM' | 'LOW' | 'IGNORE';
         };
 }

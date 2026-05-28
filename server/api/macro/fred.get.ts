@@ -3,9 +3,13 @@ import { callMcpTool, extractMcpStructuredContent } from '~/server/utils/scoring
 interface MacroSignal {
     label: string;
     value: number;
+    displayValue: string;
+    unit: string;
+    kind: 'fundamental';
     trend: 'up' | 'down' | 'flat';
     note: string;
     macroScore?: number;
+    history?: number[];
 }
 
 interface FredSeriesConfig {
@@ -30,13 +34,20 @@ const CURATED_SERIES: FredSeriesConfig[] = [
     { seriesId: 'T10Y2Y', label: 'Yield Spread 10Y-2Y', unit: '%', macroDirection: 'rising_good' },
 ];
 
+const HISTORY_LIMIT = 20;
+
 let cachedSignals: { signals: MacroSignal[]; expiresAt: number } | null = null;
 const CACHE_TTL_MS = 60 * 60 * 1000;
 
 async function fetchSeriesObservations(
     event: any,
     seriesId: string
-): Promise<{ latest: number; previous: number | null; date: string | null } | null> {
+): Promise<{
+    latest: number;
+    previous: number | null;
+    date: string | null;
+    history: number[];
+} | null> {
     try {
         const result = await callMcpTool(
             'elemental',
@@ -44,7 +55,7 @@ async function fetchSeriesObservations(
             {
                 entity_id: { id_type: 'fred_series_id', id: seriesId },
                 properties: ['observation'],
-                history: { limit: 2 },
+                history: { limit: HISTORY_LIMIT },
             },
             event
         );
@@ -66,17 +77,25 @@ async function fetchSeriesObservations(
             const latestVal = Number(sorted[0].value);
             if (!Number.isFinite(latestVal)) return null;
             const previousVal = sorted.length > 1 ? Number(sorted[1].value) : null;
+            // Build history array in chronological order (oldest → newest) for sparklines
+            const history = sorted
+                .map((o) => Number(o.value))
+                .filter((v) => Number.isFinite(v))
+                .reverse();
             return {
                 latest: latestVal,
                 previous: Number.isFinite(previousVal) ? previousVal : null,
                 date: sorted[0].recorded_at ?? null,
+                history,
             };
         }
 
         const obs = data?.entity?.properties?.observation;
         if (obs?.value != null) {
             const val = Number(obs.value);
-            return Number.isFinite(val) ? { latest: val, previous: null, date: null } : null;
+            return Number.isFinite(val)
+                ? { latest: val, previous: null, date: null, history: [val] }
+                : null;
         }
         return null;
     } catch {
@@ -97,10 +116,18 @@ function computeTrend(
     return invert ? (raw === 'up' ? 'down' : 'up') : raw;
 }
 
-function formatValue(value: number, unit: string): number {
-    if (unit === '%') return Math.round(value * 100) / 100;
-    if (unit === 'B$') return Math.round(value * 10) / 10;
-    return Math.round(value * 100) / 100;
+function formatDisplayValue(value: number, unit: string): string {
+    if (unit === '%') {
+        const rounded = Math.round(value * 100) / 100;
+        const sign = rounded >= 0 ? '' : '';
+        return `${sign}${rounded.toFixed(2)}%`;
+    }
+    if (unit === 'B$') {
+        if (Math.abs(value) >= 1000) return `$${(value / 1000).toFixed(1)}T`;
+        return `$${value.toFixed(0)}B`;
+    }
+    // index (CPI, etc.)
+    return (Math.round(value * 10) / 10).toFixed(1);
 }
 
 function formatNote(
@@ -143,10 +170,14 @@ export default defineEventHandler(async (event) => {
             if (!obs) return null;
             return {
                 label: config.label,
-                value: formatValue(obs.latest, config.unit),
+                value: obs.latest,
+                displayValue: formatDisplayValue(obs.latest, config.unit),
+                unit: config.unit,
+                kind: 'fundamental' as const,
                 trend: computeTrend(obs.latest, obs.previous, config.invertTrend ?? false),
                 note: formatNote(config, obs.latest, obs.previous, obs.date),
                 macroScore: computeFredMacroScore(obs.latest, obs.previous, config.macroDirection),
+                history: obs.history,
             } satisfies MacroSignal;
         })
     );

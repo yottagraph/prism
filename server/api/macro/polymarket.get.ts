@@ -3,6 +3,9 @@ import { callMcpTool, extractMcpStructuredContent } from '~/server/utils/scoring
 interface MacroSignal {
     label: string;
     value: number;
+    displayValue: string;
+    unit: string;
+    kind: 'probability';
     trend: 'up' | 'down' | 'flat';
     note: string;
     macroScore?: number;
@@ -220,6 +223,9 @@ async function fetchMacroSignal(event: any, config: IndicatorConfig): Promise<Ma
         return {
             label: config.label,
             value: pct,
+            displayValue: `${pct.toFixed(1)}%`,
+            unit: '%',
+            kind: 'probability' as const,
             trend: deriveTrend(probability),
             note: market.question || eventData.title || candidate.result.title || config.label,
             macroScore: computeMacroScore(probability, config.scoreDirection),

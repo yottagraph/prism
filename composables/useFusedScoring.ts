@@ -410,4 +410,6 @@ export interface MonitorEntity {
     polymarketPositiveMarkets?: number | null;
     polymarketNegativeMarkets?: number | null;
     polymarketMarkets?: Array<{ question?: string; active?: boolean; category?: string }>;
+    /** Industry/sector from Elemental, used for portfolio macro regime overlay. */
+    sector?: string | null;
 }

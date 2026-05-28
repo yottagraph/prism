@@ -137,34 +137,8 @@
             </v-row>
 
             <v-row dense class="mb-3">
-                <v-col cols="12" md="4">
-                    <MacroContext
-                        :signals="fredMacroSignals"
-                        title="Macro Fundamentals"
-                        source="FRED"
-                    />
-                </v-col>
-                <v-col cols="12" md="4">
-                    <MacroContext
-                        :signals="macroSignals"
-                        title="Macro Outlook"
-                        source="Polymarket"
-                    />
-                </v-col>
-                <v-col cols="12" md="4">
-                    <v-card class="pa-3 fill-height">
-                        <div class="d-flex align-center">
-                            <v-icon size="small" class="mr-2">mdi-compare</v-icon>
-                            <span class="text-subtitle-2">Macro Signal Alignment</span>
-                            <v-spacer />
-                            <v-chip :color="alignmentChip.color" size="small" variant="tonal">
-                                {{ alignmentChip.label }}
-                            </v-chip>
-                        </div>
-                        <div class="text-caption text-medium-emphasis mt-2">
-                            {{ alignmentChip.note }}
-                        </div>
-                    </v-card>
+                <v-col cols="12">
+                    <MacroPanel />
                 </v-col>
             </v-row>
 
@@ -232,7 +206,6 @@
     import type { RiskTier } from '~/composables/useFusedScoring';
     import { usePortfolio } from '~/composables/usePortfolio';
     import { useAgentPipeline } from '~/composables/useAgentPipeline';
-    import { useFredMacroContext, useMacroContext } from '~/composables/useRelationships';
 
     const router = useRouter();
 
@@ -420,45 +393,6 @@
         const minutes = Math.floor(elapsedSec / 60);
         const seconds = elapsedSec % 60;
         return `${minutes}:${String(seconds).padStart(2, '0')}`;
-    });
-
-    const { signals: macroSignals } = useMacroContext();
-    const { signals: fredMacroSignals } = useFredMacroContext();
-
-    const alignmentChip = computed(() => {
-        const polySum = macroSignals.value.reduce((a, s) => a + (s.macroScore ?? 0), 0);
-        const fredSum = fredMacroSignals.value.reduce((a, s) => a + (s.macroScore ?? 0), 0);
-        const polySign = Math.sign(polySum);
-        const fredSign = Math.sign(fredSum);
-
-        const tally = (signals: typeof macroSignals.value, label: string) => {
-            let pos = 0,
-                neg = 0,
-                neutral = 0;
-            for (const s of signals) {
-                const sign = Math.sign(s.macroScore ?? 0);
-                if (sign > 0) pos++;
-                else if (sign < 0) neg++;
-                else neutral++;
-            }
-            return `${label} +${pos} / -${neg} / ${neutral} neutral`;
-        };
-        const note = [
-            tally(macroSignals.value, 'Polymarket'),
-            tally(fredMacroSignals.value, 'FRED'),
-        ].join(' · ');
-
-        if (polySign === 0 && fredSign === 0) {
-            return { label: 'Neutral', color: 'default', note };
-        }
-        if (polySign === fredSign) {
-            const direction = polySign > 0 ? 'improving' : 'deteriorating';
-            return { label: `Aligned · ${direction}`, color: 'success', note };
-        }
-        if (polySign === 0 || fredSign === 0) {
-            return { label: 'Mixed', color: 'warning', note };
-        }
-        return { label: 'Divergent', color: 'error', note };
     });
 
     async function onScan() {
