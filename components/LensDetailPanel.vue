@@ -8,12 +8,14 @@
                     </v-chip>
                     <span class="text-body-1">{{ lens.label }}</span>
                     <v-spacer />
-                    <span
-                        class="font-mono text-body-1 mr-4"
-                        :style="`color: var(--v-theme-${scoreColor(scores[lens.key] ?? 0)})`"
+                    <v-chip
+                        v-if="scores[lens.key] != null"
+                        :color="scoreLabelColor(scores[lens.key]!)"
+                        size="small"
+                        label
+                        class="mr-4"
+                        >{{ tierLabel(scoreToLabel(scores[lens.key]!)) }}</v-chip
                     >
-                        {{ scores[lens.key] }}
-                    </span>
                 </div>
             </v-expansion-panel-title>
             <v-expansion-panel-text>
@@ -63,7 +65,12 @@
 <script setup lang="ts">
     import { computed } from 'vue';
 
-    import type { EntityRiskScore } from '~/composables/useFusedScoring';
+    import {
+        type EntityRiskScore,
+        scoreToLabel,
+        scoreLabelColor,
+        tierLabel,
+    } from '~/composables/useFusedScoring';
     import CitationChip from '~/components/CitationChip.vue';
 
     const props = defineProps<{
@@ -87,13 +94,6 @@
             }
         >;
     }>();
-
-    function scoreColor(v: number) {
-        if (v >= 80) return 'error';
-        if (v >= 65) return 'warning';
-        if (v >= 50) return 'info';
-        return 'success';
-    }
 
     const lensDefs = computed(() => {
         const generated = [

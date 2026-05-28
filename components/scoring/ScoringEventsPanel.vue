@@ -7,22 +7,19 @@
         <v-card-text>
             <v-row>
                 <v-col cols="12" md="6">
-                    <div class="text-subtitle-2 mb-3">Per-type Weights</div>
-                    <v-text-field
+                    <div class="text-subtitle-2 mb-3">Per-type Severity</div>
+                    <v-select
                         v-for="field in typeWeightFields"
                         :key="field.key"
                         :model-value="
                             events.typeWeights[field.key as keyof typeof events.typeWeights]
                         "
-                        type="number"
+                        :items="severityOptions"
                         density="comfortable"
                         variant="outlined"
                         :label="field.label"
                         :hint="field.hint"
                         persistent-hint
-                        step="1"
-                        min="0"
-                        max="100"
                         class="mb-2"
                         @update:model-value="updateTypeWeight(field.key, $event)"
                     />
@@ -253,10 +250,33 @@
 
 <script setup lang="ts">
     import { computed } from 'vue';
-    import type { EventPressureSettings } from '~/composables/useFusedScoring';
+    import {
+        type EventPressureSettings,
+        type EventSeverity,
+        EVENT_SEVERITY_WEIGHTS,
+    } from '~/composables/useFusedScoring';
 
     const props = defineProps<{ events: EventPressureSettings }>();
     const emit = defineEmits<{ 'update:events': [value: EventPressureSettings] }>();
+
+    const severityOptions = [
+        {
+            title: `Critical (weight: ${EVENT_SEVERITY_WEIGHTS.critical})`,
+            value: 'critical' as EventSeverity,
+        },
+        {
+            title: `Major (weight: ${EVENT_SEVERITY_WEIGHTS.major})`,
+            value: 'major' as EventSeverity,
+        },
+        {
+            title: `Minor (weight: ${EVENT_SEVERITY_WEIGHTS.minor})`,
+            value: 'minor' as EventSeverity,
+        },
+        {
+            title: `Trivial (weight: ${EVENT_SEVERITY_WEIGHTS.trivial})`,
+            value: 'trivial' as EventSeverity,
+        },
+    ];
 
     const typeWeightFields = [
         { key: 'bankruptcy', label: 'Bankruptcy', hint: 'Matches BANKRUPTCY keyword' },
@@ -285,7 +305,7 @@
     function updateTypeWeight(key: string, raw: unknown) {
         emit('update:events', {
             ...props.events,
-            typeWeights: { ...props.events.typeWeights, [key]: Number(raw) || 0 },
+            typeWeights: { ...props.events.typeWeights, [key]: raw as EventSeverity },
         });
     }
 

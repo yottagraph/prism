@@ -6,7 +6,7 @@ import type { ContextEvent, ContextPackage } from './contextPackage';
 import { callMcpTool, extractMcpStructuredContent } from './mcpGateway';
 import { clampScore } from './hash';
 import type { EventPressureSettings, EvidenceItem, LensDetail } from './types';
-import { DEFAULT_SCORING_SETTINGS } from './types';
+import { DEFAULT_SCORING_SETTINGS, EVENT_SEVERITY_WEIGHTS } from './types';
 
 export interface EventPressureResult {
     score: number;
@@ -43,7 +43,9 @@ function processContextEvents(contextEvents: ContextEvent[], settings: EventPres
         const eventType = ev.eventType.toUpperCase();
         const date = ev.date ?? '';
         const match = TERM_TO_KEY.find((entry) => eventType.includes(entry.term));
-        const weight = match ? settings.typeWeights[match.key] : settings.defaultWeight;
+        const weight = match
+            ? EVENT_SEVERITY_WEIGHTS[settings.typeWeights[match.key]]
+            : settings.defaultWeight;
         const multiplier = recencyMultiplier(date || undefined, settings.recency);
         if (date) {
             const ts = Date.parse(date);

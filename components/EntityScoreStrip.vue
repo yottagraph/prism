@@ -14,7 +14,14 @@
                     </v-chip>
                     <span class="text-body-2">{{ lens.label }}</span>
                 </div>
-                <span class="font-mono text-body-1">{{ scores[lens.key] ?? '—' }}</span>
+                <v-chip
+                    v-if="scores[lens.key] != null"
+                    :color="scoreLabelColor(scores[lens.key]!)"
+                    size="x-small"
+                    label
+                    >{{ tierLabel(scoreToLabel(scores[lens.key]!)) }}</v-chip
+                >
+                <span v-else>—</span>
             </div>
             <v-progress-linear
                 :model-value="scores[lens.key] ?? 0"
@@ -26,7 +33,9 @@
         <div class="fused-row mt-3 pt-3">
             <div class="d-flex justify-space-between align-center mb-1">
                 <span class="text-subtitle-2">Fused Risk</span>
-                <span class="font-mono text-h6">{{ scores.fused }}</span>
+                <v-chip :color="scoreLabelColor(scores.fused)" size="small" label>{{
+                    tierLabel(scoreToLabel(scores.fused))
+                }}</v-chip>
             </div>
             <v-progress-linear
                 :model-value="scores.fused"
@@ -54,7 +63,12 @@
 <script setup lang="ts">
     import { computed } from 'vue';
 
-    import type { EntityRiskScore } from '~/composables/useFusedScoring';
+    import {
+        type EntityRiskScore,
+        scoreToLabel,
+        scoreLabelColor,
+        tierLabel,
+    } from '~/composables/useFusedScoring';
 
     const props = defineProps<{
         scores: EntityRiskScore;

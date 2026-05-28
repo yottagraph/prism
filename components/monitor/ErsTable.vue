@@ -12,7 +12,14 @@
                 <div class="text-caption text-medium-emphasis">{{ item.neid || '—' }}</div>
             </template>
             <template #item.executive="{ item }">
-                <span class="type-mono-data">{{ item.scores?.executive ?? '—' }}</span>
+                <v-chip
+                    v-if="item.scores?.executive != null"
+                    :color="scoreLabelColor(item.scores.executive)"
+                    size="small"
+                    label
+                    >{{ tierLabel(scoreToLabel(item.scores.executive)) }}</v-chip
+                >
+                <span v-else>—</span>
             </template>
             <template #item.trend="{ item }">
                 {{ item.monitor?.signalAgreement || '—' }}
@@ -23,6 +30,7 @@
 
 <script setup lang="ts">
     import type { PortfolioEntity } from '~/composables/usePortfolio';
+    import { scoreToLabel, scoreLabelColor, tierLabel } from '~/composables/useFusedScoring';
 
     defineProps<{ entities: PortfolioEntity[]; loading?: boolean }>();
     const headers = [

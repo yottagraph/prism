@@ -15,9 +15,9 @@
                         </v-chip>
                         <span class="text-overline text-medium-emphasis">{{ d.lens }}</span>
                     </div>
-                    <span class="font-mono" :style="`color: var(--v-theme-${scoreColor(d.score)})`">
-                        {{ d.score }}
-                    </span>
+                    <v-chip :color="scoreLabelColor(d.score)" size="small" label>{{
+                        tierLabel(scoreToLabel(d.score))
+                    }}</v-chip>
                 </div>
                 <div class="text-body-2 mb-2">{{ d.finding.text }}</div>
                 <div v-if="d.finding.citations?.length" class="d-flex flex-wrap ga-2">
@@ -34,16 +34,14 @@
 
 <script setup lang="ts">
     import CitationChip from '~/components/CitationChip.vue';
-    import type { RiskDriver } from '~/composables/useFusedScoring';
+    import {
+        type RiskDriver,
+        scoreToLabel,
+        scoreLabelColor,
+        tierLabel,
+    } from '~/composables/useFusedScoring';
 
     defineProps<{ drivers: RiskDriver[] }>();
-
-    function scoreColor(v: number) {
-        if (v >= 80) return 'error';
-        if (v >= 65) return 'warning';
-        if (v >= 50) return 'info';
-        return 'success';
-    }
 
     function sourceColor(src: string) {
         switch (src) {

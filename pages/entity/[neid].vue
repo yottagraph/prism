@@ -28,7 +28,7 @@
                     {{ data.entityType }}
                 </v-chip>
                 <v-chip v-if="data?.scores" :color="tierColor(data.scores.tier)" label class="mr-2">
-                    {{ tierLabel(data.scores.tier) }} risk · {{ data.scores.fused }}
+                    {{ tierLabel(data.scores.tier) }} risk
                 </v-chip>
                 <v-btn
                     variant="text"

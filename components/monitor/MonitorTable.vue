@@ -91,6 +91,7 @@
 
 <script setup lang="ts">
     import type { PortfolioEntity } from '~/composables/usePortfolio';
+    import { scoreToLabel } from '~/composables/useFusedScoring';
 
     import AnalystAssessmentSelect from './cells/AnalystAssessmentSelect.vue';
     import CikVelocityCell from './cells/CikVelocityCell.vue';
@@ -139,25 +140,9 @@
             signalAgreement: entity.monitor?.signalAgreement ?? null,
             signalSummary: entity.monitor?.signalSummary ?? null,
             solvencyLevel:
-                entity.scores?.solvency != null
-                    ? entity.scores.solvency >= 75
-                        ? 'critical'
-                        : entity.scores.solvency >= 50
-                          ? 'high'
-                          : entity.scores.solvency >= 25
-                            ? 'medium'
-                            : 'low'
-                    : null,
+                entity.scores?.solvency != null ? scoreToLabel(entity.scores.solvency) : null,
             executiveLevel:
-                entity.scores?.executive != null
-                    ? entity.scores.executive >= 75
-                        ? 'critical'
-                        : entity.scores.executive >= 50
-                          ? 'high'
-                          : entity.scores.executive >= 25
-                            ? 'medium'
-                            : 'low'
-                    : null,
+                entity.scores?.executive != null ? scoreToLabel(entity.scores.executive) : null,
             edgarQoqPct: entity.monitor?.edgarQoqPct ?? null,
             headlineSummary: entity.monitor?.headlineSummary ?? null,
             mentionRatioLabel: entity.monitor?.mentionRatioLabel ?? null,

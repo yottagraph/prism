@@ -14,10 +14,9 @@
             : normalized.value.charAt(0).toUpperCase() + normalized.value.slice(1)
     );
     const chipColor = computed(() => {
-        if (normalized.value.includes('critical') || normalized.value.includes('high'))
-            return 'error';
-        if (normalized.value.includes('medium') || normalized.value.includes('watch'))
-            return 'warning';
+        if (normalized.value.includes('critical')) return 'error';
+        if (normalized.value.includes('high')) return 'warning';
+        if (normalized.value.includes('medium')) return 'info';
         if (normalized.value === '—') return 'default';
         return 'success';
     });

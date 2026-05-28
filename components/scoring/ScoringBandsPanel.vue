@@ -2,7 +2,7 @@
     <v-card variant="outlined" class="mb-4">
         <v-card-title class="text-subtitle-1">Tier Bands &amp; Risk Categories</v-card-title>
         <v-card-subtitle>
-            Score thresholds that map fused scores to tiers (critical/high/watch/normal) and
+            Score thresholds that map fused scores to tiers (Critical/High/Medium/Low) and
             risk-category filters (HIGH/MEDIUM/LOW) on the Monitor table.
         </v-card-subtitle>
         <v-card-text>
@@ -73,9 +73,9 @@
             hint: 'Fused score at or above → High tier',
         },
         {
-            key: 'watch',
-            label: 'Watch threshold',
-            hint: 'Fused score at or above → Watch tier; below → Normal',
+            key: 'medium',
+            label: 'Medium threshold',
+            hint: 'Fused score at or above → Medium tier; below → Low',
         },
     ];
 

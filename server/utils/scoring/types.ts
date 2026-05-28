@@ -1,5 +1,14 @@
-export type RiskTier = 'critical' | 'high' | 'watch' | 'normal';
+export type RiskTier = 'critical' | 'high' | 'medium' | 'low';
 export type RiskLevel = 'critical' | 'high' | 'medium' | 'low';
+
+export type EventSeverity = 'critical' | 'major' | 'minor' | 'trivial';
+
+export const EVENT_SEVERITY_WEIGHTS: Record<EventSeverity, number> = {
+    critical: 28,
+    major: 18,
+    minor: 10,
+    trivial: 4,
+};
 export type ConfidenceLevel = 'High' | 'Medium' | 'Low';
 export type SignalAgreement = 'agreement' | 'conflict' | 'partial' | 'sec_only' | 'limited';
 
@@ -43,7 +52,7 @@ export interface AcsThresholds {
 export interface TierBands {
     critical: number;
     high: number;
-    watch: number;
+    medium: number;
 }
 
 export interface CategoryBands {
@@ -52,14 +61,14 @@ export interface CategoryBands {
 }
 
 export interface EventPressureTypeWeights {
-    bankruptcy: number;
-    delisting: number;
-    default: number;
-    auditor: number;
-    restructuring: number;
-    officer: number;
-    director: number;
-    impairment: number;
+    bankruptcy: EventSeverity;
+    delisting: EventSeverity;
+    default: EventSeverity;
+    auditor: EventSeverity;
+    restructuring: EventSeverity;
+    officer: EventSeverity;
+    director: EventSeverity;
+    impairment: EventSeverity;
 }
 
 export interface EventPressureRecency {
@@ -128,7 +137,7 @@ export const DEFAULT_SCORING_SETTINGS: ScoringSettings = {
         market: 0,
         eventPressure: 0.25,
     },
-    tiers: { critical: 80, high: 65, watch: 50 },
+    tiers: { critical: 80, high: 65, medium: 50 },
     categoryBands: { high: 70, medium: 40 },
     fhs: {
         leverageHighThreshold: 3.0,
@@ -169,14 +178,14 @@ export const DEFAULT_SCORING_SETTINGS: ScoringSettings = {
         baseOffset: 20,
         defaultWeight: 6,
         typeWeights: {
-            bankruptcy: 28,
-            delisting: 24,
-            default: 22,
-            auditor: 18,
-            restructuring: 16,
-            officer: 12,
-            director: 10,
-            impairment: 12,
+            bankruptcy: 'critical',
+            delisting: 'critical',
+            default: 'critical',
+            auditor: 'major',
+            restructuring: 'major',
+            officer: 'minor',
+            director: 'minor',
+            impairment: 'minor',
         },
         recency: {
             daysFresh: 14,

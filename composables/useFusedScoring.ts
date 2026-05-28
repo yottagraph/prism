@@ -5,7 +5,7 @@
  * market) plus a fused composite, all computed from Elemental-backed inputs.
  */
 
-export type RiskTier = 'critical' | 'high' | 'watch' | 'normal';
+export type RiskTier = 'critical' | 'high' | 'medium' | 'low';
 export type RiskLevel = 'critical' | 'high' | 'medium' | 'low';
 export type ConfidenceLevel = 'High' | 'Medium' | 'Low';
 export type SignalAgreement = 'agreement' | 'conflict' | 'partial' | 'sec_only' | 'limited';
@@ -96,7 +96,7 @@ export interface AcsThresholds {
 export interface TierBands {
     critical: number;
     high: number;
-    watch: number;
+    medium: number;
 }
 
 export interface CategoryBands {
@@ -104,15 +104,28 @@ export interface CategoryBands {
     medium: number;
 }
 
+export type EventSeverity = 'critical' | 'major' | 'minor' | 'trivial';
+
+export const EVENT_SEVERITY_WEIGHTS: Record<EventSeverity, number> = {
+    critical: 28,
+    major: 18,
+    minor: 10,
+    trivial: 4,
+};
+
+export function resolveSeverityWeight(severity: EventSeverity): number {
+    return EVENT_SEVERITY_WEIGHTS[severity];
+}
+
 export interface EventPressureTypeWeights {
-    bankruptcy: number;
-    delisting: number;
-    default: number;
-    auditor: number;
-    restructuring: number;
-    officer: number;
-    director: number;
-    impairment: number;
+    bankruptcy: EventSeverity;
+    delisting: EventSeverity;
+    default: EventSeverity;
+    auditor: EventSeverity;
+    restructuring: EventSeverity;
+    officer: EventSeverity;
+    director: EventSeverity;
+    impairment: EventSeverity;
 }
 
 export interface EventPressureRecency {
@@ -177,14 +190,14 @@ export const DEFAULT_EVENT_PRESSURE: EventPressureSettings = {
     baseOffset: 20,
     defaultWeight: 6,
     typeWeights: {
-        bankruptcy: 28,
-        delisting: 24,
-        default: 22,
-        auditor: 18,
-        restructuring: 16,
-        officer: 12,
-        director: 10,
-        impairment: 12,
+        bankruptcy: 'critical',
+        delisting: 'critical',
+        default: 'critical',
+        auditor: 'major',
+        restructuring: 'major',
+        officer: 'minor',
+        director: 'minor',
+        impairment: 'minor',
     },
     recency: {
         daysFresh: 14,
@@ -223,7 +236,7 @@ export const DEFAULT_SIGNAL8: ErsSignal8Settings = {
 
 export const DEFAULT_SCORING_SETTINGS: ScoringSettings = {
     weights: { ...DEFAULT_WEIGHTS },
-    tiers: { critical: 80, high: 65, watch: 50 },
+    tiers: { critical: 80, high: 65, medium: 50 },
     categoryBands: { high: 70, medium: 40 },
     fhs: {
         leverageHighThreshold: 3.0,
@@ -277,11 +290,11 @@ export function fuseScore(s: SubScores, w: SourceFusionWeights = DEFAULT_WEIGHTS
 export function deriveTier(fused: number, tiers?: TierBands): RiskTier {
     const c = tiers?.critical ?? 80;
     const h = tiers?.high ?? 65;
-    const w = tiers?.watch ?? 50;
+    const m = tiers?.medium ?? 50;
     if (fused >= c) return 'critical';
     if (fused >= h) return 'high';
-    if (fused >= w) return 'watch';
-    return 'normal';
+    if (fused >= m) return 'medium';
+    return 'low';
 }
 
 export function tierColor(tier: RiskTier): string {
@@ -290,7 +303,7 @@ export function tierColor(tier: RiskTier): string {
             return 'error';
         case 'high':
             return 'warning';
-        case 'watch':
+        case 'medium':
             return 'info';
         default:
             return 'success';
@@ -299,6 +312,14 @@ export function tierColor(tier: RiskTier): string {
 
 export function tierLabel(tier: RiskTier): string {
     return tier.charAt(0).toUpperCase() + tier.slice(1);
+}
+
+export function scoreToLabel(score: number, tiers?: TierBands): RiskTier {
+    return deriveTier(score, tiers);
+}
+
+export function scoreLabelColor(score: number, tiers?: TierBands): string {
+    return tierColor(scoreToLabel(score, tiers));
 }
 
 /**

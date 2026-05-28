@@ -64,8 +64,8 @@
     const tierOptions: { title: string; value: RiskTier }[] = [
         { title: 'Critical', value: 'critical' },
         { title: 'High', value: 'high' },
-        { title: 'Watch', value: 'watch' },
-        { title: 'Normal', value: 'normal' },
+        { title: 'Medium', value: 'medium' },
+        { title: 'Low', value: 'low' },
     ];
 
     function save() {

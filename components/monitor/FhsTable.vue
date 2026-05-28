@@ -12,13 +12,34 @@
                 <div class="text-caption text-medium-emphasis">{{ item.neid || '—' }}</div>
             </template>
             <template #item.score="{ item }">
-                <span class="type-mono-data">{{ item.scores?.solvency ?? '—' }}</span>
+                <v-chip
+                    v-if="item.scores?.solvency != null"
+                    :color="scoreLabelColor(item.scores.solvency)"
+                    size="small"
+                    label
+                    >{{ tierLabel(scoreToLabel(item.scores.solvency)) }}</v-chip
+                >
+                <span v-else>—</span>
             </template>
             <template #item.eventPressure="{ item }">
-                <span class="type-mono-data">{{ item.scores?.eventPressure ?? '—' }}</span>
+                <v-chip
+                    v-if="item.scores?.eventPressure != null"
+                    :color="scoreLabelColor(item.scores.eventPressure)"
+                    size="small"
+                    label
+                    >{{ tierLabel(scoreToLabel(item.scores.eventPressure)) }}</v-chip
+                >
+                <span v-else>—</span>
             </template>
             <template #item.fused="{ item }">
-                <span class="type-mono-data">{{ item.scores?.fused ?? '—' }}</span>
+                <v-chip
+                    v-if="item.scores?.fused != null"
+                    :color="scoreLabelColor(item.scores.fused)"
+                    size="small"
+                    label
+                    >{{ tierLabel(scoreToLabel(item.scores.fused)) }}</v-chip
+                >
+                <span v-else>—</span>
             </template>
         </v-data-table>
     </v-card>
@@ -26,6 +47,7 @@
 
 <script setup lang="ts">
     import type { PortfolioEntity } from '~/composables/usePortfolio';
+    import { scoreToLabel, scoreLabelColor, tierLabel } from '~/composables/useFusedScoring';
 
     const props = defineProps<{ entities: PortfolioEntity[]; loading?: boolean }>();
 

@@ -470,7 +470,7 @@
 
     function onAssess(entityRow: any, tier: 'HIGH' | 'MEDIUM' | 'LOW' | 'IGNORE' | null) {
         if (!active.value?.id || !entityRow?.entity?.neid || !tier) return;
-        const mapped: RiskTier = tier === 'HIGH' ? 'high' : tier === 'MEDIUM' ? 'watch' : 'normal';
+        const mapped: RiskTier = tier === 'HIGH' ? 'high' : tier === 'MEDIUM' ? 'medium' : 'low';
         saveAssessment(active.value.id, entityRow.entity.neid, mapped, '');
     }
 

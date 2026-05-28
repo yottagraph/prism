@@ -32,7 +32,7 @@
         counts: Record<RiskTier, number>;
     }>();
 
-    const tiers: RiskTier[] = ['critical', 'high', 'watch', 'normal'];
+    const tiers: RiskTier[] = ['critical', 'high', 'medium', 'low'];
     const total = computed(() => tiers.reduce((s, t) => s + (props.counts[t] || 0), 0));
     const rows = computed(() =>
         tiers.map((t) => ({

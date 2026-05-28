@@ -36,23 +36,21 @@
             </template>
 
             <template v-for="lens in lenses" v-slot:[`item.${lens}`]="{ item }" :key="lens">
-                <ScoreCell :value="item[lens]" />
+                <v-chip
+                    v-if="item[lens] != null"
+                    :color="scoreLabelColor(item[lens])"
+                    size="x-small"
+                    label
+                    >{{ tierLabel(scoreToLabel(item[lens])) }}</v-chip
+                >
+                <span v-else class="text-caption text-medium-emphasis">–</span>
             </template>
 
             <template v-slot:item.fused="{ item }">
-                <div class="d-flex align-center">
-                    <ScoreCell :value="item.fused" emphasize />
-                    <v-chip
-                        v-if="item.tier"
-                        :color="tierColor(item.tier)"
-                        size="x-small"
-                        variant="tonal"
-                        label
-                        class="ml-2"
-                    >
-                        {{ tierLabel(item.tier) }}
-                    </v-chip>
-                </div>
+                <v-chip v-if="item.tier" :color="tierColor(item.tier)" size="small" label>
+                    {{ tierLabel(item.tier) }}
+                </v-chip>
+                <span v-else class="text-caption text-medium-emphasis">–</span>
             </template>
 
             <template v-slot:item.trend="{ item }">
@@ -90,10 +88,15 @@
 </template>
 
 <script setup lang="ts">
-    import { computed, defineAsyncComponent, h } from 'vue';
+    import { computed } from 'vue';
 
     import type { PortfolioEntity } from '~/composables/usePortfolio';
-    import { tierColor, tierLabel } from '~/composables/useFusedScoring';
+    import {
+        tierColor,
+        tierLabel,
+        scoreToLabel,
+        scoreLabelColor,
+    } from '~/composables/useFusedScoring';
 
     const props = defineProps<{
         entities: PortfolioEntity[];
@@ -141,31 +144,6 @@
     function onRowClick(_e: Event, row: { item: PortfolioEntity }) {
         if (row.item.neid) emit('open', row.item);
     }
-
-    // Inline score cell component (keeps the file self-contained).
-    const ScoreCell = defineAsyncComponent(async () => ({
-        props: { value: { type: Number as any, default: null }, emphasize: Boolean },
-        setup(p: any) {
-            return () => {
-                if (p.value === null || p.value === undefined) {
-                    return h('span', { class: 'text-caption text-medium-emphasis' }, '–');
-                }
-                const v: number = p.value;
-                const color =
-                    v >= 80 ? 'error' : v >= 65 ? 'warning' : v >= 50 ? 'info' : 'success';
-                return h(
-                    'span',
-                    {
-                        class:
-                            'd-inline-flex align-center justify-end font-mono ' +
-                            (p.emphasize ? 'text-h6' : 'text-body-2'),
-                        style: `color: var(--v-theme-${color}); min-width: 32px;`,
-                    },
-                    v
-                );
-            };
-        },
-    }));
 </script>
 
 <style scoped>

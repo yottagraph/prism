@@ -186,7 +186,7 @@ export async function getEntityProfile(event: H3Event, portfolioId: string, neid
             news: 0,
             market: 0,
             fused: 0,
-            tier: 'normal',
+            tier: 'low',
             updatedAt: Date.now(),
         },
         drivers: scored?.drivers ?? [],

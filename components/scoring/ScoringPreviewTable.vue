@@ -9,8 +9,7 @@
                 <tr>
                     <th>#</th>
                     <th>Entity</th>
-                    <th class="text-right">Fused</th>
-                    <th>Tier</th>
+                    <th>Risk Level</th>
                 </tr>
             </thead>
             <tbody>
@@ -19,10 +18,9 @@
                     <td class="text-truncate" style="max-width: 180px">
                         {{ row.resolvedName || row.inputName }}
                     </td>
-                    <td class="text-right font-weight-medium">{{ row.fused }}</td>
                     <td>
                         <v-chip :color="tierColor(row.tier)" size="x-small" label>
-                            {{ row.tier }}
+                            {{ tierLabel(row.tier) }}
                         </v-chip>
                     </td>
                 </tr>
@@ -41,6 +39,7 @@
         fuseScore,
         type ScoringSettings,
         tierColor,
+        tierLabel,
     } from '~/composables/useFusedScoring';
     import type { PortfolioEntity } from '~/composables/usePortfolio';
 

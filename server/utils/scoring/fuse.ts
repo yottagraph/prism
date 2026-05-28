@@ -50,11 +50,11 @@ export function fuseScore(s: SubScores, w: SourceFusionWeights = DEFAULT_WEIGHTS
 export function deriveTier(fused: number, tiers?: TierBands): RiskTier {
     const c = tiers?.critical ?? 80;
     const h = tiers?.high ?? 65;
-    const w = tiers?.watch ?? 50;
+    const m = tiers?.medium ?? 50;
     if (fused >= c) return 'critical';
     if (fused >= h) return 'high';
-    if (fused >= w) return 'watch';
-    return 'normal';
+    if (fused >= m) return 'medium';
+    return 'low';
 }
 
 export function confidence(s: SubScores): 'High' | 'Medium' | 'Low' {
