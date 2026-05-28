@@ -24,7 +24,12 @@ import {
 export interface SourceCoverageDetail {
     sec: { filings: number; earliest: string | null; latest: string | null };
     news: { articles: number; events: number; earliest: string | null; latest: string | null };
-    stock: { readings: number; earliest: string | null; latest: string | null };
+    stock: {
+        readings: number;
+        instruments: number;
+        earliest: string | null;
+        latest: string | null;
+    };
     poly: { markets: number; active: number };
     fred: { series: number; earliest: string | null; latest: string | null };
     acs: boolean;
@@ -41,7 +46,13 @@ export interface PortfolioCoverageDetail {
         earliest: string | null;
         latest: string | null;
     };
-    stock: { entities: number; readings: number; earliest: string | null; latest: string | null };
+    stock: {
+        entities: number;
+        readings: number;
+        instruments: number;
+        earliest: string | null;
+        latest: string | null;
+    };
     poly: { entities: number; markets: number; active: number };
     fred: { entities: number; series: number; earliest: string | null; latest: string | null };
     acs: number;
@@ -283,7 +294,7 @@ const lastScanCoverage = ref<{ sec: number; news: number; stock: number; poly: n
 const lastScanCoverageDetail = ref<PortfolioCoverageDetail>({
     sec: { entities: 0, filings: 0, earliest: null, latest: null },
     news: { entities: 0, articles: 0, events: 0, earliest: null, latest: null },
-    stock: { entities: 0, readings: 0, earliest: null, latest: null },
+    stock: { entities: 0, readings: 0, instruments: 0, earliest: null, latest: null },
     poly: { entities: 0, markets: 0, active: 0 },
     fred: { entities: 0, series: 0, earliest: null, latest: null },
     acs: 0,

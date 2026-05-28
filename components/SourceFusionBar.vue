@@ -165,6 +165,8 @@
         const stockDetail: string[] = [];
         if (cd.stock.readings > 0) {
             stockDetail.push(`${formatCount(cd.stock.readings)} readings`);
+        } else if (cd.stock.instruments > 0) {
+            stockDetail.push(`${formatCount(cd.stock.instruments)} instruments, no prices`);
         } else if (cd.stock.entities > 0) {
             stockDetail.push(`${cd.stock.entities} entities with market data`);
         }
@@ -210,11 +212,19 @@
             detail: fredDetail,
         });
 
-        return rows.map((src) => ({
-            ...src,
-            tooltip:
-                src.coverage === 0 && props.total > 0 ? EMPTY_EXPLANATIONS[src.key] : undefined,
-        }));
+        return rows.map((src) => {
+            let explanation = EMPTY_EXPLANATIONS[src.key];
+            // When tickers are linked but no prices came back, the data gap is a
+            // price-fetch failure (e.g. stocks service unavailable), not a missing
+            // instrument link — say so instead of "no instruments linked".
+            if (src.key === 'stock' && cd.stock.instruments > 0 && cd.stock.readings === 0) {
+                explanation = `${cd.stock.instruments} instruments are linked, but no price data could be retrieved. The stock price service may be unavailable.`;
+            }
+            return {
+                ...src,
+                tooltip: src.coverage === 0 && props.total > 0 ? explanation : undefined,
+            };
+        });
     });
 
     const subFlags = computed(() => {

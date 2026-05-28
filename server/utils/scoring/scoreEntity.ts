@@ -109,7 +109,10 @@ export async function scoreEntity(
             hasRealData: false,
             detail: { metrics: [{ label: 'Status', value: 'timeout' }], findings: [] },
         }),
-        withTimeout(computeMarketSignalScore(event, portfolioId, neid, ctx), 4_000, {
+        // The stocks MCP price pull (get_daily_stock_prices) routinely takes
+        // 10s+ even when healthy, so a tight timeout silently zeroes out stock
+        // coverage. Give it enough headroom to actually land.
+        withTimeout(computeMarketSignalScore(event, portfolioId, neid, ctx), 15_000, {
             score: 0,
             hasRealData: false,
             priceCount: 0,
@@ -247,21 +250,21 @@ export async function scoreEntity(
         .sort();
     const allNewsDates = [...articleDates, ...eventDates].sort();
 
-    // Stock readings: use MCP price count if available (Path B fallback),
-    // otherwise count Elemental data points from the market signal scoring path
-    // and context instruments.
+    // Stock readings: count ONLY actual market data points — daily price rows
+    // from the stocks MCP (Path B) or scalar aggregates resolved from Elemental
+    // (Path A). Linked instrument entities are tracked separately under
+    // `instruments` so the coverage UI doesn't conflate "has tradeable tickers
+    // in the graph" with "we actually retrieved prices".
     let stockReadings = market.priceCount;
-    let stockEarliest = market.earliestPriceDate;
-    let stockLatest = market.latestPriceDate;
+    const stockEarliest = market.earliestPriceDate;
+    const stockLatest = market.latestPriceDate;
     if (stockReadings === 0 && market.hasRealData) {
         // Path A yielded scalar aggregates (return_30d, vol, rsi) — count metrics
         stockReadings = market.detail.metrics.filter(
             (m) => m.value !== 'timeout' && m.value !== 'Elemental market data unavailable'
         ).length;
     }
-    if (stockReadings === 0 && ctx.instruments.length > 0) {
-        stockReadings = ctx.instruments.length;
-    }
+    const stockInstruments = ctx.instruments.length;
 
     const coverageDetail: SourceCoverageDetail = {
         sec: {
@@ -277,6 +280,7 @@ export async function scoreEntity(
         },
         stock: {
             readings: stockReadings,
+            instruments: stockInstruments,
             earliest: stockEarliest,
             latest: stockLatest,
         },

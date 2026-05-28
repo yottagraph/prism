@@ -330,7 +330,12 @@ export interface MonitorEntityPolymarketSummary {
 export interface SourceCoverageDetail {
     sec: { filings: number; earliest: string | null; latest: string | null };
     news: { articles: number; events: number; earliest: string | null; latest: string | null };
-    stock: { readings: number; earliest: string | null; latest: string | null };
+    stock: {
+        readings: number;
+        instruments: number;
+        earliest: string | null;
+        latest: string | null;
+    };
     poly: { markets: number; active: number };
     fred: { series: number; earliest: string | null; latest: string | null };
     acs: boolean;
@@ -347,7 +352,13 @@ export interface PortfolioCoverageDetail {
         earliest: string | null;
         latest: string | null;
     };
-    stock: { entities: number; readings: number; earliest: string | null; latest: string | null };
+    stock: {
+        entities: number;
+        readings: number;
+        instruments: number;
+        earliest: string | null;
+        latest: string | null;
+    };
     poly: { entities: number; markets: number; active: number };
     fred: { entities: number; series: number; earliest: string | null; latest: string | null };
     acs: number;
