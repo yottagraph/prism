@@ -316,15 +316,7 @@ export async function callMcpTool(
                 statusMessage: `MCP ${toolName}: [${frame.error.code}] ${frame.error.message}`,
             });
         }
-        const result = frame?.result;
-        if (result?.isError) {
-            const msg = result?.content?.find?.((c: any) => c?.type === 'text')?.text ?? 'unknown';
-            throw createError({
-                statusCode: 502,
-                statusMessage: `MCP tool ${toolName} returned error: ${msg}`,
-            });
-        }
-        return result;
+        return frame?.result;
     }
 
     const sem = getSemaphore(serverName);
