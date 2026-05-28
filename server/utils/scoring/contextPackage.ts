@@ -516,6 +516,7 @@ async function buildFromLegacy(
             'elemental_get_related',
             {
                 entity_id: { id_type: 'neid', id: neid },
+                related_flavor: 'organization',
                 relationship_types: ['beneficial_owner_of', 'subsidiary_of'],
                 direction: 'both',
                 limit: 40,

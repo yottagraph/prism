@@ -66,6 +66,7 @@ export async function traverseOwnershipGraph(
                         'elemental_get_related',
                         {
                             entity_id: { id_type: 'neid', id: current },
+                            related_flavor: 'organization',
                             relationship_types: ['beneficial_owner_of', 'subsidiary_of'],
                             direction: 'both',
                             limit: 40,
