@@ -41,10 +41,10 @@ type NodeKind = 'company' | 'person' | 'instrument' | 'location';
 
 function flavorToKind(flavor: string): NodeKind | null {
     const f = flavor.toLowerCase();
-    if (f === 'organization' || f === 'org') return 'company';
-    if (f === 'person') return 'person';
+    if (f.includes('organization') || f === 'org' || f.includes('company')) return 'company';
+    if (f.includes('person')) return 'person';
     if (f.includes('financial_instrument') || f.includes('instrument')) return 'instrument';
-    if (f === 'location') return 'location';
+    if (f.includes('location')) return 'location';
     return null;
 }
 
@@ -82,16 +82,24 @@ async function buildFromGalaxy(
         { portfolioIds: string[]; relationships: string[] }
     >();
 
-    // Per-entity: fetch quads and collect relational destinations (cap 40 per entity)
-    for (const entity of entities) {
-        let quads = await getEntityQuads(entity.neid).catch(() => []);
-        const relational = quads.filter((q) => q.dest_type === 'relational').slice(0, 40);
+    const portfolioNeidSet = new Set(entities.map((e) => e.neid));
+
+    // Fetch all entity quads in parallel — no per-entity cap; Galaxy returns all quads
+    const quadsPerEntity = await Promise.all(
+        entities.map(async (entity) => {
+            const quads = await getEntityQuads(entity.neid).catch(() => []);
+            return { entity, quads };
+        })
+    );
+
+    for (const { entity, quads } of quadsPerEntity) {
+        const relational = quads.filter((q) => q.dest_type === 'relational');
         const portfolioNodeId = `p-${entity.neid}`;
 
         for (const quad of relational) {
             const destNeid = quad.destination;
-            // Skip self-references and portfolio entities themselves
-            if (destNeid === entity.neid || entities.some((e) => e.neid === destNeid)) continue;
+            // Skip self-references and other portfolio entities
+            if (destNeid === entity.neid || portfolioNeidSet.has(destNeid)) continue;
 
             const existing = neighbourPortfolios.get(destNeid);
             if (existing) {
@@ -110,8 +118,14 @@ async function buildFromGalaxy(
         }
     }
 
+    // Sort neighbours so those shared across more portfolio entities come first,
+    // then cap at 400 to keep getEntityInfo calls bounded.
+    const neighbourNeids = [...neighbourPortfolios.entries()]
+        .sort((a, b) => b[1].portfolioIds.length - a[1].portfolioIds.length)
+        .slice(0, 400)
+        .map(([neid]) => neid);
+
     // Resolve all unique neighbour NEIDs in parallel (getEntityInfo is already semaphore-gated)
-    const neighbourNeids = [...neighbourPortfolios.keys()];
     const infoResults = await Promise.all(
         neighbourNeids.map((neid) => getEntityInfo(neid).catch(() => null))
     );
