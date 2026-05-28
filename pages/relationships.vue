@@ -2,55 +2,22 @@
     <div class="d-flex flex-column fill-height">
         <div class="flex-shrink-0 pa-4 page-header">
             <PageHeader title="Relationship Explorer" icon="mdi-graph-outline" />
-            <div v-if="active" class="text-caption text-medium-emphasis mt-1">
-                Connected universe of <strong>{{ active.name }}</strong> ·
-                {{ active.entities.filter((e) => e.neid).length }} resolved entities ·
-                {{ graph.nodes.length }} total nodes · {{ patterns.length }} cross-portfolio
-                pattern(s)
+            <div v-if="active" class="d-flex align-center mt-1" style="gap: 8px">
+                <span class="text-caption text-medium-emphasis">
+                    Connected universe of <strong>{{ active.name }}</strong> ·
+                    {{ active.entities.filter((e) => e.neid).length }} resolved entities ·
+                    {{ graph.nodes.length }} total nodes
+                </span>
+                <v-chip v-if="galaxyEnabled" size="x-small" color="success" variant="tonal">
+                    <v-icon start size="10">mdi-lightning-bolt</v-icon>
+                    Galaxy
+                </v-chip>
+                <v-chip v-else-if="!loading" size="x-small" variant="tonal">Elemental</v-chip>
             </div>
         </div>
 
         <div class="flex-grow-1 overflow-y-auto pa-4">
-            <v-row dense>
-                <v-col cols="12" lg="8">
-                    <RelationshipGraph
-                        :nodes="graph.nodes"
-                        :edges="graph.edges"
-                        @select-node="onSelectNode"
-                    />
-                </v-col>
-                <v-col cols="12" lg="4">
-                    <v-card class="pa-3 fill-height">
-                        <div class="text-subtitle-2 mb-3">Cross-Portfolio Patterns</div>
-                        <PatternCards :patterns="patterns" />
-                    </v-card>
-                </v-col>
-            </v-row>
-
-            <v-card v-if="selectedNode" class="mt-3 pa-3">
-                <div class="d-flex align-center mb-2">
-                    <v-icon size="small" class="mr-2">mdi-information-outline</v-icon>
-                    <span class="text-subtitle-2">Node Detail</span>
-                </div>
-                <div class="text-body-1 font-weight-medium">{{ selectedNode.label }}</div>
-                <div class="text-caption text-medium-emphasis mb-2">
-                    {{ selectedNode.kind }} · connected to
-                    {{ selectedNode.connectsTo.length }} portfolio entit{{
-                        selectedNode.connectsTo.length === 1 ? 'y' : 'ies'
-                    }}
-                </div>
-                <v-chip
-                    v-for="nodeId in selectedNode.connectsTo"
-                    :key="nodeId"
-                    size="x-small"
-                    variant="outlined"
-                    class="mr-1 mb-1"
-                >
-                    {{ portfolioName(nodeId) }}
-                </v-chip>
-            </v-card>
-
-            <v-card class="mt-3">
+            <v-card>
                 <v-tabs v-model="tab" color="primary" align-tabs="start">
                     <v-tab value="companies">
                         <v-icon size="small" class="mr-2">mdi-domain</v-icon>
@@ -80,40 +47,32 @@
                             {{ locations.length }}
                         </v-chip>
                     </v-tab>
-                    <v-tab value="stocks">
-                        <v-icon size="small" class="mr-2">mdi-chart-line</v-icon>
-                        Stocks
-                        <v-chip size="x-small" class="ml-2" variant="outlined">
-                            {{ stocks?.tickers.length ?? 0 }}
-                        </v-chip>
+                    <v-tab value="network">
+                        <v-icon size="small" class="mr-2">mdi-graph</v-icon>
+                        Network
                     </v-tab>
                 </v-tabs>
+
                 <v-divider />
-                <div v-if="tab !== 'stocks'" class="px-4 pt-3">
-                    <v-row dense>
+
+                <!-- Search bar for non-network tabs -->
+                <div v-if="tab !== 'network'" class="px-4 pt-3 pb-2">
+                    <v-row dense align="center">
                         <v-col cols="12" md="6">
                             <v-text-field
                                 v-model="tableSearch"
                                 density="compact"
                                 hide-details
                                 clearable
+                                prepend-inner-icon="mdi-magnify"
                                 label="Filter by name or relationship"
                             />
                         </v-col>
-                        <v-col cols="12" md="6" class="d-flex justify-end">
-                            <v-btn-toggle
-                                v-if="tab === 'locations'"
-                                v-model="locationView"
-                                mandatory
-                                density="comfortable"
-                            >
-                                <v-btn value="table" size="small">Table</v-btn>
-                                <v-btn value="map" size="small">Map</v-btn>
-                            </v-btn-toggle>
-                        </v-col>
                     </v-row>
                 </div>
+
                 <v-window v-model="tab">
+                    <!-- Companies -->
                     <v-window-item value="companies">
                         <v-data-table
                             :headers="companyHeaders"
@@ -123,7 +82,7 @@
                             class="rel-table"
                             @click:row="onCompanyRowClick"
                         >
-                            <template v-slot:item.connectedTo="{ item }">
+                            <template #item.connectedTo="{ item }">
                                 {{ (item.connectedTo as string[]).join(', ') }}
                             </template>
                             <template #no-data>
@@ -133,6 +92,8 @@
                             </template>
                         </v-data-table>
                     </v-window-item>
+
+                    <!-- People -->
                     <v-window-item value="people">
                         <v-data-table
                             :headers="peopleHeaders"
@@ -141,7 +102,7 @@
                             density="comfortable"
                             class="rel-table"
                         >
-                            <template v-slot:item.roles="{ item }">
+                            <template #item.roles="{ item }">
                                 <v-chip
                                     v-for="r in item.roles as string[]"
                                     :key="r"
@@ -152,7 +113,7 @@
                                     {{ r }}
                                 </v-chip>
                             </template>
-                            <template v-slot:item.companiesServed="{ item }">
+                            <template #item.companiesServed="{ item }">
                                 <strong
                                     v-if="(item.companiesServed as string[]).length > 1"
                                     class="text-warning"
@@ -164,7 +125,7 @@
                                     {{ (item.companiesServed as string[]).join(', ') }}
                                 </span>
                             </template>
-                            <template v-slot:item.departed="{ item }">
+                            <template #item.departed="{ item }">
                                 <v-chip
                                     v-if="item.departed"
                                     color="warning"
@@ -182,6 +143,8 @@
                             </template>
                         </v-data-table>
                     </v-window-item>
+
+                    <!-- Financial Instruments -->
                     <v-window-item value="instruments">
                         <v-data-table
                             :headers="instrumentHeaders"
@@ -198,16 +161,17 @@
                             </template>
                         </v-data-table>
                     </v-window-item>
+
+                    <!-- Locations -->
                     <v-window-item value="locations">
                         <v-data-table
-                            v-if="locationView === 'table'"
                             :headers="locationHeaders"
                             :items="filteredLocations"
                             :loading="loading"
                             density="comfortable"
                             class="rel-table"
                         >
-                            <template v-slot:item.entitiesPresent="{ item }">
+                            <template #item.entitiesPresent="{ item }">
                                 <strong
                                     v-if="(item.entitiesPresent as string[]).length > 3"
                                     class="text-warning"
@@ -225,32 +189,54 @@
                                 </div>
                             </template>
                         </v-data-table>
-                        <v-row v-else dense class="pa-3">
-                            <v-col
-                                v-for="loc in filteredLocations"
-                                :key="loc.name"
-                                cols="12"
-                                md="6"
-                            >
-                                <v-sheet class="pa-3 map-node">
-                                    <div class="text-subtitle-2">{{ loc.name }}</div>
-                                    <div class="text-caption text-medium-emphasis">
-                                        {{ loc.entitiesPresent.length }} entities present
-                                    </div>
-                                    <div class="text-caption mt-2">
-                                        {{ loc.entitiesPresent.join(', ') }}
-                                    </div>
-                                </v-sheet>
-                            </v-col>
-                        </v-row>
                     </v-window-item>
-                    <v-window-item value="stocks">
-                        <StocksAnalyticsTab
-                            :data="stocks"
-                            :loading="loading"
-                            @select-ticker="onSelectTicker"
-                            @select-anomaly="onSelectAnomaly"
-                        />
+
+                    <!-- Network -->
+                    <v-window-item value="network" eager>
+                        <div class="pa-3">
+                            <RelationshipNetwork
+                                :nodes="graph.nodes"
+                                :edges="graph.edges"
+                                :loading="loading"
+                                @select-node="onSelectNode"
+                            />
+
+                            <v-card v-if="selectedNode" class="mt-3 pa-3">
+                                <div class="d-flex align-center mb-2">
+                                    <v-icon size="small" class="mr-2">
+                                        mdi-information-outline
+                                    </v-icon>
+                                    <span class="text-subtitle-2">Node Detail</span>
+                                    <v-spacer />
+                                    <v-btn
+                                        v-if="selectedNode.neid"
+                                        size="x-small"
+                                        variant="tonal"
+                                        :to="`/entity/${selectedNode.neid}`"
+                                    >
+                                        View entity
+                                    </v-btn>
+                                </div>
+                                <div class="text-body-1 font-weight-medium">
+                                    {{ selectedNode.label }}
+                                </div>
+                                <div class="text-caption text-medium-emphasis mb-2">
+                                    {{ selectedNode.kind }} · connected to
+                                    {{ selectedNode.connectsTo.length }} portfolio entit{{
+                                        selectedNode.connectsTo.length === 1 ? 'y' : 'ies'
+                                    }}
+                                </div>
+                                <v-chip
+                                    v-for="nodeId in selectedNode.connectsTo"
+                                    :key="nodeId"
+                                    size="x-small"
+                                    variant="outlined"
+                                    class="mr-1 mb-1"
+                                >
+                                    {{ portfolioName(nodeId) }}
+                                </v-chip>
+                            </v-card>
+                        </div>
                     </v-window-item>
                 </v-window>
             </v-card>
@@ -266,13 +252,13 @@
     import type { GraphNode } from '~/composables/useRelationships';
 
     const { activePortfolio: active } = usePortfolio();
-    const { loading, graph, companies, people, instruments, locations, patterns, stocks } =
+    const { loading, graph, companies, people, instruments, locations, galaxyEnabled } =
         useRelationships(active);
     const router = useRouter();
 
     const tab = ref('companies');
-    const locationView = ref<'table' | 'map'>('table');
     const tableSearch = ref('');
+    const selectedNode = ref<GraphNode | null>(null);
 
     const companyHeaders = [
         { title: 'Name', key: 'name', sortable: true },
@@ -300,7 +286,6 @@
         { title: 'Entities present', key: 'entitiesPresent' },
     ];
 
-    const selectedNode = ref<GraphNode | null>(null);
     function onSelectNode(n: GraphNode) {
         selectedNode.value = n;
     }
@@ -313,14 +298,6 @@
     function onInstrumentRowClick(_: Event, payload: { item: { raw: { neid?: string } } }) {
         const neid = payload?.item?.raw?.neid;
         if (neid) void router.push(`/entity/${neid}`);
-    }
-
-    function onSelectTicker(item: { neid: string }) {
-        if (item.neid) void router.push(`/entity/${item.neid}`);
-    }
-
-    function onSelectAnomaly(item: { neid: string }) {
-        if (item.neid) void router.push(`/entity/${item.neid}`);
     }
 
     function portfolioName(nodeId: string) {
@@ -366,12 +343,6 @@
     }
 
     .rel-table :deep(.v-data-table__wrapper) {
-        max-height: 420px;
-    }
-
-    .map-node {
-        border: 1px solid rgba(var(--dynamic-fg-rgb), 0.08);
-        border-radius: 10px;
-        background: rgba(var(--dynamic-fg-rgb), 0.02);
+        max-height: 520px;
     }
 </style>

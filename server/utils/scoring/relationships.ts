@@ -1,6 +1,7 @@
 import type { H3Event } from 'h3';
 
 import { findEntities, getEntityName, getSchema, normalizePidMap } from './elemental';
+import { getEntityQuads, getEntityInfo, isGalaxyEnabled } from './galaxy';
 
 export interface PortfolioEntitySeed {
     neid: string;
@@ -12,6 +13,9 @@ export interface GraphNode {
     label: string;
     kind: 'portfolio' | 'company' | 'person' | 'instrument' | 'location';
     connectsTo: string[];
+    neid?: string;
+    lat?: number;
+    lng?: number;
 }
 
 export interface GraphEdge {
@@ -32,6 +36,179 @@ export interface PortfolioPattern {
     description: string;
     entities: string[];
 }
+
+type NodeKind = 'company' | 'person' | 'instrument' | 'location';
+
+function flavorToKind(flavor: string): NodeKind | null {
+    const f = flavor.toLowerCase();
+    if (f === 'organization' || f === 'org') return 'company';
+    if (f === 'person') return 'person';
+    if (f.includes('financial_instrument') || f.includes('instrument')) return 'instrument';
+    if (f === 'location') return 'location';
+    return null;
+}
+
+function kindPrefix(kind: NodeKind): string {
+    switch (kind) {
+        case 'company':
+            return 'co';
+        case 'person':
+            return 'pp';
+        case 'instrument':
+            return 'ix';
+        case 'location':
+            return 'lc';
+    }
+}
+
+async function buildFromGalaxy(
+    event: H3Event,
+    entities: PortfolioEntitySeed[]
+): Promise<ReturnType<typeof assembleUniverse>> {
+    const portfolioNodes: GraphNode[] = entities.map((e) => ({
+        id: `p-${e.neid}`,
+        label: e.name,
+        kind: 'portfolio',
+        connectsTo: [],
+        neid: e.neid,
+    }));
+    const portfolioIds = new Set(portfolioNodes.map((n) => n.id));
+
+    const edges: GraphEdge[] = [];
+
+    // neighbour NEID → { sourcePortfolioNodeIds, relationships }
+    const neighbourPortfolios = new Map<
+        string,
+        { portfolioIds: string[]; relationships: string[] }
+    >();
+
+    // Per-entity: fetch quads and collect relational destinations (cap 40 per entity)
+    for (const entity of entities) {
+        let quads = await getEntityQuads(entity.neid).catch(() => []);
+        const relational = quads.filter((q) => q.dest_type === 'relational').slice(0, 40);
+        const portfolioNodeId = `p-${entity.neid}`;
+
+        for (const quad of relational) {
+            const destNeid = quad.destination;
+            // Skip self-references and portfolio entities themselves
+            if (destNeid === entity.neid || entities.some((e) => e.neid === destNeid)) continue;
+
+            const existing = neighbourPortfolios.get(destNeid);
+            if (existing) {
+                if (!existing.portfolioIds.includes(portfolioNodeId)) {
+                    existing.portfolioIds.push(portfolioNodeId);
+                }
+                if (!existing.relationships.includes(quad.property)) {
+                    existing.relationships.push(quad.property);
+                }
+            } else {
+                neighbourPortfolios.set(destNeid, {
+                    portfolioIds: [portfolioNodeId],
+                    relationships: [quad.property],
+                });
+            }
+        }
+    }
+
+    // Resolve all unique neighbour NEIDs in parallel (getEntityInfo is already semaphore-gated)
+    const neighbourNeids = [...neighbourPortfolios.keys()];
+    const infoResults = await Promise.all(
+        neighbourNeids.map((neid) => getEntityInfo(neid).catch(() => null))
+    );
+
+    const companyMap = new Map<string, GraphNode>();
+    const personMap = new Map<string, GraphNode>();
+    const instrumentMap = new Map<string, GraphNode>();
+    const locationMap = new Map<string, GraphNode>();
+
+    for (let i = 0; i < neighbourNeids.length; i++) {
+        const neid = neighbourNeids[i];
+        const info = infoResults[i];
+        if (!info) continue;
+
+        const kind = flavorToKind(info.flavor);
+        if (!kind) continue;
+
+        const id = `${kindPrefix(kind)}-${neid}`;
+        const portIds = neighbourPortfolios.get(neid)!.portfolioIds;
+        const rels = neighbourPortfolios.get(neid)!.relationships;
+        const relLabel = rels[0] ?? kind;
+
+        const targetMap = {
+            company: companyMap,
+            person: personMap,
+            instrument: instrumentMap,
+            location: locationMap,
+        }[kind];
+
+        if (!targetMap.has(id)) {
+            targetMap.set(id, { id, label: info.name, kind, connectsTo: [...portIds], neid });
+        } else {
+            const node = targetMap.get(id)!;
+            for (const pid of portIds) {
+                if (!node.connectsTo.includes(pid)) node.connectsTo.push(pid);
+            }
+        }
+
+        for (const portId of portIds) {
+            edges.push({ source: portId, target: id, relationship: relLabel });
+        }
+    }
+
+    // For location nodes, attempt to resolve lat/lng from their quads
+    for (const [, node] of locationMap) {
+        if (!node.neid) continue;
+        const locQuads = await getEntityQuads(node.neid).catch(() => []);
+        for (const q of locQuads) {
+            if (q.dest_type === 'numerical') {
+                const prop = q.property.toLowerCase();
+                const val = parseFloat(q.destination);
+                if (!isNaN(val)) {
+                    if (prop === 'latitude' || prop === 'lat') node.lat = val;
+                    if (prop === 'longitude' || prop === 'lng' || prop === 'lon') node.lng = val;
+                }
+            }
+        }
+    }
+
+    return assembleUniverse(
+        portfolioNodes,
+        edges,
+        companyMap,
+        personMap,
+        instrumentMap,
+        locationMap,
+        portfolioIds
+    );
+}
+
+function assembleUniverse(
+    portfolioNodes: GraphNode[],
+    edges: GraphEdge[],
+    companyMap: Map<string, GraphNode>,
+    personMap: Map<string, GraphNode>,
+    instrumentMap: Map<string, GraphNode>,
+    locationMap: Map<string, GraphNode>,
+    portfolioIds: Set<string>
+) {
+    const allNodes = [
+        ...portfolioNodes,
+        ...companyMap.values(),
+        ...personMap.values(),
+        ...instrumentMap.values(),
+        ...locationMap.values(),
+    ];
+    return {
+        nodes: allNodes,
+        edges,
+        companies: [...companyMap.values()],
+        people: [...personMap.values()],
+        instruments: [...instrumentMap.values()],
+        locations: [...locationMap.values()],
+    };
+}
+
+// ─── Elemental fallback ────────────────────────────────────────────────────────
 
 async function resolveNames(event: H3Event, eids: string[], limit = 20) {
     const trimmed = eids.slice(0, limit);
@@ -72,13 +249,15 @@ async function linked(
     }
 }
 
-export async function buildRelationshipUniverse(event: H3Event, entities: PortfolioEntitySeed[]) {
-    const nodes: GraphNode[] = entities.map((entity) => ({
+async function buildFromElemental(event: H3Event, entities: PortfolioEntitySeed[]) {
+    const portfolioNodes: GraphNode[] = entities.map((entity) => ({
         id: `p-${entity.neid}`,
         label: entity.name,
         kind: 'portfolio',
         connectsTo: [],
+        neid: entity.neid,
     }));
+    const portfolioIds = new Set(portfolioNodes.map((n) => n.id));
     const edges: GraphEdge[] = [];
 
     const companyMap = new Map<string, GraphNode>();
@@ -113,21 +292,39 @@ export async function buildRelationshipUniverse(event: H3Event, entities: Portfo
         for (const row of companies) {
             const id = `co-${row.eid}`;
             if (!companyMap.has(id))
-                companyMap.set(id, { id, label: row.name, kind: 'company', connectsTo: [] });
+                companyMap.set(id, {
+                    id,
+                    label: row.name,
+                    kind: 'company',
+                    connectsTo: [],
+                    neid: row.eid,
+                });
             companyMap.get(id)!.connectsTo.push(`p-${entity.neid}`);
             edges.push({ source: `p-${entity.neid}`, target: id, relationship: 'subsidiary_of' });
         }
         for (const row of people) {
             const id = `pp-${row.eid}`;
             if (!personMap.has(id))
-                personMap.set(id, { id, label: row.name, kind: 'person', connectsTo: [] });
+                personMap.set(id, {
+                    id,
+                    label: row.name,
+                    kind: 'person',
+                    connectsTo: [],
+                    neid: row.eid,
+                });
             personMap.get(id)!.connectsTo.push(`p-${entity.neid}`);
             edges.push({ source: `p-${entity.neid}`, target: id, relationship: 'officer_of' });
         }
         for (const row of instruments) {
             const id = `ix-${row.eid}`;
             if (!instrumentMap.has(id)) {
-                instrumentMap.set(id, { id, label: row.name, kind: 'instrument', connectsTo: [] });
+                instrumentMap.set(id, {
+                    id,
+                    label: row.name,
+                    kind: 'instrument',
+                    connectsTo: [],
+                    neid: row.eid,
+                });
             }
             instrumentMap.get(id)!.connectsTo.push(`p-${entity.neid}`);
             edges.push({ source: `p-${entity.neid}`, target: id, relationship: 'lender_of' });
@@ -135,29 +332,41 @@ export async function buildRelationshipUniverse(event: H3Event, entities: Portfo
         for (const row of locations) {
             const id = `lc-${row.eid}`;
             if (!locationMap.has(id)) {
-                locationMap.set(id, { id, label: row.name, kind: 'location', connectsTo: [] });
+                locationMap.set(id, {
+                    id,
+                    label: row.name,
+                    kind: 'location',
+                    connectsTo: [],
+                    neid: row.eid,
+                });
             }
             locationMap.get(id)!.connectsTo.push(`p-${entity.neid}`);
             edges.push({ source: `p-${entity.neid}`, target: id, relationship: 'located_at' });
         }
     }
 
-    const allNodes = [
-        ...nodes,
-        ...companyMap.values(),
-        ...personMap.values(),
-        ...instrumentMap.values(),
-        ...locationMap.values(),
-    ];
-
-    return {
-        nodes: allNodes,
+    return assembleUniverse(
+        portfolioNodes,
         edges,
-        companies: [...companyMap.values()],
-        people: [...personMap.values()],
-        instruments: [...instrumentMap.values()],
-        locations: [...locationMap.values()],
-    };
+        companyMap,
+        personMap,
+        instrumentMap,
+        locationMap,
+        portfolioIds
+    );
+}
+
+// ─── Public API ───────────────────────────────────────────────────────────────
+
+export async function buildRelationshipUniverse(
+    event: H3Event,
+    entities: PortfolioEntitySeed[]
+): Promise<ReturnType<typeof assembleUniverse>> {
+    const galaxyEnabled = await isGalaxyEnabled(event).catch(() => false);
+    if (galaxyEnabled) {
+        return buildFromGalaxy(event, entities);
+    }
+    return buildFromElemental(event, entities);
 }
 
 export function detectPatterns(
