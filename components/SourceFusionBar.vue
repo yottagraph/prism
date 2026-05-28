@@ -4,74 +4,220 @@
             <v-icon size="small" class="mr-2">mdi-layers-triple-outline</v-icon>
             <span class="text-subtitle-2">Source Fusion Coverage</span>
         </div>
-        <v-row dense>
-            <v-col v-for="src in sources" :key="src.key" cols="6" sm="3">
+
+        <div class="source-rows">
+            <div
+                v-for="src in sources"
+                :key="src.key"
+                class="source-row"
+                :class="{ 'source-row--empty': src.tooltip }"
+            >
                 <v-tooltip location="top" :disabled="!src.tooltip" :text="src.tooltip ?? ''">
                     <template #activator="{ props: tooltipProps }">
-                        <div
-                            v-bind="tooltipProps"
-                            class="source-row"
-                            :class="{ 'source-row--empty': src.tooltip }"
-                        >
-                            <div class="d-flex justify-space-between align-center mb-1">
-                                <span class="text-caption text-uppercase letter-spaced">{{
-                                    src.label
-                                }}</span>
-                                <span class="text-caption text-medium-emphasis">
+                        <div v-bind="tooltipProps" class="source-row-inner">
+                            <div class="source-header">
+                                <div class="d-flex align-center source-label">
+                                    <v-icon :color="src.color" size="16" class="mr-1">{{
+                                        src.icon
+                                    }}</v-icon>
+                                    <span
+                                        class="text-caption text-uppercase letter-spaced font-weight-medium"
+                                        >{{ src.label }}</span
+                                    >
+                                </div>
+                                <span class="text-caption text-medium-emphasis coverage-count">
                                     {{ src.coverage }}/{{ total }}
                                 </span>
                             </div>
                             <v-progress-linear
                                 :model-value="(src.coverage / Math.max(1, total)) * 100"
                                 :color="src.color"
-                                height="6"
+                                height="4"
                                 rounded
+                                class="mb-1"
                             />
+                            <div
+                                v-if="src.detail"
+                                class="d-flex align-center flex-wrap source-detail"
+                            >
+                                <span
+                                    v-for="(seg, i) in src.detail"
+                                    :key="i"
+                                    class="text-caption text-medium-emphasis"
+                                >
+                                    <template v-if="i > 0">
+                                        <span class="detail-sep mx-1">·</span>
+                                    </template>
+                                    {{ seg }}
+                                </span>
+                            </div>
                         </div>
                     </template>
                 </v-tooltip>
-            </v-col>
-        </v-row>
+            </div>
+        </div>
+
+        <div v-if="subFlags.length > 0" class="d-flex flex-wrap ga-2 mt-3 pt-2 sub-flags-border">
+            <v-chip
+                v-for="flag in subFlags"
+                :key="flag.label"
+                size="x-small"
+                variant="tonal"
+                :color="flag.color"
+                label
+            >
+                {{ flag.label }} {{ flag.count }}
+            </v-chip>
+        </div>
     </v-card>
 </template>
 
 <script setup lang="ts">
     import { computed } from 'vue';
+    import type { PortfolioCoverageDetail } from '~/composables/usePortfolio';
 
     const props = defineProps<{
         total: number;
         coverage: { sec: number; news: number; stock: number; poly: number };
+        coverageDetail: PortfolioCoverageDetail;
     }>();
 
-    // Surfaced as a tooltip when the source has zero coverage across a portfolio
-    // that has at least one entity. Helps disambiguate "scan hasn't run yet" from
-    // "scan ran and found nothing here".
-    const EMPTY_EXPLANATIONS: Record<'sec' | 'news' | 'stock' | 'poly', string> = {
+    const EMPTY_EXPLANATIONS: Record<string, string> = {
         sec: 'No portfolio entities resolved with SEC filings. Check that entity names match SEC-registered issuers.',
         news: 'No news articles found for any portfolio entity in the last 90 days.',
         stock: 'No stock instruments linked to any portfolio entity in the knowledge graph.',
         poly: 'No active prediction markets found for any portfolio entity on Polymarket. Polymarket markets cluster on politics, geopolitics, and crypto — credit / FHS portfolios rarely overlap.',
+        fred: 'FRED macro context is not yet wired into per-entity scoring. Portfolio-level macro signals appear separately when available.',
     };
 
-    type SourceKey = 'sec' | 'news' | 'stock' | 'poly';
+    function formatCount(n: number): string {
+        if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+        if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+        return String(n);
+    }
 
-    const sources = computed(() => {
-        const rows: Array<{ key: SourceKey; label: string; coverage: number; color: string }> = [
-            { key: 'sec', label: 'SEC', coverage: props.coverage.sec, color: 'primary' },
-            { key: 'news', label: 'News', coverage: props.coverage.news, color: 'info' },
-            { key: 'stock', label: 'Stock', coverage: props.coverage.stock, color: 'success' },
-            {
-                key: 'poly',
-                label: 'Polymarket',
-                coverage: props.coverage.poly,
-                color: 'warning',
-            },
-        ];
+    function formatDateShort(iso: string | null): string | null {
+        if (!iso) return null;
+        const match = iso.match(/^(\d{4})-?(\d{2})/);
+        if (match) return `${match[1]}-${match[2]}`;
+        return iso.slice(0, 7);
+    }
+
+    function dateSpan(earliest: string | null, latest: string | null): string | null {
+        const e = formatDateShort(earliest);
+        const l = formatDateShort(latest);
+        if (!e && !l) return null;
+        if (e === l) return e!;
+        if (e && l) return `${e} → ${l}`;
+        return e ?? l ?? null;
+    }
+
+    type SourceKey = 'sec' | 'news' | 'stock' | 'poly' | 'fred';
+
+    interface SourceRow {
+        key: SourceKey;
+        label: string;
+        icon: string;
+        coverage: number;
+        color: string;
+        tooltip?: string;
+        detail: string[];
+    }
+
+    const sources = computed<SourceRow[]>(() => {
+        const cd = props.coverageDetail;
+        const rows: SourceRow[] = [];
+
+        // SEC
+        const secDetail: string[] = [];
+        if (cd.sec.filings > 0) secDetail.push(`${formatCount(cd.sec.filings)} filings`);
+        const secSpan = dateSpan(cd.sec.earliest, cd.sec.latest);
+        if (secSpan) secDetail.push(secSpan);
+        rows.push({
+            key: 'sec',
+            label: 'SEC',
+            icon: 'mdi-file-document-outline',
+            coverage: props.coverage.sec,
+            color: 'primary',
+            detail: secDetail,
+        });
+
+        // News
+        const newsDetail: string[] = [];
+        if (cd.news.articles > 0) newsDetail.push(`${formatCount(cd.news.articles)} articles`);
+        if (cd.news.events > 0) newsDetail.push(`${formatCount(cd.news.events)} events`);
+        const newsSpan = dateSpan(cd.news.earliest, cd.news.latest);
+        if (newsSpan) newsDetail.push(newsSpan);
+        rows.push({
+            key: 'news',
+            label: 'News',
+            icon: 'mdi-newspaper-variant-outline',
+            coverage: props.coverage.news,
+            color: 'info',
+            detail: newsDetail,
+        });
+
+        // Stock
+        const stockDetail: string[] = [];
+        if (cd.stock.readings > 0) stockDetail.push(`${formatCount(cd.stock.readings)} readings`);
+        const stockSpan = dateSpan(cd.stock.earliest, cd.stock.latest);
+        if (stockSpan) stockDetail.push(stockSpan);
+        rows.push({
+            key: 'stock',
+            label: 'Stock',
+            icon: 'mdi-chart-line',
+            coverage: props.coverage.stock,
+            color: 'success',
+            detail: stockDetail,
+        });
+
+        // Polymarket
+        const polyDetail: string[] = [];
+        if (cd.poly.markets > 0) {
+            polyDetail.push(`${cd.poly.markets} markets`);
+            if (cd.poly.active > 0) polyDetail.push(`${cd.poly.active} active`);
+        }
+        rows.push({
+            key: 'poly',
+            label: 'Polymarket',
+            icon: 'mdi-crystal-ball',
+            coverage: props.coverage.poly,
+            color: 'warning',
+            detail: polyDetail,
+        });
+
+        // FRED
+        const fredDetail: string[] = [];
+        if (cd.fred.series > 0) {
+            fredDetail.push(`${cd.fred.series} series`);
+            const fredSpan = dateSpan(cd.fred.earliest, cd.fred.latest);
+            if (fredSpan) fredDetail.push(fredSpan);
+        }
+        rows.push({
+            key: 'fred',
+            label: 'FRED',
+            icon: 'mdi-bank-outline',
+            coverage: cd.fred.entities,
+            color: 'grey',
+            detail: fredDetail,
+        });
+
         return rows.map((src) => ({
             ...src,
             tooltip:
                 src.coverage === 0 && props.total > 0 ? EMPTY_EXPLANATIONS[src.key] : undefined,
         }));
+    });
+
+    const subFlags = computed(() => {
+        const cd = props.coverageDetail;
+        const flags: Array<{ label: string; count: number; color: string }> = [];
+        if (cd.acs > 0) flags.push({ label: 'ACS', count: cd.acs, color: 'purple' });
+        if (cd.eventPressure > 0)
+            flags.push({ label: 'Event Pressure', count: cd.eventPressure, color: 'deep-orange' });
+        if (cd.velocity > 0)
+            flags.push({ label: 'CIK Velocity', count: cd.velocity, color: 'teal' });
+        return flags;
     });
 </script>
 
@@ -79,7 +225,49 @@
     .letter-spaced {
         letter-spacing: 0.08em;
     }
+
+    .source-rows {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
     .source-row--empty {
         cursor: help;
+    }
+
+    .source-row-inner {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .source-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2px;
+    }
+
+    .source-label {
+        min-width: 110px;
+    }
+
+    .coverage-count {
+        font-variant-numeric: tabular-nums;
+        min-width: 44px;
+        text-align: right;
+    }
+
+    .source-detail {
+        line-height: 1.3;
+        min-height: 16px;
+    }
+
+    .detail-sep {
+        opacity: 0.4;
+    }
+
+    .sub-flags-border {
+        border-top: 1px solid rgba(var(--dynamic-fg-rgb, 128, 128, 128), 0.08);
     }
 </style>

@@ -125,6 +125,7 @@
             <SourceFusionBar
                 :total="active?.entities.length ?? 0"
                 :coverage="coverage"
+                :coverage-detail="coverageDetail"
                 class="mb-3"
             />
 
@@ -231,7 +232,7 @@
 <script setup lang="ts">
     import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
-    import type { PortfolioEntity } from '~/composables/usePortfolio';
+    import type { PortfolioEntity, PortfolioCoverageDetail } from '~/composables/usePortfolio';
     import type { RiskTier } from '~/composables/useFusedScoring';
     import { usePortfolio } from '~/composables/usePortfolio';
     import { useAgentPipeline } from '~/composables/useAgentPipeline';
@@ -252,6 +253,7 @@
         scanCompletedAt,
         lastScanError: scanError,
         lastScanCoverage,
+        lastScanCoverageDetail,
         createPortfolio,
         saveAssessment,
     } = usePortfolio();
@@ -325,6 +327,77 @@
             return lastScanCoverage.value;
         }
         return counts;
+    });
+
+    function minDate(a: string | null, b: string | null): string | null {
+        if (!a) return b;
+        if (!b) return a;
+        return a < b ? a : b;
+    }
+    function maxDate(a: string | null, b: string | null): string | null {
+        if (!a) return b;
+        if (!b) return a;
+        return a > b ? a : b;
+    }
+
+    const coverageDetail = computed<PortfolioCoverageDetail>(() => {
+        const empty: PortfolioCoverageDetail = {
+            sec: { entities: 0, filings: 0, earliest: null, latest: null },
+            news: { entities: 0, articles: 0, events: 0, earliest: null, latest: null },
+            stock: { entities: 0, readings: 0, earliest: null, latest: null },
+            poly: { entities: 0, markets: 0, active: 0 },
+            fred: { entities: 0, series: 0, earliest: null, latest: null },
+            acs: 0,
+            eventPressure: 0,
+            velocity: 0,
+        };
+        if (!active.value) return empty;
+
+        let anyDetail = false;
+        const agg = structuredClone(empty);
+
+        for (const entity of active.value.entities) {
+            const cd = entity.coverageDetail;
+            if (!cd) continue;
+            anyDetail = true;
+
+            if (cd.sec.filings > 0) {
+                agg.sec.entities++;
+                agg.sec.filings += cd.sec.filings;
+                agg.sec.earliest = minDate(agg.sec.earliest, cd.sec.earliest);
+                agg.sec.latest = maxDate(agg.sec.latest, cd.sec.latest);
+            }
+            if (cd.news.articles > 0 || cd.news.events > 0) {
+                agg.news.entities++;
+                agg.news.articles += cd.news.articles;
+                agg.news.events += cd.news.events;
+                agg.news.earliest = minDate(agg.news.earliest, cd.news.earliest);
+                agg.news.latest = maxDate(agg.news.latest, cd.news.latest);
+            }
+            if (cd.stock.readings > 0) {
+                agg.stock.entities++;
+                agg.stock.readings += cd.stock.readings;
+                agg.stock.earliest = minDate(agg.stock.earliest, cd.stock.earliest);
+                agg.stock.latest = maxDate(agg.stock.latest, cd.stock.latest);
+            }
+            if (cd.poly.markets > 0) {
+                agg.poly.entities++;
+                agg.poly.markets += cd.poly.markets;
+                agg.poly.active += cd.poly.active;
+            }
+            if (cd.fred.series > 0) {
+                agg.fred.entities++;
+                agg.fred.series += cd.fred.series;
+                agg.fred.earliest = minDate(agg.fred.earliest, cd.fred.earliest);
+                agg.fred.latest = maxDate(agg.fred.latest, cd.fred.latest);
+            }
+            if (cd.acs) agg.acs++;
+            if (cd.eventPressure) agg.eventPressure++;
+            if (cd.velocity) agg.velocity++;
+        }
+
+        if (!anyDetail) return lastScanCoverageDetail.value;
+        return agg;
     });
 
     const recentScanStatus = computed(() => scanStatusHistory.value.slice(-10).reverse());
