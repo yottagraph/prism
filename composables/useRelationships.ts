@@ -149,6 +149,14 @@ export interface MacroSignal {
     trend: 'up' | 'down' | 'flat';
     note: string;
     macroScore?: number; // -1..+1; positive = improving macro
+    kind?: 'fundamental' | 'probability';
+    displayValue?: string;
+    unit?: string;
+    history?: number[];
+    /** ISO date of the oldest point in `history` (time-series start). */
+    historyStart?: string | null;
+    /** ISO date of the newest point in `history` (time-series end). */
+    historyEnd?: string | null;
 }
 
 function useMacroSignals(stateKey: string, endpoint: string) {

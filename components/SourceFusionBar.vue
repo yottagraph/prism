@@ -1,5 +1,5 @@
 <template>
-    <v-card class="pa-4 fill-height">
+    <v-card class="pa-4">
         <div class="d-flex align-center mb-3">
             <v-icon size="small" class="mr-2">mdi-layers-triple-outline</v-icon>
             <span class="text-subtitle-2">Source Fusion Coverage</span>

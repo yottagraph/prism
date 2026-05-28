@@ -10,6 +10,8 @@ interface MacroSignal {
     note: string;
     macroScore?: number;
     history?: number[];
+    historyStart?: string | null;
+    historyEnd?: string | null;
 }
 
 interface FredSeriesConfig {
@@ -47,6 +49,8 @@ async function fetchSeriesObservations(
     previous: number | null;
     date: string | null;
     history: number[];
+    historyStart: string | null;
+    historyEnd: string | null;
 } | null> {
     try {
         const result = await callMcpTool(
@@ -77,16 +81,21 @@ async function fetchSeriesObservations(
             const latestVal = Number(sorted[0].value);
             if (!Number.isFinite(latestVal)) return null;
             const previousVal = sorted.length > 1 ? Number(sorted[1].value) : null;
-            // Build history array in chronological order (oldest → newest) for sparklines
-            const history = sorted
-                .map((o) => Number(o.value))
-                .filter((v) => Number.isFinite(v))
-                .reverse();
+            // Build history in chronological order (oldest → newest) for sparklines,
+            // keeping each value paired with its date so we can label the time axis.
+            const chronological = [...sorted]
+                .reverse()
+                .map((o) => ({ value: Number(o.value), date: o.recorded_at ?? null }))
+                .filter((o) => Number.isFinite(o.value));
+            const history = chronological.map((o) => o.value);
             return {
                 latest: latestVal,
                 previous: Number.isFinite(previousVal) ? previousVal : null,
                 date: sorted[0].recorded_at ?? null,
                 history,
+                historyStart: chronological.length > 0 ? chronological[0].date : null,
+                historyEnd:
+                    chronological.length > 0 ? chronological[chronological.length - 1].date : null,
             };
         }
 
@@ -94,7 +103,14 @@ async function fetchSeriesObservations(
         if (obs?.value != null) {
             const val = Number(obs.value);
             return Number.isFinite(val)
-                ? { latest: val, previous: null, date: null, history: [val] }
+                ? {
+                      latest: val,
+                      previous: null,
+                      date: null,
+                      history: [val],
+                      historyStart: null,
+                      historyEnd: null,
+                  }
                 : null;
         }
         return null;
@@ -178,6 +194,8 @@ export default defineEventHandler(async (event) => {
                 note: formatNote(config, obs.latest, obs.previous, obs.date),
                 macroScore: computeFredMacroScore(obs.latest, obs.previous, config.macroDirection),
                 history: obs.history,
+                historyStart: obs.historyStart,
+                historyEnd: obs.historyEnd,
             } satisfies MacroSignal;
         })
     );

@@ -123,23 +123,16 @@
             </v-expansion-panels>
 
             <v-row dense class="mb-3 align-stretch">
-                <v-col cols="12" md="3" class="d-flex flex-column">
+                <v-col cols="12" md="3" class="d-flex flex-column ga-3">
                     <SourceFusionBar
                         :total="active?.entities.length ?? 0"
                         :coverage="coverage"
                         :coverage-detail="coverageDetail"
                         :scanning="scanning"
-                        class="flex-grow-1"
                     />
+                    <RiskDistribution :counts="tierCounts" :scanning="scanning" />
                 </v-col>
-                <v-col cols="12" md="3" class="d-flex flex-column">
-                    <RiskDistribution
-                        :counts="tierCounts"
-                        :scanning="scanning"
-                        class="flex-grow-1"
-                    />
-                </v-col>
-                <v-col cols="12" md="6" class="d-flex flex-column">
+                <v-col cols="12" md="9" class="d-flex flex-column">
                     <MacroPanel class="flex-grow-1" />
                 </v-col>
             </v-row>
