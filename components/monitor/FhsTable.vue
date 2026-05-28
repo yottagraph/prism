@@ -12,13 +12,13 @@
                 <div class="text-caption text-medium-emphasis">{{ item.neid || '—' }}</div>
             </template>
             <template #item.score="{ item }">
-                <span class="font-mono">{{ item.scores?.solvency ?? '—' }}</span>
+                <span class="type-mono-data">{{ item.scores?.solvency ?? '—' }}</span>
             </template>
             <template #item.eventPressure="{ item }">
-                <span class="font-mono">{{ item.scores?.eventPressure ?? '—' }}</span>
+                <span class="type-mono-data">{{ item.scores?.eventPressure ?? '—' }}</span>
             </template>
             <template #item.fused="{ item }">
-                <span class="font-mono">{{ item.scores?.fused ?? '—' }}</span>
+                <span class="type-mono-data">{{ item.scores?.fused ?? '—' }}</span>
             </template>
         </v-data-table>
     </v-card>

@@ -68,11 +68,44 @@
     --dynamic-score-ramp-mid: #3fa45a;
     --dynamic-score-ramp-high: #f0b53c;
 
-    /* Typography */
+    /* Typography — sans-forward system.
+       Space Grotesk carries all headings + UI copy.
+       Space Mono is reserved for code, raw IDs, build strings, numeric data cells. */
     --font-primary: 'Space Grotesk', 'Inter', system-ui, -apple-system, sans-serif;
     --font-headline: 'Space Grotesk', 'Inter', system-ui, sans-serif;
     --font-brand: 'Space Grotesk', 'Inter', system-ui, -apple-system, sans-serif;
-    --font-mono: 'Space Mono', 'JetBrains Mono', 'Fira Code', monospace;
+    --font-mono: 'Space Mono', 'JetBrains Mono', monospace;
+
+    /* Type-scale tokens */
+    --type-display-size: 1.5rem;
+    --type-display-weight: 500;
+    --type-display-tracking: -0.01em;
+
+    --type-h1-size: 1.25rem;
+    --type-h1-weight: 500;
+    --type-h1-tracking: -0.005em;
+
+    --type-h2-size: 1rem;
+    --type-h2-weight: 500;
+    --type-h2-tracking: normal;
+
+    --type-h3-size: 0.875rem;
+    --type-h3-weight: 500;
+    --type-h3-tracking: normal;
+
+    --type-body-size: 0.875rem;
+    --type-body-weight: 400;
+
+    --type-label-size: 0.75rem;
+    --type-label-weight: 500;
+    --type-label-tracking: 0.06em;
+
+    --type-caption-size: 0.75rem;
+    --type-caption-weight: 400;
+    --type-caption-tracking: normal;
+
+    --type-mono-size: 0.8125rem;
+    --type-mono-weight: 400;
 }
 
 * {
@@ -95,39 +128,158 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
-/* Typography Hierarchy (Brand R2) */
+/* Typography Hierarchy — sans-forward */
 h1,
 .headline {
-    font-family: var(--font-headline);
-    font-weight: 400;
+    font-family: var(--font-primary);
+    font-size: var(--type-h1-size);
+    font-weight: var(--type-h1-weight);
+    letter-spacing: var(--type-h1-tracking);
 }
 
-h2,
+h2 {
+    font-family: var(--font-primary);
+    font-size: var(--type-h2-size);
+    font-weight: var(--type-h2-weight);
+    letter-spacing: var(--type-h2-tracking);
+}
+
 h3,
 .subheader {
-    font-family: var(--font-headline);
-    font-weight: 400;
+    font-family: var(--font-primary);
+    font-size: var(--type-h3-size);
+    font-weight: var(--type-h3-weight);
+    letter-spacing: var(--type-h3-tracking);
 }
 
 /* Buttons & UI Elements */
 .btn-text,
 .ui-label {
-    font-family: var(--font-mono);
+    font-family: var(--font-primary);
+    font-size: var(--type-label-size);
+    font-weight: var(--type-label-weight);
+    letter-spacing: var(--type-label-tracking);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
 }
 
-/* Utility font classes */
+/* ---- Type-scale utility classes ---- */
+.type-display {
+    font-family: var(--font-primary) !important;
+    font-size: var(--type-display-size) !important;
+    font-weight: var(--type-display-weight) !important;
+    letter-spacing: var(--type-display-tracking) !important;
+    line-height: 1.2 !important;
+}
+
+.type-h1 {
+    font-family: var(--font-primary) !important;
+    font-size: var(--type-h1-size) !important;
+    font-weight: var(--type-h1-weight) !important;
+    letter-spacing: var(--type-h1-tracking) !important;
+}
+
+.type-h2 {
+    font-family: var(--font-primary) !important;
+    font-size: var(--type-h2-size) !important;
+    font-weight: var(--type-h2-weight) !important;
+    letter-spacing: var(--type-h2-tracking) !important;
+}
+
+.type-h3 {
+    font-family: var(--font-primary) !important;
+    font-size: var(--type-h3-size) !important;
+    font-weight: var(--type-h3-weight) !important;
+    letter-spacing: var(--type-h3-tracking) !important;
+}
+
+.type-body {
+    font-family: var(--font-primary) !important;
+    font-size: var(--type-body-size) !important;
+    font-weight: var(--type-body-weight) !important;
+}
+
+.type-body-strong {
+    font-family: var(--font-primary) !important;
+    font-size: var(--type-body-size) !important;
+    font-weight: 600 !important;
+}
+
+.type-label {
+    font-family: var(--font-primary) !important;
+    font-size: var(--type-label-size) !important;
+    font-weight: var(--type-label-weight) !important;
+    letter-spacing: var(--type-label-tracking) !important;
+    text-transform: uppercase !important;
+}
+
+.type-caption {
+    font-family: var(--font-primary) !important;
+    font-size: var(--type-caption-size) !important;
+    font-weight: var(--type-caption-weight) !important;
+    letter-spacing: var(--type-caption-tracking) !important;
+}
+
+.type-mono-data {
+    font-family: var(--font-mono) !important;
+    font-size: var(--type-mono-size) !important;
+    font-weight: var(--type-mono-weight) !important;
+    font-variant-numeric: tabular-nums !important;
+}
+
+/* Legacy utility classes */
 .font-mono {
     font-family: var(--font-mono) !important;
 }
 
 .font-headline {
-    font-family: var(--font-headline) !important;
+    font-family: var(--font-primary) !important;
 }
 
 .font-brand {
-    font-family: var(--font-brand) !important;
+    font-family: var(--font-primary) !important;
+}
+
+/* ---- Vuetify global overrides ---- */
+.v-btn {
+    font-family: var(--font-primary);
+    font-weight: 500;
+    letter-spacing: 0.04em;
+}
+
+.v-tab {
+    font-family: var(--font-primary) !important;
+    font-size: var(--type-label-size) !important;
+    font-weight: var(--type-label-weight) !important;
+    letter-spacing: var(--type-label-tracking) !important;
+    text-transform: uppercase !important;
+}
+
+.v-card-title {
+    font-family: var(--font-primary);
+    font-size: var(--type-h2-size);
+    font-weight: var(--type-h2-weight);
+}
+
+.v-list-item-title {
+    font-family: var(--font-primary);
+    font-weight: 500;
+}
+
+.v-list-item-subtitle {
+    font-family: var(--font-primary);
+    font-weight: 400;
+}
+
+.v-chip {
+    font-family: var(--font-primary);
+}
+
+.v-data-table-header__content {
+    font-family: var(--font-primary);
+    font-size: var(--type-label-size);
+    font-weight: var(--type-label-weight);
+    letter-spacing: var(--type-label-tracking);
+    text-transform: uppercase;
 }
 
 /* Brand color utility classes */

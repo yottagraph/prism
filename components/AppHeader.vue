@@ -181,18 +181,18 @@
     }
 
     .app-title-text {
-        font-family: var(--font-headline);
-        font-weight: 400;
-        letter-spacing: 0.05em;
-        font-size: 1.25rem;
+        font-family: var(--font-primary);
+        font-size: var(--type-display-size);
+        font-weight: var(--type-display-weight);
+        letter-spacing: var(--type-display-tracking);
         line-height: 1.2;
     }
 
     .app-version-text {
         font-family: var(--font-mono);
-        font-weight: 400;
-        font-size: 0.7rem;
-        opacity: 0.5;
+        font-size: var(--type-mono-size);
+        font-weight: var(--type-mono-weight);
+        opacity: 0.6;
         margin-left: 8px;
         position: relative;
         top: 2px;

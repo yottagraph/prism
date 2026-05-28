@@ -12,7 +12,7 @@
                 <div class="text-caption text-medium-emphasis">{{ item.neid || '—' }}</div>
             </template>
             <template #item.executive="{ item }">
-                <span class="font-mono">{{ item.scores?.executive ?? '—' }}</span>
+                <span class="type-mono-data">{{ item.scores?.executive ?? '—' }}</span>
             </template>
             <template #item.trend="{ item }">
                 {{ item.monitor?.signalAgreement || '—' }}

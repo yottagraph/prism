@@ -502,8 +502,10 @@
     }
 
     .portfolio-title-select :deep(.v-field__input) {
-        font-size: 1.25rem;
-        font-weight: 600;
+        font-family: var(--font-primary);
+        font-size: var(--type-h1-size);
+        font-weight: var(--type-h1-weight);
+        letter-spacing: var(--type-h1-tracking);
         min-height: 32px;
         padding: 0;
     }

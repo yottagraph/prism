@@ -94,8 +94,11 @@
 
 /* Default button toggle styles */
 .v-btn-toggle .v-btn {
-    text-transform: none;
-    font-weight: 500;
+    text-transform: uppercase;
+    font-family: var(--font-primary);
+    font-size: var(--type-label-size);
+    font-weight: var(--type-label-weight);
+    letter-spacing: var(--type-label-tracking);
 }
 
 /* Unselected buttons */
@@ -206,11 +209,17 @@
 
 .theme-metric-label {
     color: var(--theme-text-secondary) !important;
-    font-size: 0.875rem;
+    font-family: var(--font-primary);
+    font-size: var(--type-label-size);
+    font-weight: var(--type-label-weight);
+    letter-spacing: var(--type-label-tracking);
+    text-transform: uppercase;
 }
 
 .theme-metric-value {
     color: var(--theme-text) !important;
+    font-family: var(--font-primary);
+    font-size: var(--type-body-size);
     font-weight: 600;
 }
 
@@ -222,6 +231,11 @@
 .theme-data-table th {
     background-color: var(--theme-panel-background) !important;
     color: var(--theme-text) !important;
+    font-family: var(--font-primary);
+    font-size: var(--type-label-size);
+    font-weight: var(--type-label-weight);
+    letter-spacing: var(--type-label-tracking);
+    text-transform: uppercase;
 }
 
 .theme-data-table td {
@@ -286,9 +300,9 @@
     color: var(--dynamic-text-primary) !important;
     border: 1px solid var(--dynamic-overlay-border);
     border-radius: 8px !important;
-    font-family: var(--font-mono, monospace);
-    font-size: 12px !important;
-    letter-spacing: 0.02em;
+    font-family: var(--font-primary);
+    font-size: var(--type-caption-size) !important;
+    letter-spacing: normal;
     box-shadow: 0 10px 20px rgba(var(--dynamic-fg-rgb-inverse), 0.28);
     backdrop-filter: blur(8px);
 }

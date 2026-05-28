@@ -1,17 +1,19 @@
 # Lovelace Font Setup
 
-Lovelace uses open-license web fonts:
+The app uses a **sans-forward** type system with two open-license Google Fonts families:
 
-- `Space Grotesk` for body text, headings, and brand text
-- `Space Mono` for buttons and code/data text
+- **Space Grotesk** — all headings, UI labels, body copy, buttons
+- **Space Mono** — code, raw IDs, build/version strings, numeric data cells, timestamps
 
-These are loaded in `assets/fonts.css` via Google Fonts.
+## Loading
 
-## CSS Import
+Fonts are loaded via Google Fonts in `assets/fonts.css`:
 
 ```css
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap');
 ```
+
+No local font files are required.
 
 ## CSS Variable Setup
 
@@ -20,48 +22,56 @@ These are loaded in `assets/fonts.css` via Google Fonts.
     --font-primary: 'Space Grotesk', 'Inter', system-ui, -apple-system, sans-serif;
     --font-headline: 'Space Grotesk', 'Inter', system-ui, sans-serif;
     --font-brand: 'Space Grotesk', 'Inter', system-ui, -apple-system, sans-serif;
-    --font-mono: 'Space Mono', 'JetBrains Mono', 'Fira Code', monospace;
+    --font-mono: 'Space Mono', 'JetBrains Mono', monospace;
 }
 ```
 
-## Fallback Strategy
+All four font CSS variables resolve to Space Grotesk except `--font-mono`.
 
-If web fonts are unavailable, the stack falls back gracefully:
+## Fallback Strategy
 
 | Role | Primary | Fallback |
 |------|---------|----------|
-| Body text | Space Grotesk | Inter, system-ui |
-| Headlines | Space Grotesk | Inter, system-ui |
-| Code/Buttons | Space Mono | JetBrains Mono, Fira Code |
-| Brand text | Space Grotesk | Inter, system-ui |
+| All headings + body + UI | Space Grotesk | Inter, system-ui |
+| Code, IDs, numerics | Space Mono | JetBrains Mono |
+
+**Inter** is widely available on modern OSes and provides a similar geometric sans aesthetic.
+
+## Usage: `.type-*` Utility Classes
+
+Prefer utility classes over inlining `font-family` rules. The full type scale:
+
+| Class | Use for |
+|-------|---------|
+| `.type-display` | App title in the header |
+| `.type-h1` | Page-level headings |
+| `.type-h2` | Card titles, section headings |
+| `.type-h3` | Sub-section headings |
+| `.type-body` | Default body copy |
+| `.type-body-strong` | Emphasized body copy |
+| `.type-label` | UPPERCASE tabs, filter pills, table column headers, button labels |
+| `.type-caption` | Helper text, footnotes, "30 entities" |
+| `.type-mono-data` | Build strings, CIK values, numeric table cells, timestamps, code |
 
 ## Usage Examples
 
 ```css
-/* Body text */
-body {
-    font-family: var(--font-primary);
-}
+/* Body text — inherits from html/body global rule */
+body { font-family: var(--font-primary); }
 
-/* Headlines */
-h1, h2, h3 {
-    font-family: var(--font-headline);
-}
+/* All headings use the same sans family */
+h1, h2, h3 { font-family: var(--font-primary); }
 
-/* Buttons */
-button {
-    font-family: var(--font-mono);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
+/* Buttons use the sans family via global Vuetify override */
+.v-btn { font-family: var(--font-primary); font-weight: 500; }
 
-/* Code blocks */
-code, pre {
-    font-family: var(--font-mono);
-}
+/* Code blocks — the only surface that uses mono */
+code, pre { font-family: var(--font-mono); }
 ```
 
-## Deployment Notes
+## Legacy: FK Grotesk
 
-- No local font files are required in `public/fonts/`.
-- Ensure outbound access to `fonts.googleapis.com` and `fonts.gstatic.com` where the app runs.
+The branding skill docs originally referenced FK Grotesk (a commercial font).
+The app has since migrated to Space Grotesk + Space Mono, which are
+open-license and loaded from Google Fonts. FK Grotesk references in other
+skill files may be outdated.

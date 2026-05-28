@@ -150,18 +150,20 @@
     }
 
     .app-title {
-        font-family: var(--font-headline);
-        font-size: 2rem;
-        font-weight: 400;
+        font-family: var(--font-primary);
+        font-size: var(--type-display-size);
+        font-weight: var(--type-display-weight);
+        letter-spacing: var(--type-display-tracking);
         color: var(--lv-white);
         margin: 0;
     }
 
     .login-btn {
-        font-family: var(--font-mono);
+        font-family: var(--font-primary);
+        font-size: var(--type-label-size);
+        font-weight: var(--type-label-weight);
+        letter-spacing: var(--type-label-tracking);
         text-transform: uppercase;
-        font-weight: 500;
-        letter-spacing: 0.05em;
         background-color: var(--lv-green) !important;
         color: var(--lv-black) !important;
     }
@@ -174,7 +176,8 @@
     .version-text {
         color: var(--lv-silver);
         font-family: var(--font-mono);
-        font-size: 0.75rem;
+        font-size: var(--type-mono-size);
+        font-weight: var(--type-mono-weight);
         margin: 0;
     }
 </style>

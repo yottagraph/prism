@@ -30,7 +30,7 @@
                         </div>
                     </div>
                     <v-divider class="my-3" />
-                    <div class="text-caption text-medium-emphasis mb-2">EVIDENCE</div>
+                    <div class="type-label text-medium-emphasis mb-2">Evidence</div>
                     <div v-if="lens.findings.length" class="finding-list">
                         <v-card
                             v-for="(finding, idx) in lens.findings"

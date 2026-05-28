@@ -21,7 +21,7 @@
         </v-list>
         <template #append>
             <div class="pa-3 footer-block">
-                <div class="text-caption footer-label">Backed by</div>
+                <div class="text-caption footer-label">Powered by</div>
                 <div class="d-flex align-center mt-1">
                     <img :src="logoSrc" alt="Lovelace" class="footer-logo" />
                 </div>
@@ -83,21 +83,25 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        font-family: var(--font-headline, sans-serif);
+        font-family: var(--font-primary, sans-serif);
         font-weight: 600;
         font-size: 1.1rem;
     }
 
     .brand-name {
-        font-family: var(--font-headline, sans-serif);
+        font-family: var(--font-primary, sans-serif);
         font-size: 1.15rem;
-        letter-spacing: 0.05em;
+        font-weight: 500;
+        letter-spacing: normal;
         color: rgba(var(--dynamic-sidebar-fg-rgb), 1);
     }
 
     .brand-tag {
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
+        font-family: var(--font-primary, sans-serif);
+        font-size: var(--type-caption-size);
+        font-weight: var(--type-caption-weight);
+        letter-spacing: normal;
+        text-transform: none;
         color: rgba(var(--dynamic-sidebar-fg-rgb), 0.55);
     }
 
@@ -106,6 +110,11 @@
     }
 
     .footer-label {
+        font-family: var(--font-primary);
+        font-size: var(--type-caption-size);
+        font-weight: var(--type-caption-weight);
+        letter-spacing: normal;
+        text-transform: none;
         color: rgba(var(--dynamic-sidebar-fg-rgb), 0.55);
     }
 

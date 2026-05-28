@@ -230,7 +230,8 @@
 
     .node-label {
         font-size: 11px;
-        font-family: var(--font-mono, ui-monospace, monospace);
+        font-family: var(--font-primary, sans-serif);
+        font-weight: 500;
         pointer-events: none;
     }
 

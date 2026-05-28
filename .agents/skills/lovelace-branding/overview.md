@@ -7,7 +7,7 @@ Quick-start guide for implementing Lovelace visual identity.
 - **Dark-first**: Jet Black (#0A0A0A) backgrounds, white text
 - **Green accents**: Cyber Green (#3FEA00) for interactive elements, CTAs, success states
 - **WCAG AA accessibility**: All color pairings meet minimum contrast requirements
-- **Monospace for emphasis**: Space Mono for buttons and code
+- **Sans-forward typography**: Space Grotesk for all headings, UI labels, and copy; Space Mono only for code, raw IDs, build strings, numeric data cells
 - **Minimal decoration**: Clean surfaces, subtle borders, purposeful color
 
 ## Quick Start
@@ -26,7 +26,7 @@ Minimal CSS variable setup to get started:
     --lv-surface: #141414;
     --lv-surface-light: #1E1E1E;
 
-    /* Typography */
+    /* Typography — sans-forward */
     --font-primary: 'Space Grotesk', 'Inter', system-ui, sans-serif;
     --font-headline: 'Space Grotesk', 'Inter', system-ui, sans-serif;
     --font-mono: 'Space Mono', 'JetBrains Mono', monospace;
@@ -69,24 +69,35 @@ Minimal CSS variable setup to get started:
 
 ## Typography
 
+### Design Principle: Sans-Forward
+
+One sans family (Space Grotesk) carries the whole UI. Space Mono only appears
+where it earns its keep: code, raw IDs, build/version strings, timestamps, and
+numeric data cells. Differentiation comes from size, weight, and tracking — not
+from switching families.
+
 ### Font Families
 
 | Role | Font | CSS Variable |
 |------|------|--------------|
-| Body / Primary | Space Grotesk | `--font-primary` |
-| Headlines | Space Grotesk | `--font-headline` |
-| Buttons / Code | Space Mono | `--font-mono` |
-| Brand wordmark | Space Grotesk | `--font-brand` |
+| All headings + body + UI | Space Grotesk | `--font-primary`, `--font-headline`, `--font-brand` |
+| Code, IDs, numeric data | Space Mono | `--font-mono` |
 
-### Type Hierarchy
+### Type Scale
 
-| Level | Font | Weight | Style |
-|-------|------|--------|-------|
-| Headlines (h1) | Space Grotesk | Regular | Normal |
-| Subheaders (h2, h3) | Space Grotesk | Regular | Normal |
-| Body Copy | Space Grotesk | Regular | Normal |
-| Body Strong | Space Grotesk | Bold (700) | Normal |
-| Buttons & UI | Space Mono | Regular | UPPERCASE, letter-spacing 0.05em |
+Use the `.type-*` utility classes instead of inlining `font-family` rules:
+
+| Class | Font | Size | Weight | Tracking | Style |
+|-------|------|------|--------|----------|-------|
+| `.type-display` | Space Grotesk | 1.5rem | 500 | -0.01em | App title |
+| `.type-h1` | Space Grotesk | 1.25rem | 500 | -0.005em | Page headers |
+| `.type-h2` | Space Grotesk | 1rem | 500 | normal | Card titles |
+| `.type-h3` | Space Grotesk | 0.875rem | 500 | normal | Section headers |
+| `.type-body` | Space Grotesk | 0.875rem | 400 | normal | Default copy |
+| `.type-body-strong` | Space Grotesk | 0.875rem | 600 | normal | Emphasis |
+| `.type-label` | Space Grotesk | 0.75rem | 500 | 0.06em | UPPERCASE tabs, pills, table headers, button text |
+| `.type-caption` | Space Grotesk | 0.75rem | 400 | normal | Helper text, footnotes |
+| `.type-mono-data` | Space Mono | 0.8125rem | 400 | normal | Version strings, CIK, numeric cells, timestamps |
 
 ## Full CSS Variables
 
@@ -117,12 +128,38 @@ Complete `:root` block for all brand variables:
     --lv-yellow: #FF9F0A;
     --lv-finance-blue: #003BFF;
 
-    /* Typography */
+    /* Typography — sans-forward */
     --font-primary: 'Space Grotesk', 'Inter', system-ui, -apple-system, sans-serif;
     --font-headline: 'Space Grotesk', 'Inter', system-ui, sans-serif;
     --font-brand: 'Space Grotesk', 'Inter', system-ui, -apple-system, sans-serif;
-    --font-mono: 'Space Mono', 'JetBrains Mono', 'Fira Code', monospace;
+    --font-mono: 'Space Mono', 'JetBrains Mono', monospace;
 }
+```
+
+## Wordmark / Logo Variants
+
+The full Lovelace wordmark ships in three color variants. **Always pick the variant
+that pairs with the active theme mode** — the white-on-dark mark disappears against
+light surfaces.
+
+| Variant | File | Use on |
+|---------|------|--------|
+| White wordmark + light-gray mark | `LL-logo-full-wht.svg` | Dark themes (`lovelace-dark`, `bloomberg`, `slate`) |
+| Black wordmark + dark mark | `LL-logo-full-blk.svg` | Light themes (`lovelace-light`, `paper`) |
+| Black wordmark in green mark | `LL-logo-full-grn.svg` | Accent / marketing only |
+
+In Nuxt apps, use the `useBrandLogo()` composable so the right asset is selected
+automatically from the active theme:
+
+```vue
+<script setup lang="ts">
+    import { useBrandLogo } from '~/composables/useBrandLogo';
+    const { logoSrc } = useBrandLogo();
+</script>
+
+<template>
+    <img :src="logoSrc" alt="Lovelace" />
+</template>
 ```
 
 ## Accessibility

@@ -12,7 +12,7 @@
                 <div class="text-caption text-medium-emphasis">{{ item.neid || '—' }}</div>
             </template>
             <template #item.acs="{ item }">
-                <span class="font-mono">{{ item.scores?.compliance ?? '—' }}</span>
+                <span class="type-mono-data">{{ item.scores?.compliance ?? '—' }}</span>
             </template>
             <template #item.foci="{ item }">
                 {{ item.monitor?.polymarketOutlook || '—' }}

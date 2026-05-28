@@ -20,10 +20,7 @@
                                     <v-icon :color="src.color" size="16" class="mr-1">{{
                                         src.icon
                                     }}</v-icon>
-                                    <span
-                                        class="text-caption text-uppercase letter-spaced font-weight-medium"
-                                        >{{ src.label }}</span
-                                    >
+                                    <span class="type-label">{{ src.label }}</span>
                                 </div>
                                 <span class="text-caption text-medium-emphasis coverage-count">
                                     {{ src.coverage }}/{{ total }}
@@ -233,10 +230,6 @@
 </script>
 
 <style scoped>
-    .letter-spaced {
-        letter-spacing: 0.08em;
-    }
-
     .source-rows {
         display: flex;
         flex-direction: column;
