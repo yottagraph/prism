@@ -1,3 +1,3 @@
 import { computeFhsScore } from './fhs';
 
-export const computeSolvencyScore = computeFhsScore;
+export { computeFhsScore as computeSolvencyScore };

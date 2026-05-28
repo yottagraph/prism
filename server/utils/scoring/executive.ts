@@ -1,3 +1,3 @@
 import { computeErsScore } from './ers';
 
-export const computeExecutiveScore = computeErsScore;
+export { computeErsScore as computeExecutiveScore };

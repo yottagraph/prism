@@ -133,10 +133,20 @@ export function computeFhsComposite(
         freshestFilingDays: number | null;
         leverageLatest: number | null;
         leveragePrevious: number | null;
-    }
+    },
+    customTierWeights?: { t1: number; t2: number; t3: number; t4: number; t5: number }
 ): FhsCompositeResult {
+    const userWeights: Record<1 | 2 | 3 | 4 | 5, number> | undefined = customTierWeights
+        ? {
+              1: customTierWeights.t1,
+              2: customTierWeights.t2,
+              3: customTierWeights.t3,
+              4: customTierWeights.t4,
+              5: customTierWeights.t5,
+          }
+        : undefined;
     const scenario = REDISTRIBUTION_SCENARIOS.find((candidate) => candidate.when(tiers));
-    const baseWeights = scenario?.weights ?? DEFAULT_WEIGHTS;
+    const baseWeights = scenario?.weights ?? (userWeights || DEFAULT_WEIGHTS);
     const weights = normaliseWeights(tiers, baseWeights);
 
     const available = tiers.filter((tier) => tier.hasData && tier.score != null);

@@ -1,23 +1,33 @@
 import { clampScore } from '../hash';
-import type { LensDetail } from '../types';
+import type { AcsThresholds, LensDetail } from '../types';
 import type { ScreeningMatch, TraversedNode } from './types';
 
-export function computeAcsComposite(input: {
-    directMatches: ScreeningMatch[];
-    pathMatches: ScreeningMatch[];
-    traversedNodes: TraversedNode[];
-    jurisdictionContributions: Array<{
-        node: TraversedNode;
-        tier: 1 | 2 | 3 | 4;
-        contribution: number;
-    }>;
-    foci: {
-        foreignOwnershipPct: number;
-        foreignBoardPct: number;
-        foreignOfficerPct: number;
-        overallRisk: 'critical' | 'high' | 'medium' | 'low';
-    };
-}) {
+export function computeAcsComposite(
+    input: {
+        directMatches: ScreeningMatch[];
+        pathMatches: ScreeningMatch[];
+        traversedNodes: TraversedNode[];
+        jurisdictionContributions: Array<{
+            node: TraversedNode;
+            tier: 1 | 2 | 3 | 4;
+            contribution: number;
+        }>;
+        foci: {
+            foreignOwnershipPct: number;
+            foreignBoardPct: number;
+            foreignOfficerPct: number;
+            overallRisk: 'critical' | 'high' | 'medium' | 'low';
+        };
+    },
+    acsThresholds?: AcsThresholds
+) {
+    const dw = acsThresholds?.directWeight ?? 0.35;
+    const pw = acsThresholds?.pathWeight ?? 0.3;
+    const gw = acsThresholds?.governanceWeight ?? 0.15;
+    const jw = acsThresholds?.jurisdictionWeight ?? 0.12;
+    const fw = acsThresholds?.fociWeight ?? 0.08;
+    const ofacOverride = acsThresholds?.ofacExactOverride ?? 90;
+
     const directScore = input.directMatches[0]?.riskContribution ?? 0;
     const pathScore = Math.min(
         100,
@@ -41,18 +51,18 @@ export function computeAcsComposite(input: {
                 : 10;
 
     let score = clampScore(
-        directScore * 0.35 +
-            pathScore * 0.3 +
-            governanceScore * 0.15 +
-            jurisdictionScore * 0.12 +
-            fociScore * 0.08
+        directScore * dw +
+            pathScore * pw +
+            governanceScore * gw +
+            jurisdictionScore * jw +
+            fociScore * fw
     );
     if (
         input.directMatches.some(
             (match) => match.listSource === 'OFAC_SDN' && match.matchQuality === 'exact'
         )
     ) {
-        score = Math.max(score, 90);
+        score = Math.max(score, ofacOverride);
     }
     const riskLevel =
         score >= 75 ? 'critical' : score >= 50 ? 'high' : score >= 25 ? 'medium' : 'low';

@@ -12,6 +12,91 @@ export interface SourceFusionWeights {
     compliance?: number;
 }
 
+export interface FhsThresholds {
+    leverageHighThreshold: number;
+    equityLowThreshold: number;
+    currentRatioLowThreshold: number;
+    interestCoverageLowThreshold: number;
+    stockDeclineThreshold: number;
+    stockVolatilityThreshold: number;
+    tierWeights: { t1: number; t2: number; t3: number; t4: number; t5: number };
+}
+
+export interface ErsThresholds {
+    minOfficers: number;
+    minCSuite: number;
+    departures12mHigh: number;
+    cSuiteCoverageLow: number;
+    leadershipSentimentLow: number;
+}
+
+export interface AcsThresholds {
+    directWeight: number;
+    pathWeight: number;
+    governanceWeight: number;
+    jurisdictionWeight: number;
+    fociWeight: number;
+    ofacExactOverride: number;
+    hopDecay: number;
+}
+
+export interface TierBands {
+    critical: number;
+    high: number;
+    watch: number;
+}
+
+export interface CategoryBands {
+    high: number;
+    medium: number;
+}
+
+export interface ScoringSettings {
+    weights: SourceFusionWeights;
+    tiers: TierBands;
+    categoryBands: CategoryBands;
+    fhs: FhsThresholds;
+    ers: ErsThresholds;
+    acs: AcsThresholds;
+}
+
+export const DEFAULT_SCORING_SETTINGS: ScoringSettings = {
+    weights: {
+        solvency: 0.35,
+        executive: 0.25,
+        news: 0.15,
+        market: 0,
+        eventPressure: 0.25,
+    },
+    tiers: { critical: 80, high: 65, watch: 50 },
+    categoryBands: { high: 70, medium: 40 },
+    fhs: {
+        leverageHighThreshold: 3.0,
+        equityLowThreshold: 0.2,
+        currentRatioLowThreshold: 1.0,
+        interestCoverageLowThreshold: 2.0,
+        stockDeclineThreshold: -10,
+        stockVolatilityThreshold: 5,
+        tierWeights: { t1: 0.45, t2: 0.2, t3: 0.12, t4: 0.08, t5: 0.15 },
+    },
+    ers: {
+        minOfficers: 3,
+        minCSuite: 2,
+        departures12mHigh: 2,
+        cSuiteCoverageLow: 50,
+        leadershipSentimentLow: 0.3,
+    },
+    acs: {
+        directWeight: 0.35,
+        pathWeight: 0.3,
+        governanceWeight: 0.15,
+        jurisdictionWeight: 0.12,
+        fociWeight: 0.08,
+        ofacExactOverride: 90,
+        hopDecay: 0.5,
+    },
+};
+
 export interface SubScores {
     solvency: number;
     executive: number;
@@ -132,12 +217,41 @@ export interface MonitorEntityPolymarketSummary {
     polymarketMarkets?: Array<{ question?: string; active?: boolean; category?: string }>;
 }
 
+export interface SourceCoverageDetail {
+    sec: { filings: number; earliest: string | null; latest: string | null };
+    news: { articles: number; events: number; earliest: string | null; latest: string | null };
+    stock: { readings: number; earliest: string | null; latest: string | null };
+    poly: { markets: number; active: number };
+    fred: { series: number; earliest: string | null; latest: string | null };
+    acs: boolean;
+    eventPressure: boolean;
+    velocity: boolean;
+}
+
+export interface PortfolioCoverageDetail {
+    sec: { entities: number; filings: number; earliest: string | null; latest: string | null };
+    news: {
+        entities: number;
+        articles: number;
+        events: number;
+        earliest: string | null;
+        latest: string | null;
+    };
+    stock: { entities: number; readings: number; earliest: string | null; latest: string | null };
+    poly: { entities: number; markets: number; active: number };
+    fred: { entities: number; series: number; earliest: string | null; latest: string | null };
+    acs: number;
+    eventPressure: number;
+    velocity: number;
+}
+
 export interface ScoreComputationResult {
     scores: EntityRiskScore;
     drivers: RiskDriver[];
     conflicts: Array<{ lens: LensKey; delta: number }>;
     confidenceLevel: ConfidenceLevel;
     coverage: SourceCoverage;
+    coverageDetail: SourceCoverageDetail;
     lensDetails: Partial<Record<LensKey, LensDetail>>;
     monitor?: MonitorEntitySignalsSummary &
         MonitorEntityNewsSummary &

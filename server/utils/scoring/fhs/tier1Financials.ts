@@ -4,7 +4,7 @@ import { resolveRefs } from '../citations';
 import type { ContextPackage } from '../contextPackage';
 import { extractPropertyFacts, getPropertyValues, getSchema, normalizePidMap } from '../elemental';
 import type { ElementalPropertyFact } from '../elemental';
-import type { EvidenceItem } from '../types';
+import type { EvidenceItem, FhsThresholds } from '../types';
 import type { FhsSignal, FhsTierResult } from './types';
 
 type Fact = ElementalPropertyFact;
@@ -100,8 +100,11 @@ function resolveFacts(ctx: ContextPackage | null, pid: Record<string, string>) {
 export async function computeTier1Financials(
     event: H3Event,
     neid: string,
-    ctx?: ContextPackage
+    ctx?: ContextPackage,
+    thresholds?: FhsThresholds
 ): Promise<Tier1Output> {
+    const leverageHigh = thresholds?.leverageHighThreshold ?? 3;
+    const equityLow = thresholds?.equityLowThreshold ?? 0.2;
     const schema = ctx?.schema ?? (await getSchema(event));
     const pid = ctx?.pidMap ?? normalizePidMap(schema);
     const resolved = resolveFacts(ctx ?? null, pid);
@@ -206,10 +209,12 @@ export async function computeTier1Financials(
     const metrics: FhsTierResult['metrics'] = [];
 
     if (leverageRatio != null) {
+        const leverageCritical = leverageHigh + 2;
+        const leverageMedium = leverageHigh - 1;
         const mapped = severityScore(leverageRatio, [
-            { when: (value) => value > 5, severity: 'critical', score: 90 },
-            { when: (value) => value > 3, severity: 'high', score: 70 },
-            { when: (value) => value > 2, severity: 'medium', score: 45 },
+            { when: (value) => value > leverageCritical, severity: 'critical', score: 90 },
+            { when: (value) => value > leverageHigh, severity: 'high', score: 70 },
+            { when: (value) => value > leverageMedium, severity: 'medium', score: 45 },
         ]);
         signals.push({
             signalType: 'leverage_ratio',
@@ -224,10 +229,11 @@ export async function computeTier1Financials(
     }
 
     if (equityRatio != null) {
+        const equityHigh = equityLow / 2;
         const mapped = severityScore(equityRatio, [
             { when: (value) => value < 0, severity: 'critical', score: 95 },
-            { when: (value) => value < 0.1, severity: 'high', score: 75 },
-            { when: (value) => value < 0.2, severity: 'medium', score: 50 },
+            { when: (value) => value < equityHigh, severity: 'high', score: 75 },
+            { when: (value) => value < equityLow, severity: 'medium', score: 50 },
         ]);
         signals.push({
             signalType: 'equity_ratio',

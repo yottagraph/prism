@@ -3,7 +3,7 @@ import type { H3Event } from 'h3';
 import { makeCacheKey, readScoringCache, writeScoringCache } from '../cache';
 import { resolveRefs } from '../citations';
 import type { ContextPackage } from '../contextPackage';
-import type { LensDetail } from '../types';
+import type { ErsThresholds, LensDetail } from '../types';
 import { computeErsComposite } from './composite';
 import { buildGovernanceSnapshot } from './governanceSnapshot';
 import { computeErsSignals } from './signals';
@@ -18,14 +18,15 @@ export async function computeErsScore(
     event: H3Event,
     portfolioId: string,
     neid: string,
-    ctx?: ContextPackage
+    ctx?: ContextPackage,
+    ersThresholds?: ErsThresholds
 ): Promise<ErsResult> {
     const cacheKey = makeCacheKey(portfolioId, neid, 'ers');
     const cached = await readScoringCache<ErsResult>(event, cacheKey);
     if (cached) return cached;
 
     const snapshot = await buildGovernanceSnapshot(event, neid, ctx);
-    const signals = computeErsSignals(snapshot, ctx?.events);
+    const signals = computeErsSignals(snapshot, ctx?.events, ersThresholds);
     const citationMap = await resolveRefs(snapshot.references, event);
     const citations = snapshot.references
         .map((ref) => citationMap.get(ref))

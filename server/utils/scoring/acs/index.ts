@@ -4,7 +4,7 @@ import { makeCacheKey, readScoringCache, writeScoringCache } from '../cache';
 import type { ContextPackage } from '../contextPackage';
 import { getEntityName, getSchema } from '../elemental';
 import { getFlavorEntities } from '../galaxy';
-import type { LensDetail } from '../types';
+import type { AcsThresholds, LensDetail } from '../types';
 import { computeAcsComposite } from './composite';
 import { runDirectScreening, type ScreeningListEntry } from './directScreening';
 import { traverseOwnershipGraph } from './graphTraversal';
@@ -74,7 +74,8 @@ export async function computeAcsScore(
     event: H3Event,
     portfolioId: string,
     neid: string,
-    ctx?: ContextPackage
+    ctx?: ContextPackage,
+    acsThresholds?: AcsThresholds
 ): Promise<AcsResult> {
     const cacheKey = makeCacheKey(portfolioId, neid, 'acs');
     const cached = await readScoringCache<AcsResult>(event, cacheKey);
@@ -91,13 +92,16 @@ export async function computeAcsScore(
     );
     const jurisdictionContributions = evaluateJurisdictionExposure(traversed);
     const foci = evaluateFoci(traversed);
-    const composite = computeAcsComposite({
-        directMatches,
-        pathMatches,
-        traversedNodes: traversed,
-        jurisdictionContributions,
-        foci,
-    });
+    const composite = computeAcsComposite(
+        {
+            directMatches,
+            pathMatches,
+            traversedNodes: traversed,
+            jurisdictionContributions,
+            foci,
+        },
+        acsThresholds
+    );
 
     const out: AcsResult = {
         score: composite.score,

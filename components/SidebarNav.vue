@@ -23,7 +23,7 @@
             <div class="pa-3 footer-block">
                 <div class="text-caption footer-label">Backed by</div>
                 <div class="d-flex align-center mt-1">
-                    <img src="/LL-logo-full-wht.svg" alt="Lovelace" class="footer-logo" />
+                    <img :src="logoSrc" alt="Lovelace" class="footer-logo" />
                 </div>
             </div>
         </template>
@@ -31,12 +31,22 @@
 </template>
 
 <script setup lang="ts">
+    import { useBrandLogo } from '~/composables/useBrandLogo';
+
+    const { logoSrc } = useBrandLogo();
+
     const items = [
         {
             to: '/',
             icon: 'mdi-view-dashboard-outline',
             title: 'Portfolio',
             subtitle: 'Ranked entities + scores',
+        },
+        {
+            to: '/scoring',
+            icon: 'mdi-tune-vertical',
+            title: 'Scoring',
+            subtitle: 'Thresholds + weights',
         },
         {
             to: '/relationships',

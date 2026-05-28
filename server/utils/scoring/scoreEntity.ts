@@ -19,7 +19,8 @@ import { computePolymarketOutlook } from './polymarketOutlook';
 import { computeSignalAgreement } from './signalAgreement';
 import { computeSolvencyScore } from './solvency';
 import { readPreviousScore, writeLatestScore } from './state';
-import type { ScoreComputationResult, SourceFusionWeights } from './types';
+import type { ScoringSettings, ScoreComputationResult, SourceCoverageDetail } from './types';
+import { DEFAULT_SCORING_SETTINGS } from './types';
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> {
     return new Promise((resolve) => {
@@ -40,8 +41,9 @@ export async function scoreEntity(
     event: H3Event,
     portfolioId: string,
     neid: string,
-    weights?: SourceFusionWeights
+    scoring?: ScoringSettings
 ): Promise<ScoreComputationResult> {
+    const resolvedScoring = scoring ?? DEFAULT_SCORING_SETTINGS;
     const ctx = await getContextPackage(event, neid);
 
     const [
@@ -55,16 +57,24 @@ export async function scoreEntity(
         news24h,
         polymarket,
     ] = await Promise.all([
-        withTimeout(computeSolvencyScore(event, portfolioId, neid, ctx), 4_000, {
-            score: 0,
-            hasRealData: false,
-            detail: { metrics: [{ label: 'Status', value: 'timeout' }], findings: [] },
-        }),
-        withTimeout(computeExecutiveScore(event, portfolioId, neid, ctx), 4_000, {
-            score: 0,
-            hasRealData: false,
-            detail: { metrics: [{ label: 'Status', value: 'timeout' }], findings: [] },
-        }),
+        withTimeout(
+            computeSolvencyScore(event, portfolioId, neid, ctx, resolvedScoring.fhs),
+            4_000,
+            {
+                score: 0,
+                hasRealData: false,
+                detail: { metrics: [{ label: 'Status', value: 'timeout' }], findings: [] },
+            }
+        ),
+        withTimeout(
+            computeExecutiveScore(event, portfolioId, neid, ctx, resolvedScoring.ers),
+            4_000,
+            {
+                score: 0,
+                hasRealData: false,
+                detail: { metrics: [{ label: 'Status', value: 'timeout' }], findings: [] },
+            }
+        ),
         withTimeout(computeNewsPressureScore(event, portfolioId, neid, ctx), 3_000, {
             score: 0,
             hasRealData: false,
@@ -73,9 +83,12 @@ export async function scoreEntity(
         withTimeout(computeMarketSignalScore(event, portfolioId, neid, ctx), 4_000, {
             score: 0,
             hasRealData: false,
+            priceCount: 0,
+            earliestPriceDate: null,
+            latestPriceDate: null,
             detail: { metrics: [{ label: 'Status', value: 'timeout' }], findings: [] },
         }),
-        withTimeout(computeAcsScore(event, portfolioId, neid, ctx), 6_000, {
+        withTimeout(computeAcsScore(event, portfolioId, neid, ctx, resolvedScoring.acs), 6_000, {
             score: 0,
             hasRealData: false,
             detail: { metrics: [{ label: 'Status', value: 'timeout' }], findings: [] },
@@ -131,7 +144,12 @@ export async function scoreEntity(
         eventPressure: eventPressure.score,
         compliance: acs.score,
     };
-    const scores = makeEntityRiskScore(subs, weights ?? DEFAULT_WEIGHTS, previous?.fused);
+    const scores = makeEntityRiskScore(
+        subs,
+        resolvedScoring.weights,
+        previous?.fused,
+        resolvedScoring.tiers
+    );
     writeLatestScore(portfolioId, neid, scores);
 
     const lensDetails = {
@@ -164,6 +182,53 @@ export async function scoreEntity(
         },
     });
 
+    // --- Build per-entity coverage detail from ContextPackage + lens outputs ---
+    const filingDates = [
+        ...(ctx.financials['filing_date'] ?? []),
+        ...(ctx.financials['report_date'] ?? []),
+    ]
+        .map((f) => (f.date ? String(f.date) : typeof f.value === 'string' ? f.value : null))
+        .filter((d): d is string => d != null && d.length > 0)
+        .sort();
+    const filingCount = filingDates.length;
+
+    const articleDates = ctx.articles
+        .map((a) => a.publishedDate)
+        .filter((d): d is string => d != null && d.length > 0)
+        .sort();
+    const eventDates = ctx.events
+        .map((e) => e.date)
+        .filter((d): d is string => d != null && d.length > 0)
+        .sort();
+    const allNewsDates = [...articleDates, ...eventDates].sort();
+
+    const coverageDetail: SourceCoverageDetail = {
+        sec: {
+            filings: filingCount,
+            earliest: filingDates[0] ?? null,
+            latest: filingDates[filingDates.length - 1] ?? null,
+        },
+        news: {
+            articles: ctx.articles.length,
+            events: ctx.events.length,
+            earliest: allNewsDates[0] ?? null,
+            latest: allNewsDates[allNewsDates.length - 1] ?? null,
+        },
+        stock: {
+            readings: market.priceCount,
+            earliest: market.earliestPriceDate,
+            latest: market.latestPriceDate,
+        },
+        poly: {
+            markets: polymarket.marketCount,
+            active: polymarket.markets.filter((m) => m.active).length,
+        },
+        fred: { series: 0, earliest: null, latest: null },
+        acs: acs.hasRealData,
+        eventPressure: eventPressure.hasRealData,
+        velocity: cikVelocity.hasRealData,
+    };
+
     return {
         scores,
         drivers: deriveDriversFromLenses(lensDetails, subs),
@@ -174,6 +239,7 @@ export async function scoreEntity(
             market: scores.market,
         }),
         confidenceLevel: confidence(scores),
+        coverageDetail,
         coverage: {
             sec: solvency.hasRealData || executive.hasRealData,
             news: news.hasRealData || news24h.hasRealData,
@@ -186,7 +252,12 @@ export async function scoreEntity(
         },
         lensDetails,
         monitor: {
-            riskCategory: scores.fused >= 70 ? 'HIGH' : scores.fused >= 40 ? 'MEDIUM' : 'LOW',
+            riskCategory:
+                scores.fused >= resolvedScoring.categoryBands.high
+                    ? 'HIGH'
+                    : scores.fused >= resolvedScoring.categoryBands.medium
+                      ? 'MEDIUM'
+                      : 'LOW',
             signalAgreement: signalAgreement.signalAgreement,
             sourcesAvailable: signalAgreement.sourcesAvailable,
             sourcesRisky: signalAgreement.sourcesRisky,

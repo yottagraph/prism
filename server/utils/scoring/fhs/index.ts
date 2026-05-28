@@ -2,7 +2,7 @@ import type { H3Event } from 'h3';
 
 import { makeCacheKey, readScoringCache, writeScoringCache } from '../cache';
 import type { ContextPackage } from '../contextPackage';
-import type { LensDetail } from '../types';
+import type { FhsThresholds, LensDetail } from '../types';
 import { computeFhsComposite } from './composite';
 import { computeTier1Financials } from './tier1Financials';
 import { computeTier2Events } from './tier2Events';
@@ -20,23 +20,28 @@ export async function computeFhsScore(
     event: H3Event,
     portfolioId: string,
     neid: string,
-    ctx?: ContextPackage
+    ctx?: ContextPackage,
+    fhsThresholds?: FhsThresholds
 ): Promise<FhsResult> {
     const cacheKey = makeCacheKey(portfolioId, neid, 'fhs');
     const cached = await readScoringCache<FhsResult>(event, cacheKey);
     if (cached) return cached;
 
-    const tier1 = await computeTier1Financials(event, neid, ctx);
+    const tier1 = await computeTier1Financials(event, neid, ctx, fhsThresholds);
     const tier2 = await computeTier2Events(event, neid, Date.now(), ctx);
     const tier3 = await computeTier3Behavioral(event, neid, ctx);
     const tier5 = await computeTier5Instruments(event, neid, ctx);
     const tier4 = computeTier4Stakes(ctx);
 
-    const composite = computeFhsComposite([tier1, tier2, tier3, tier4, tier5], {
-        freshestFilingDays: tier1.freshestFilingDays,
-        leverageLatest: tier1.leverageLatest,
-        leveragePrevious: tier1.leveragePrevious,
-    });
+    const composite = computeFhsComposite(
+        [tier1, tier2, tier3, tier4, tier5],
+        {
+            freshestFilingDays: tier1.freshestFilingDays,
+            leverageLatest: tier1.leverageLatest,
+            leveragePrevious: tier1.leveragePrevious,
+        },
+        fhsThresholds?.tierWeights
+    );
 
     const riskPrefix =
         composite.riskLevel.charAt(0).toUpperCase() + composite.riskLevel.slice(1).toLowerCase();

@@ -768,6 +768,17 @@ People / Instruments / Locations tabs and a Cross-Portfolio Patterns panel
 that surfaces governance interlocks, common-lender concentration, and
 geographic clusters.
 
+### Scoring (`pages/scoring.vue`)
+
+Per-portfolio scoring configuration workspace. Users set fusion lens weights,
+tier bands (critical/high/watch cutoffs), risk-category bands (HIGH/MEDIUM
+cutoffs), and per-module thresholds for FHS (leverage, equity, tier sub-weights),
+ERS (officer count, C-suite coverage, departures), and ACS (sub-weights, OFAC
+override, hop decay). Includes presets (Conservative / Moderate / Aggressive),
+a live preview table that re-ranks the top 10 entities client-side as settings
+change, and a Re-scan button to commit new thresholds to the server-side scoring
+calculators. Settings persist per-portfolio via `PortfolioDoc.scoring`.
+
 ### Agent Workspace (`pages/agents.vue`)
 
 Conversational chat that routes every message through the four-agent
@@ -781,7 +792,11 @@ Includes suggestion chips for the typical demo questions.
 - `usePortfolio` — portfolio CRUD, active selection, scan orchestration with
   bounded concurrency. Persists via `useAppFeaturePrefs('portfolio-risk', …)`.
 - `useFusedScoring` — weighted fusion, tier derivation, confidence proxy,
-  conflict detection, risk-driver library.
+  conflict detection, risk-driver library. Also exports `ScoringSettings`,
+  `DEFAULT_SCORING_SETTINGS`, and sub-threshold interfaces (`FhsThresholds`,
+  `ErsThresholds`, `AcsThresholds`, `TierBands`, `CategoryBands`).
+- `useScoringSettings` — per-portfolio scoring configuration CRUD, presets
+  (Conservative / Moderate / Aggressive), section/all reset, and re-scan trigger.
 - `useEntityProfile` — single-entity deep dive from server profile routes with
   in-memory cache.
 - `useRelationships` — portfolio-wide graph + structured tables + pattern
@@ -794,7 +809,9 @@ Includes suggestion chips for the typical demo questions.
 `SidebarNav`, `PortfolioTable`, `SourceFusionBar`, `RiskDistribution`,
 `MacroContext`, `EntityScoreStrip`, `LensDetailPanel`, `RiskDriverCards`,
 `AssessmentBlock`, `RelationshipGraph`, `PatternCards`, `AgentPipelineViewer`,
-`AgentActivityFeed`.
+`AgentActivityFeed`, `scoring/ScoringFusionPanel`, `scoring/ScoringFhsPanel`,
+`scoring/ScoringErsPanel`, `scoring/ScoringAcsPanel`, `scoring/ScoringBandsPanel`,
+`scoring/ScoringPreviewTable`, `scoring/ScoringPresetPicker`.
 
 ### Known follow-ups
 

@@ -1,4 +1,5 @@
 import type { ContextEvent } from '../contextPackage';
+import type { ErsThresholds } from '../types';
 import type { ErsSignal, GovernanceSnapshot } from './types';
 
 function classifyScore(score: number): ErsSignal['severity'] {
@@ -25,11 +26,13 @@ function recencyMultiplier(dateStr: string | null): number {
 
 export function computeErsSignals(
     snapshot: GovernanceSnapshot,
-    events?: ContextEvent[]
+    events?: ContextEvent[],
+    thresholds?: ErsThresholds
 ): ErsSignal[] {
+    const minOfficers = thresholds?.minOfficers ?? 3;
+    const minCSuite = thresholds?.minCSuite ?? 2;
     const signals: ErsSignal[] = [];
 
-    // Signal 1: Officer count
     if (snapshot.officerCount === 0) {
         signals.push({
             signalType: 'officer_count',
@@ -38,23 +41,22 @@ export function computeErsSignals(
             description: 'No active officers found.',
             evidence: [],
         });
-    } else if (snapshot.officerCount < 3) {
+    } else if (snapshot.officerCount < minOfficers) {
         signals.push({
             signalType: 'officer_count',
             severity: 'medium',
             score: 20,
-            description: `Only ${snapshot.officerCount} active officers found.`,
+            description: `Only ${snapshot.officerCount} active officers found (threshold: ${minOfficers}).`,
             evidence: [],
         });
     }
 
-    // Signal 2: C-suite coverage
-    if (snapshot.officerCount > 0 && snapshot.cSuiteCount < 2) {
+    if (snapshot.officerCount > 0 && snapshot.cSuiteCount < minCSuite) {
         signals.push({
             signalType: 'c_suite_coverage',
             severity: 'high',
             score: 25,
-            description: `Limited C-suite coverage (${snapshot.cSuiteCount} role${snapshot.cSuiteCount === 1 ? '' : 's'}).`,
+            description: `Limited C-suite coverage (${snapshot.cSuiteCount} role${snapshot.cSuiteCount === 1 ? '' : 's'}, threshold: ${minCSuite}).`,
             evidence: [],
         });
     }

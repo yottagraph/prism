@@ -13,11 +13,41 @@ import portfolioFixture from '~/assets/portfolios-fixture.json';
 import { searchEntities } from '~/utils/elementalHelpers';
 import {
     type CitationRef,
+    DEFAULT_SCORING_SETTINGS,
     type EntityRiskScore,
     type MonitorEntity,
     type RiskTier,
+    type ScoringSettings,
     type SourceFusionWeights,
 } from './useFusedScoring';
+
+export interface SourceCoverageDetail {
+    sec: { filings: number; earliest: string | null; latest: string | null };
+    news: { articles: number; events: number; earliest: string | null; latest: string | null };
+    stock: { readings: number; earliest: string | null; latest: string | null };
+    poly: { markets: number; active: number };
+    fred: { series: number; earliest: string | null; latest: string | null };
+    acs: boolean;
+    eventPressure: boolean;
+    velocity: boolean;
+}
+
+export interface PortfolioCoverageDetail {
+    sec: { entities: number; filings: number; earliest: string | null; latest: string | null };
+    news: {
+        entities: number;
+        articles: number;
+        events: number;
+        earliest: string | null;
+        latest: string | null;
+    };
+    stock: { entities: number; readings: number; earliest: string | null; latest: string | null };
+    poly: { entities: number; markets: number; active: number };
+    fred: { entities: number; series: number; earliest: string | null; latest: string | null };
+    acs: number;
+    eventPressure: number;
+    velocity: number;
+}
 
 export interface PortfolioEntity extends Pick<MonitorEntity, 'signalAgreement' | 'signalSummary'> {
     /** Name as provided by the user (before resolution). */
@@ -54,6 +84,7 @@ export interface PortfolioEntity extends Pick<MonitorEntity, 'signalAgreement' |
         velocity?: boolean;
         polymarket?: boolean;
     };
+    coverageDetail?: SourceCoverageDetail;
     drivers?: Array<{
         lens: string;
         source: string;
@@ -69,6 +100,7 @@ export interface PortfolioDoc {
     description: string;
     createdAt: number;
     entities: PortfolioEntity[];
+    scoring?: ScoringSettings;
 }
 
 interface PortfolioPrefsShape {
@@ -94,6 +126,7 @@ interface ScanEntityEventPayload {
         conflicts?: Array<{ lens: string; delta: number }>;
         confidenceLevel?: 'High' | 'Medium' | 'Low';
         coverage?: PortfolioEntity['coverage'];
+        coverageDetail?: SourceCoverageDetail;
         resolutionError?: string;
     };
 }
@@ -247,6 +280,16 @@ const lastScanCoverage = ref<{ sec: number; news: number; stock: number; poly: n
     stock: 0,
     poly: 0,
 });
+const lastScanCoverageDetail = ref<PortfolioCoverageDetail>({
+    sec: { entities: 0, filings: 0, earliest: null, latest: null },
+    news: { entities: 0, articles: 0, events: 0, earliest: null, latest: null },
+    stock: { entities: 0, readings: 0, earliest: null, latest: null },
+    poly: { entities: 0, markets: 0, active: 0 },
+    fred: { entities: 0, series: 0, earliest: null, latest: null },
+    acs: 0,
+    eventPressure: 0,
+    velocity: 0,
+});
 
 interface AgentStreamEvent {
     event: string;
@@ -264,6 +307,22 @@ function pushScanStatus(message: string, phase = 'info') {
     }
 }
 
+function migratePortfolioScoring(portfolios: PortfolioDoc[], legacyWeights?: SourceFusionWeights) {
+    let migrated = false;
+    for (const portfolio of portfolios) {
+        if (!portfolio.scoring) {
+            portfolio.scoring = {
+                ...structuredClone(DEFAULT_SCORING_SETTINGS),
+                weights: legacyWeights
+                    ? { ...legacyWeights }
+                    : { ...DEFAULT_SCORING_SETTINGS.weights },
+            };
+            migrated = true;
+        }
+    }
+    return migrated;
+}
+
 function ensurePrefs() {
     if (!prefs.value) {
         prefs.value = useAppFeaturePrefs<PortfolioPrefsShape>('portfolio-risk', {
@@ -275,6 +334,7 @@ function ensurePrefs() {
             prefs.value.portfolios = defaultPortfolios();
             prefs.value.activePortfolioId = 'clo-mid-market';
         }
+        migratePortfolioScoring(prefs.value.portfolios, prefs.value.weights);
     }
     return prefs.value!;
 }
@@ -286,10 +346,23 @@ export function usePortfolio() {
     const activePortfolio = computed(
         () => p.portfolios.find((pp) => pp.id === p.activePortfolioId) ?? p.portfolios[0] ?? null
     );
+    const activeScoring = computed({
+        get: (): ScoringSettings => {
+            const portfolio = activePortfolio.value;
+            return portfolio?.scoring ?? structuredClone(DEFAULT_SCORING_SETTINGS);
+        },
+        set: (s: ScoringSettings) => {
+            const portfolio = activePortfolio.value;
+            if (!portfolio) return;
+            const idx = p.portfolios.findIndex((pp) => pp.id === portfolio.id);
+            if (idx >= 0) p.portfolios[idx].scoring = s;
+        },
+    });
+
     const weights = computed({
-        get: () => p.weights ?? DEFAULT_WEIGHTS,
+        get: () => activeScoring.value.weights,
         set: (w: SourceFusionWeights) => {
-            p.weights = w;
+            activeScoring.value = { ...activeScoring.value, weights: w };
         },
     });
 
@@ -397,6 +470,7 @@ export function usePortfolio() {
                     force: !!opts.force,
                     debugLogs: !!debugPrefs.scanDiagnosticsLogs,
                     weights: weights.value,
+                    scoring: activeScoring.value,
                     entities: ents.map((entity) => ({
                         inputName: entity.inputName,
                         resolvedName: entity.resolvedName,
@@ -432,6 +506,7 @@ export function usePortfolio() {
                     current.conflicts = payload.entity.conflicts;
                     current.confidenceLevel = payload.entity.confidenceLevel;
                     current.coverage = payload.entity.coverage;
+                    current.coverageDetail = payload.entity.coverageDetail;
                     current.signalAgreement = payload.entity.monitor?.signalAgreement;
                     current.signalSummary = payload.entity.monitor?.signalSummary;
                     p.portfolios[idx].entities = [...ents];
@@ -456,6 +531,9 @@ export function usePortfolio() {
                     if (data?.coverage) {
                         lastScanCoverage.value = data.coverage;
                     }
+                    if (data?.coverageDetail) {
+                        lastScanCoverageDetail.value = data.coverageDetail;
+                    }
                     if (data?.diagnostics) {
                         console.info('[scan diagnostics]', data.diagnostics);
                     }
@@ -474,6 +552,7 @@ export function usePortfolio() {
                         current.confidenceLevel =
                             entityOut.confidenceLevel ?? current.confidenceLevel;
                         current.coverage = entityOut.coverage ?? current.coverage;
+                        current.coverageDetail = entityOut.coverageDetail ?? current.coverageDetail;
                         current.signalAgreement =
                             entityOut.monitor?.signalAgreement ?? current.signalAgreement;
                         current.signalSummary =
@@ -543,6 +622,7 @@ export function usePortfolio() {
     return {
         portfolios,
         activePortfolio,
+        activeScoring,
         weights,
         scanning: computed(() => scanning.value),
         scanProgress: computed(() => scanProgress.value),
@@ -552,6 +632,7 @@ export function usePortfolio() {
         scanCompletedAt: computed(() => scanCompletedAt.value),
         lastScanError: computed(() => lastScanError.value),
         lastScanCoverage: computed(() => lastScanCoverage.value),
+        lastScanCoverageDetail: computed(() => lastScanCoverageDetail.value),
         setActivePortfolio,
         createPortfolio,
         deletePortfolio,

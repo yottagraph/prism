@@ -65,6 +65,85 @@ export const DEFAULT_WEIGHTS: SourceFusionWeights = {
     eventPressure: 0.25,
 };
 
+export interface FhsThresholds {
+    leverageHighThreshold: number;
+    equityLowThreshold: number;
+    currentRatioLowThreshold: number;
+    interestCoverageLowThreshold: number;
+    stockDeclineThreshold: number;
+    stockVolatilityThreshold: number;
+    tierWeights: { t1: number; t2: number; t3: number; t4: number; t5: number };
+}
+
+export interface ErsThresholds {
+    minOfficers: number;
+    minCSuite: number;
+    departures12mHigh: number;
+    cSuiteCoverageLow: number;
+    leadershipSentimentLow: number;
+}
+
+export interface AcsThresholds {
+    directWeight: number;
+    pathWeight: number;
+    governanceWeight: number;
+    jurisdictionWeight: number;
+    fociWeight: number;
+    ofacExactOverride: number;
+    hopDecay: number;
+}
+
+export interface TierBands {
+    critical: number;
+    high: number;
+    watch: number;
+}
+
+export interface CategoryBands {
+    high: number;
+    medium: number;
+}
+
+export interface ScoringSettings {
+    weights: SourceFusionWeights;
+    tiers: TierBands;
+    categoryBands: CategoryBands;
+    fhs: FhsThresholds;
+    ers: ErsThresholds;
+    acs: AcsThresholds;
+}
+
+export const DEFAULT_SCORING_SETTINGS: ScoringSettings = {
+    weights: { ...DEFAULT_WEIGHTS },
+    tiers: { critical: 80, high: 65, watch: 50 },
+    categoryBands: { high: 70, medium: 40 },
+    fhs: {
+        leverageHighThreshold: 3.0,
+        equityLowThreshold: 0.2,
+        currentRatioLowThreshold: 1.0,
+        interestCoverageLowThreshold: 2.0,
+        stockDeclineThreshold: -10,
+        stockVolatilityThreshold: 5,
+        tierWeights: { t1: 0.45, t2: 0.2, t3: 0.12, t4: 0.08, t5: 0.15 },
+    },
+    ers: {
+        minOfficers: 3,
+        minCSuite: 2,
+        departures12mHigh: 2,
+        cSuiteCoverageLow: 50,
+        leadershipSentimentLow: 0.3,
+    },
+    acs: {
+        directWeight: 0.35,
+        pathWeight: 0.3,
+        governanceWeight: 0.15,
+        jurisdictionWeight: 0.12,
+        fociWeight: 0.08,
+        ofacExactOverride: 90,
+        hopDecay: 0.5,
+    },
+};
+
 export function fuseScore(s: SubScores, w: SourceFusionWeights = DEFAULT_WEIGHTS): number {
     const sum =
         w.solvency +
@@ -84,10 +163,13 @@ export function fuseScore(s: SubScores, w: SourceFusionWeights = DEFAULT_WEIGHTS
     return Math.round(raw);
 }
 
-export function deriveTier(fused: number): RiskTier {
-    if (fused >= 80) return 'critical';
-    if (fused >= 65) return 'high';
-    if (fused >= 50) return 'watch';
+export function deriveTier(fused: number, tiers?: TierBands): RiskTier {
+    const c = tiers?.critical ?? 80;
+    const h = tiers?.high ?? 65;
+    const w = tiers?.watch ?? 50;
+    if (fused >= c) return 'critical';
+    if (fused >= h) return 'high';
+    if (fused >= w) return 'watch';
     return 'normal';
 }
 

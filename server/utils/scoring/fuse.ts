@@ -8,6 +8,7 @@ import type {
     RiskTier,
     SourceFusionWeights,
     SubScores,
+    TierBands,
 } from './types';
 
 export const DEFAULT_WEIGHTS: SourceFusionWeights = {
@@ -46,10 +47,13 @@ export function fuseScore(s: SubScores, w: SourceFusionWeights = DEFAULT_WEIGHTS
     );
 }
 
-export function deriveTier(fused: number): RiskTier {
-    if (fused >= 80) return 'critical';
-    if (fused >= 65) return 'high';
-    if (fused >= 50) return 'watch';
+export function deriveTier(fused: number, tiers?: TierBands): RiskTier {
+    const c = tiers?.critical ?? 80;
+    const h = tiers?.high ?? 65;
+    const w = tiers?.watch ?? 50;
+    if (fused >= c) return 'critical';
+    if (fused >= h) return 'high';
+    if (fused >= w) return 'watch';
     return 'normal';
 }
 
@@ -110,7 +114,8 @@ export function deriveDriversFromLenses(
 export function makeEntityRiskScore(
     subs: SubScores,
     weights: SourceFusionWeights,
-    previousFused?: number
+    previousFused?: number,
+    tiers?: TierBands
 ): EntityRiskScore {
     let fused = fuseScore(subs, weights);
     const criticalOverride = Math.max(
@@ -126,7 +131,7 @@ export function makeEntityRiskScore(
         ...subs,
         fused,
         previousFused,
-        tier: deriveTier(fused),
+        tier: deriveTier(fused, tiers),
         updatedAt: Date.now(),
     };
 }
