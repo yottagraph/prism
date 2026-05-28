@@ -1,5 +1,5 @@
 <template>
-    <v-card class="pa-4">
+    <v-card class="pa-4 fill-height d-flex flex-column">
         <MacroRegimeBanner :regime="regime" />
 
         <v-row dense>
