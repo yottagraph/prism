@@ -253,6 +253,26 @@ function buildReason(
 }
 
 // ---------------------------------------------------------------------------
+// Drawdown risk statement
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns an honest qualitative drawdown statement for a "too_aggressive"
+ * verdict based on the actual risk band. No fabricated dollar figures —
+ * percentages are historically grounded band-level estimates.
+ */
+export function drawdownStatement(actualBand: RiskBand, aggressiveFraction: number): string {
+    const pct = Math.round(aggressiveFraction * 100);
+    if (actualBand === 'aggressive') {
+        return `A 2008-style downturn could cut this bucket 40–55% — right when you'd need to withdraw.`;
+    }
+    if (actualBand === 'moderate' && aggressiveFraction > 0.4) {
+        return `With ${pct}% in high-volatility holdings, a sharp correction could cut this bucket 25–40% before your target date.`;
+    }
+    return `This bucket carries more risk than its timeline warrants — a market downturn could erode significant value before you withdraw.`;
+}
+
+// ---------------------------------------------------------------------------
 // Convenience: full fit for a bucket doc given holdings summary
 // ---------------------------------------------------------------------------
 

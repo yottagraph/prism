@@ -32,7 +32,7 @@
         </div>
         <div class="fused-row mt-3 pt-3">
             <div class="d-flex justify-space-between align-center mb-1">
-                <span class="text-subtitle-2">Fused Risk</span>
+                <span class="text-subtitle-2">{{ FUSED_LABEL }}</span>
                 <v-chip :color="scoreLabelColor(scores.fused)" size="small" label>{{
                     tierLabel(scoreToLabel(scores.fused))
                 }}</v-chip>
@@ -65,9 +65,12 @@
 
     import {
         type EntityRiskScore,
+        type LensKey,
         scoreToLabel,
         scoreLabelColor,
         tierLabel,
+        LENS_META,
+        FUSED_LABEL,
     } from '~/composables/useFusedScoring';
 
     const props = defineProps<{
@@ -76,14 +79,20 @@
         confidenceLevel: 'High' | 'Medium' | 'Low';
     }>();
 
-    const lenses = [
-        { key: 'solvency', label: 'Solvency (FHS)', source: 'SEC' },
-        { key: 'executive', label: 'Executive Risk (ERS)', source: 'SEC' },
-        { key: 'compliance', label: 'Adversarial Capital (ACS)', source: 'CSL' },
-        { key: 'eventPressure', label: 'Event Pressure', source: 'NEWS' },
-        { key: 'news', label: 'News Pressure', source: 'NEWS' },
-        { key: 'market', label: 'Market Signal', source: 'STOCK' },
-    ] as const;
+    const LENS_ORDER: LensKey[] = [
+        'solvency',
+        'executive',
+        'compliance',
+        'eventPressure',
+        'news',
+        'market',
+    ];
+
+    const lenses = LENS_ORDER.map((key) => ({
+        key,
+        label: LENS_META[key].label,
+        source: LENS_META[key].source,
+    }));
 
     function scoreColor(v: number) {
         if (v >= 80) return 'error';

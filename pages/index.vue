@@ -202,7 +202,7 @@
                             <v-icon color="primary" class="mr-2" size="small">
                                 mdi-shield-search
                             </v-icon>
-                            <span class="text-subtitle-2 font-weight-medium">Holdings Health</span>
+                            <span class="text-subtitle-2 font-weight-medium">Holdings health</span>
                             <v-spacer />
                             <v-chip
                                 v-if="bucketHealth.worstTier"
@@ -220,38 +220,61 @@
                             v-if="bucketHealth.scanned === 0"
                             class="text-body-2 text-medium-emphasis"
                         >
-                            Run a scan to assess holdings across SEC, news, market, and sanctions.
+                            Run a scan to assess holdings across SEC filings, news, and market
+                            signals.
                         </div>
 
                         <!-- Scanned -->
                         <template v-else>
+                            <!-- Headline verdict -->
+                            <div class="mb-3">
+                                <template v-if="bucketHealth.needsAttention > 0">
+                                    <span
+                                        class="text-h6 font-weight-bold"
+                                        :class="`text-${tierColor(bucketHealth.worstTier ?? 'medium')}`"
+                                    >
+                                        {{ bucketHealth.needsAttention }}
+                                        {{
+                                            bucketHealth.needsAttention === 1
+                                                ? 'holding'
+                                                : 'holdings'
+                                        }}
+                                    </span>
+                                    <span class="text-body-2 ml-1 text-medium-emphasis"
+                                        >need attention</span
+                                    >
+                                </template>
+                                <template v-else>
+                                    <v-icon color="success" size="20" class="mr-1"
+                                        >mdi-check-circle</v-icon
+                                    >
+                                    <span class="text-body-1 font-weight-medium text-success"
+                                        >All holdings look healthy</span
+                                    >
+                                </template>
+                            </div>
+
                             <div class="d-flex align-center mb-3" style="gap: 12px">
                                 <div class="text-center">
-                                    <div class="text-h5 font-weight-bold">
+                                    <div class="text-h6 font-weight-bold">
                                         {{ bucketHealth.scanned }}
                                     </div>
                                     <div class="text-caption text-medium-emphasis">Scored</div>
                                 </div>
                                 <div v-if="bucketHealth.needsAttention > 0" class="text-center">
-                                    <div class="text-h5 font-weight-bold text-warning">
+                                    <div class="text-h6 font-weight-bold text-warning">
                                         {{ bucketHealth.needsAttention }}
                                     </div>
-                                    <div class="text-caption text-medium-emphasis">
-                                        Need attention
-                                    </div>
-                                </div>
-                                <div v-else class="d-flex align-center" style="gap: 4px">
-                                    <v-icon color="success" size="20">
-                                        mdi-check-circle-outline
-                                    </v-icon>
-                                    <span class="text-caption text-medium-emphasis">All clear</span>
+                                    <div class="text-caption text-medium-emphasis">Flagged</div>
                                 </div>
                                 <v-spacer />
                                 <div v-if="bucketHealth.avgFused !== null" class="text-right">
                                     <div class="text-subtitle-2 font-weight-bold">
                                         {{ bucketHealth.avgFused }}
                                     </div>
-                                    <div class="text-caption text-medium-emphasis">Avg fused</div>
+                                    <div class="text-caption text-medium-emphasis">
+                                        Avg overall risk
+                                    </div>
                                 </div>
                             </div>
 
@@ -265,7 +288,9 @@
                                     v-if="bucketHealth.lensWorst.fhs !== null"
                                     class="lens-score-item"
                                 >
-                                    <span class="text-caption text-medium-emphasis">Solvency</span>
+                                    <span class="text-caption text-medium-emphasis"
+                                        >Fin. strength</span
+                                    >
                                     <span
                                         class="text-caption font-weight-bold"
                                         :class="`text-${tierColor(scoreToLabel(bucketHealth.lensWorst.fhs))}`"
@@ -277,7 +302,9 @@
                                     v-if="bucketHealth.lensWorst.ers !== null"
                                     class="lens-score-item"
                                 >
-                                    <span class="text-caption text-medium-emphasis">Executive</span>
+                                    <span class="text-caption text-medium-emphasis"
+                                        >Leadership</span
+                                    >
                                     <span
                                         class="text-caption font-weight-bold"
                                         :class="`text-${tierColor(scoreToLabel(bucketHealth.lensWorst.ers))}`"
@@ -289,7 +316,7 @@
                                     v-if="bucketHealth.lensWorst.acs !== null"
                                     class="lens-score-item"
                                 >
-                                    <span class="text-caption text-medium-emphasis">Cyber/ACS</span>
+                                    <span class="text-caption text-medium-emphasis">Ownership</span>
                                     <span
                                         class="text-caption font-weight-bold"
                                         :class="`text-${tierColor(scoreToLabel(bucketHealth.lensWorst.acs))}`"
@@ -339,11 +366,11 @@
                     @update:model-value="scrollToTabs"
                 >
                     <v-tab value="monitor">Holdings</v-tab>
-                    <v-tab value="summary">Summary</v-tab>
+                    <v-tab value="summary">AI Summary</v-tab>
                     <template v-if="showAdvanced">
-                        <v-tab value="fhs">FHS</v-tab>
-                        <v-tab value="ers">ERS</v-tab>
-                        <v-tab value="acs">ACS</v-tab>
+                        <v-tab value="fhs">Financial (FHS)</v-tab>
+                        <v-tab value="ers">Leadership (ERS)</v-tab>
+                        <v-tab value="acs">Ownership (ACS)</v-tab>
                     </template>
                 </v-tabs>
                 <v-btn

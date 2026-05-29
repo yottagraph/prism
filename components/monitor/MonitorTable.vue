@@ -11,20 +11,18 @@
             />
             <div class="d-flex flex-wrap ga-2 mb-2">
                 <v-chip size="x-small" color="primary" variant="tonal" label
-                    >SEC EDGAR — FHS · ERS · CIK</v-chip
+                    >SEC — financial strength · leadership</v-chip
                 >
                 <v-chip size="x-small" color="info" variant="tonal" label
-                    >News — summary · activity</v-chip
+                    >News — headlines · events</v-chip
                 >
                 <v-chip size="x-small" color="success" variant="tonal" label
-                    >Stock — $ · 30d · trend</v-chip
+                    >Market — price · trend</v-chip
                 >
                 <v-chip size="x-small" color="purple" variant="tonal" label
-                    >Prediction Markets</v-chip
+                    >Prediction markets</v-chip
                 >
-                <v-chip size="x-small" color="error" variant="tonal" label
-                    >ACS — adversarial capital</v-chip
-                >
+                <v-chip size="x-small" color="error" variant="tonal" label>Ownership flags</v-chip>
             </div>
             <div class="overflow-x-auto">
                 <v-data-table
@@ -139,23 +137,22 @@
 
     const headers = [
         { title: '#', key: 'rank', sortable: false, width: 50 },
-        { title: 'Entity', key: 'name', sortable: true },
+        { title: 'Holding', key: 'name', sortable: true },
         { title: 'Signals', key: 'signalAgreement', sortable: true, width: 120 },
         // SEC lens
-        { title: 'Solvency (FHS)', key: 'solvency', sortable: true, width: 120 },
-        { title: 'Executive (ERS)', key: 'executive', sortable: true, width: 130 },
-        { title: 'CIK Velocity', key: 'cikVelocity', sortable: true, width: 120 },
+        { title: 'Fin. strength', key: 'solvency', sortable: true, width: 120 },
+        { title: 'Leadership', key: 'executive', sortable: true, width: 120 },
+        { title: 'Filing activity', key: 'cikVelocity', sortable: true, width: 120 },
         // News lens
-        { title: 'News Summary (24h)', key: 'newsSummary', sortable: false, width: 240 },
-        { title: 'News Activity', key: 'newsActivity', sortable: true, width: 120 },
+        { title: 'News (24h)', key: 'newsSummary', sortable: false, width: 240 },
+        { title: 'Headline risk', key: 'newsActivity', sortable: true, width: 120 },
         // Stock lens
         { title: '$', key: 'stockChangePercent', sortable: true, width: 70 },
         { title: '30d', key: 'stockChange30dPercent', sortable: true, width: 70 },
         { title: 'Trend', key: 'stockTrend', sortable: true, width: 90 },
         // Polymarket lens
         { title: 'Markets', key: 'polymarket', sortable: true, width: 140 },
-        // ACS lens
-        { title: 'ACS', key: 'acsScore', sortable: true, width: 90 },
+        { title: 'Ownership', key: 'acsScore', sortable: true, width: 90 },
         { title: 'Analyst', key: 'analyst', sortable: false, width: 130 },
         { title: '', key: 'actions', sortable: false, width: 80 },
     ];

@@ -137,12 +137,9 @@
                         <v-row dense>
                             <v-col cols="6">
                                 <CostMetric
-                                    label="Elemental calls"
-                                    :value="costSummary.elementalCalls"
+                                    label="Tool calls"
+                                    :value="costSummary.elementalCalls || '—'"
                                 />
-                            </v-col>
-                            <v-col cols="6">
-                                <CostMetric label="Tool responses" :value="cacheHitRate" />
                             </v-col>
                             <v-col cols="6">
                                 <CostMetric
@@ -164,9 +161,9 @@
                                     "
                                 />
                             </v-col>
-                            <v-col cols="12">
+                            <v-col cols="6">
                                 <CostMetric
-                                    label="Total duration"
+                                    label="Duration"
                                     :value="`${(costSummary.totalDurationMs / 1000).toFixed(1)}s`"
                                 />
                             </v-col>
@@ -342,10 +339,10 @@
     const expandedSessions = ref<string[]>([]);
 
     const suggestions = [
-        'Which 3 companies in my portfolio have the highest fused risk and why?',
-        'Summarize the governance interlocks across the portfolio.',
-        'Which lenders show concentrated exposure across multiple portfolio companies?',
-        'What macro signals should I worry about right now?',
+        'Is my House Down Payment bucket too risky for a 4-year timeline?',
+        'Which holding is dragging down my Retirement bucket the most, and why?',
+        'If rates rise sharply, which of my goals is most exposed?',
+        'What happened to NVIDIA in the news this week?',
     ];
 
     const { fetchConfig } = useTenantConfig();
@@ -449,13 +446,6 @@
         { title: 'Timestamp', key: 'timestamp' },
         { title: '', key: 'data-table-expand' },
     ];
-
-    const cacheHitRate = computed(() => {
-        const calls = costSummary.value.elementalCalls;
-        if (!calls) return '—';
-        // Cache hits aren't tracked in the ADK stream; show call count only.
-        return calls;
-    });
 
     function normalizeWeights() {
         const sum =

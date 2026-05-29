@@ -1,14 +1,17 @@
 <template>
     <v-card class="pa-4">
-        <div class="d-flex align-center mb-3">
+        <div class="d-flex align-center mb-1">
             <v-icon size="small" class="mr-2">mdi-layers-triple-outline</v-icon>
-            <span class="text-subtitle-2">Data Source Coverage</span>
+            <span class="text-subtitle-2">Signal coverage</span>
             <v-spacer />
             <span v-if="scanning" class="d-inline-flex align-center scan-live">
                 <span class="scan-live-dot mr-1" />
                 <span class="text-caption">Fusing</span>
             </span>
         </div>
+        <p class="text-caption text-medium-emphasis mb-3" style="line-height: 1.4">
+            All signals from one Elemental API — no ingestion pipelines.
+        </p>
 
         <div class="source-rows">
             <div
@@ -286,11 +289,11 @@
     const subFlags = computed(() => {
         const cd = props.coverageDetail;
         const flags: Array<{ label: string; count: number; color: string }> = [];
-        if (cd.acs > 0) flags.push({ label: 'ACS', count: cd.acs, color: 'purple' });
+        if (cd.acs > 0) flags.push({ label: 'Ownership screened', count: cd.acs, color: 'purple' });
         if (cd.eventPressure > 0)
-            flags.push({ label: 'Event Pressure', count: cd.eventPressure, color: 'deep-orange' });
+            flags.push({ label: 'Material events', count: cd.eventPressure, color: 'deep-orange' });
         if (cd.velocity > 0)
-            flags.push({ label: 'CIK Velocity', count: cd.velocity, color: 'teal' });
+            flags.push({ label: 'Filing activity', count: cd.velocity, color: 'teal' });
         return flags;
     });
 </script>

@@ -5,15 +5,15 @@
             <span class="text-subtitle-2 font-weight-medium">Portfolio Construction</span>
             <v-spacer />
             <span class="text-caption text-medium-emphasis">
-                Steady → Growth spectrum by risk profile
+                Where each goal sits on the conservative → aggressive spectrum
             </span>
         </div>
 
         <!-- Zone labels -->
         <div class="zone-labels mb-1">
-            <span class="zone-label text-caption text-medium-emphasis">Steady</span>
-            <span class="zone-label text-caption text-medium-emphasis text-center">Balanced</span>
-            <span class="zone-label text-caption text-medium-emphasis text-right">Growth</span>
+            <span class="zone-label text-caption text-medium-emphasis">Conservative</span>
+            <span class="zone-label text-caption text-medium-emphasis text-center">Moderate</span>
+            <span class="zone-label text-caption text-medium-emphasis text-right">Aggressive</span>
         </div>
 
         <!-- Track -->
@@ -54,7 +54,7 @@
         <!-- Sub-labels -->
         <div class="zone-labels mt-1">
             <span class="zone-label text-caption text-medium-emphasis" style="opacity: 0.6">
-                Short horizon · low vol
+                Short horizon · low volatility
             </span>
             <span
                 class="zone-label text-caption text-medium-emphasis text-right"

@@ -32,7 +32,12 @@
                         </div>
                     </div>
                     <v-divider class="my-3" />
-                    <div class="type-label text-medium-emphasis mb-2">Evidence</div>
+                    <div class="d-flex align-center mb-2">
+                        <span class="type-label text-medium-emphasis">Traced to source</span>
+                        <v-chip size="x-small" variant="outlined" class="ml-2" style="opacity: 0.6">
+                            via Elemental
+                        </v-chip>
+                    </div>
                     <div v-if="lens.findings.length" class="finding-list">
                         <v-card
                             v-for="(finding, idx) in lens.findings"
@@ -67,9 +72,11 @@
 
     import {
         type EntityRiskScore,
+        type LensKey,
         scoreToLabel,
         scoreLabelColor,
         tierLabel,
+        LENS_META,
     } from '~/composables/useFusedScoring';
     import CitationChip from '~/components/CitationChip.vue';
 
@@ -95,71 +102,29 @@
         >;
     }>();
 
+    const LENS_ORDER: LensKey[] = [
+        'solvency',
+        'executive',
+        'news',
+        'market',
+        'eventPressure',
+        'compliance',
+    ];
+
     const lensDefs = computed(() => {
-        const generated = [
-            {
-                key: 'solvency' as const,
-                label: 'Solvency (SEC)',
-                source: 'SEC',
-                color: 'primary',
-                description:
-                    'Financial Health Score derived from filing fundamentals and solvency metrics.',
-            },
-            {
-                key: 'executive' as const,
-                label: 'Executive Risk (SEC)',
-                source: 'SEC',
-                color: 'primary',
-                description:
-                    'Governance and key-person stability from officer, director, and departure signals.',
-            },
-            {
-                key: 'news' as const,
-                label: 'News Pressure',
-                source: 'NEWS',
-                color: 'info',
-                description:
-                    'Sentiment, mention velocity, and adverse cluster detection from the platform news layer.',
-            },
-            {
-                key: 'market' as const,
-                label: 'Market Signal',
-                source: 'STOCK',
-                color: 'success',
-                description: 'Price, volatility, and anomaly detection from the market data layer.',
-            },
-            {
-                key: 'eventPressure' as const,
-                label: 'Event Pressure',
-                source: 'NEWS',
-                color: 'warning',
-                description:
-                    'Recency-weighted pressure score from adverse event clusters in the last 14 days.',
-            },
-            {
-                key: 'compliance' as const,
-                label: 'Adversarial Capital (ACS)',
-                source: 'CSL',
-                color: 'error',
-                description:
-                    'Ownership-path and screening-list exposure with FOCI-oriented jurisdiction breakdown.',
-            },
-        ];
-        return generated.map((lens) => {
-            const override = props.lensDetails?.[lens.key];
-            if (!override) {
-                return {
-                    ...lens,
-                    metrics: [{ label: 'Status', value: 'No data' }],
-                    findings: [],
-                };
-            }
+        return LENS_ORDER.map((key) => {
+            const meta = LENS_META[key];
+            const override = props.lensDetails?.[key];
             return {
-                ...lens,
-                metrics: override.metrics?.length
+                key,
+                label: meta.label,
+                source: meta.source,
+                color: meta.sourceColor,
+                description: meta.description,
+                metrics: override?.metrics?.length
                     ? override.metrics
                     : [{ label: 'Status', value: 'No data' }],
-                findings: override.findings?.length ? override.findings : [],
+                findings: override?.findings?.length ? override.findings : [],
             };
         });
     });

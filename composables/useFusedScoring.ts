@@ -351,18 +351,89 @@ export function confidence(s: SubScores): 'High' | 'Medium' | 'Low' {
     return 'Low';
 }
 
+export type LensSource =
+    | 'SEC'
+    | 'NEWS'
+    | 'STOCK'
+    | 'POLY'
+    | 'CSL'
+    | 'OFAC'
+    | 'GLEIF'
+    | 'ownership_graph'
+    | 'jurisdiction';
+
+export interface LensMeta {
+    /** Plain-language retail label shown by default. */
+    label: string;
+    /** Abbreviated acronym label shown in Advanced / under-the-hood mode. */
+    labelAdvanced: string;
+    /** Short description for the lens detail panel. */
+    description: string;
+    source: LensSource;
+    /** Vuetify color token for the source badge. */
+    sourceColor: string;
+}
+
+/** Single source of truth for lens display metadata. */
+export const LENS_META: Record<LensKey, LensMeta> = {
+    solvency: {
+        label: 'Financial strength',
+        labelAdvanced: 'Solvency (FHS)',
+        description:
+            'Assesses balance-sheet health using SEC filings — leverage, equity ratios, coverage, and distress events like missed filings or auditor changes.',
+        source: 'SEC',
+        sourceColor: 'primary',
+    },
+    executive: {
+        label: 'Leadership stability',
+        labelAdvanced: 'Executive risk (ERS)',
+        description:
+            'Tracks officer and director departures, board composition, and key-person concentration. High turnover or thin leadership teams raise this score.',
+        source: 'SEC',
+        sourceColor: 'primary',
+    },
+    news: {
+        label: 'Headline risk',
+        labelAdvanced: 'News pressure',
+        description:
+            "Measures recent negative news sentiment, mention velocity, and adverse media density from Elemental's news graph.",
+        source: 'NEWS',
+        sourceColor: 'info',
+    },
+    market: {
+        label: 'Price stability',
+        labelAdvanced: 'Market signal',
+        description:
+            "Summarises 30-day price trend, volatility, and technical signals (RSI, MACD) from Elemental's market data layer.",
+        source: 'STOCK',
+        sourceColor: 'success',
+    },
+    eventPressure: {
+        label: 'Material events',
+        labelAdvanced: 'Event pressure',
+        description:
+            'Scores the recency and severity of SEC 8-K material events — bankruptcies, restructurings, executive departures, and impairments.',
+        source: 'NEWS',
+        sourceColor: 'info',
+    },
+    compliance: {
+        label: 'Ownership flags',
+        labelAdvanced: 'Adversarial capital (ACS)',
+        description:
+            "Screens the entity's ownership graph for sanctions lists, high-risk jurisdictions, and foreign-influence indicators.",
+        source: 'CSL',
+        sourceColor: 'error',
+    },
+};
+
+/** Retail label for the fused composite score. */
+export const FUSED_LABEL = 'Overall risk';
+/** Advanced label for the fused composite score. */
+export const FUSED_LABEL_ADVANCED = 'Fused risk';
+
 export interface RiskDriver {
     lens: LensKey;
-    source:
-        | 'SEC'
-        | 'NEWS'
-        | 'STOCK'
-        | 'POLY'
-        | 'CSL'
-        | 'OFAC'
-        | 'GLEIF'
-        | 'ownership_graph'
-        | 'jurisdiction';
+    source: LensSource;
     score: number;
     finding: EvidenceItem;
 }

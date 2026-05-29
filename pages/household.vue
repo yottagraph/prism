@@ -66,30 +66,54 @@
                         :color="summaryFitColor"
                         class="hero-panel pa-4 fill-height"
                     >
-                        <div class="d-flex align-center mb-2">
+                        <div class="d-flex align-center mb-3">
                             <v-icon size="small" class="mr-2">mdi-bullseye-arrow</v-icon>
                             <span class="text-subtitle-2 font-weight-medium">
                                 Are the goals built right?
                             </span>
                         </div>
+
+                        <!-- Headline verdict -->
+                        <div v-if="aggressiveBuckets > 0" class="headline-verdict mb-3">
+                            <span class="text-h5 font-weight-bold text-error">
+                                {{ aggressiveBuckets }}
+                                {{ aggressiveBuckets === 1 ? 'bucket' : 'buckets' }}
+                            </span>
+                            <span class="text-body-1 ml-1">
+                                {{ aggressiveBuckets === 1 ? 'is' : 'are' }} too aggressive for its
+                                timeline
+                            </span>
+                        </div>
+                        <div v-else-if="conservativeBuckets > 0" class="headline-verdict mb-3">
+                            <span class="text-h5 font-weight-bold text-warning">
+                                {{ conservativeBuckets }}
+                                {{ conservativeBuckets === 1 ? 'bucket' : 'buckets' }}
+                            </span>
+                            <span class="text-body-1 ml-1">may be leaving growth on the table</span>
+                        </div>
+                        <div v-else class="headline-verdict mb-3">
+                            <span class="text-h5 font-weight-bold text-success">All goals</span>
+                            <span class="text-body-1 ml-1">aligned with their timelines</span>
+                        </div>
+
                         <div class="d-flex align-center" style="gap: 16px">
                             <div class="text-center">
-                                <div class="text-h4 font-weight-bold">
-                                    {{ appropriateBuckets }}
-                                </div>
-                                <div class="text-caption">On track</div>
+                                <div class="text-h6 font-weight-bold">{{ appropriateBuckets }}</div>
+                                <div class="text-caption text-medium-emphasis">On track</div>
                             </div>
                             <div v-if="aggressiveBuckets > 0" class="text-center">
-                                <div class="text-h4 font-weight-bold text-error">
+                                <div class="text-h6 font-weight-bold text-error">
                                     {{ aggressiveBuckets }}
                                 </div>
-                                <div class="text-caption">Too aggressive</div>
+                                <div class="text-caption text-medium-emphasis">Too aggressive</div>
                             </div>
                             <div v-if="conservativeBuckets > 0" class="text-center">
-                                <div class="text-h4 font-weight-bold text-warning">
+                                <div class="text-h6 font-weight-bold text-warning">
                                     {{ conservativeBuckets }}
                                 </div>
-                                <div class="text-caption">Too conservative</div>
+                                <div class="text-caption text-medium-emphasis">
+                                    Too conservative
+                                </div>
                             </div>
                             <v-spacer />
                             <div class="text-right">
@@ -101,10 +125,6 @@
                                 </div>
                             </div>
                         </div>
-                        <p class="text-caption text-medium-emphasis mt-3 mb-0">
-                            Horizon fit checks whether each bucket's actual risk profile matches its
-                            investment timeline and your stated tolerance.
-                        </p>
                     </v-card>
                 </v-col>
 
@@ -189,14 +209,6 @@
                 </v-col>
             </v-row>
 
-            <!-- ── Construction spectrum ───────────────────────────── -->
-            <GoalsConstructionSpectrum
-                v-if="buckets.length > 0"
-                :buckets="spectrumBuckets"
-                class="mb-4"
-                @open="onOpenBucket"
-            />
-
             <!-- ── Bucket cards ────────────────────────────────────── -->
             <v-row dense class="mb-4">
                 <v-col
@@ -249,6 +261,19 @@
                     </tbody>
                 </v-table>
             </template>
+
+            <!-- ── Risk spectrum (secondary / contextual) ─────────── -->
+            <div v-if="buckets.length > 1" class="mt-2">
+                <h2 class="text-subtitle-1 font-weight-medium mb-2">
+                    <v-icon size="small" class="mr-1">mdi-chart-scatter-plot</v-icon>
+                    Risk spectrum across goals
+                </h2>
+                <GoalsConstructionSpectrum
+                    :buckets="spectrumBuckets"
+                    class="mb-4"
+                    @open="onOpenBucket"
+                />
+            </div>
         </div>
 
         <OnboardingOnboardingDialog
@@ -463,5 +488,9 @@
     .hero-panel {
         border-radius: 10px;
         min-height: 160px;
+    }
+
+    .headline-verdict {
+        line-height: 1.3;
     }
 </style>

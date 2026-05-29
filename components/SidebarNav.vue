@@ -8,9 +8,14 @@
             </div>
         </div>
         <v-divider />
-        <v-list nav density="compact">
+
+        <!-- Primary investor path -->
+        <div class="nav-section-label px-4 pt-3 pb-1 text-caption text-medium-emphasis">
+            Investor
+        </div>
+        <v-list nav density="compact" class="pb-0">
             <v-list-item
-                v-for="item in items"
+                v-for="item in investorItems"
                 :key="item.to"
                 :to="item.to"
                 :prepend-icon="item.icon"
@@ -19,6 +24,25 @@
                 color="primary"
             />
         </v-list>
+
+        <v-divider class="mt-2" />
+
+        <!-- Under-the-hood / Elemental section -->
+        <div class="nav-section-label px-4 pt-3 pb-1 text-caption text-medium-emphasis">
+            Built on Elemental
+        </div>
+        <v-list nav density="compact" class="pb-0">
+            <v-list-item
+                v-for="item in elementalItems"
+                :key="item.to"
+                :to="item.to"
+                :prepend-icon="item.icon"
+                :title="item.title"
+                :subtitle="item.subtitle"
+                color="primary"
+            />
+        </v-list>
+
         <template #append>
             <div class="pa-3 footer-block">
                 <div class="text-caption footer-label">Powered by</div>
@@ -35,12 +59,12 @@
 
     const { logoSrc } = useBrandLogo();
 
-    const items = [
+    const investorItems = [
         {
             to: '/household',
             icon: 'mdi-home-account',
             title: 'Overview',
-            subtitle: 'All buckets, all goals',
+            subtitle: 'All goals at a glance',
         },
         {
             to: '/',
@@ -49,22 +73,25 @@
             subtitle: 'Holdings + horizon fit',
         },
         {
+            to: '/agents',
+            icon: 'mdi-message-question-outline',
+            title: 'Ask',
+            subtitle: 'Chat with your portfolio',
+        },
+    ];
+
+    const elementalItems = [
+        {
             to: '/relationships',
             icon: 'mdi-graph-outline',
             title: 'Relationships',
             subtitle: 'Connected universe',
         },
         {
-            to: '/agents',
-            icon: 'mdi-robot-outline',
-            title: 'Agents',
-            subtitle: 'Pipeline + chat',
-        },
-        {
             to: '/scoring',
             icon: 'mdi-tune-vertical',
-            title: 'Scoring',
-            subtitle: 'Thresholds + weights',
+            title: 'Scoring config',
+            subtitle: 'Weights + thresholds',
         },
     ];
 </script>
@@ -100,6 +127,13 @@
         font-weight: 500;
         letter-spacing: normal;
         color: rgba(var(--dynamic-sidebar-fg-rgb), 1);
+    }
+
+    .nav-section-label {
+        font-family: var(--font-primary, sans-serif);
+        font-size: 10px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
     }
 
     .brand-tag {
