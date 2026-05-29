@@ -12,6 +12,7 @@ import { scoreEntity } from '~/server/utils/scoring/scoreEntity';
 import { writeCoverage } from '~/server/utils/scoring/state';
 import { resetPolymarketLogging } from '~/server/utils/scoring/polymarketOutlook';
 import { resetMarketSignalDiagnostics } from '~/server/utils/scoring/marketSignal';
+import { prewarmStocks, resetMcpBreakers } from '~/server/utils/scoring/mcpGateway';
 import {
     getEntityName,
     searchEntitiesByName,
@@ -199,6 +200,7 @@ export default defineEventHandler(async (event) => {
     // recurs across scans.
     resetPolymarketLogging();
     resetMarketSignalDiagnostics();
+    resetMcpBreakers();
 
     const encoder = new TextEncoder();
 
@@ -248,6 +250,22 @@ export default defineEventHandler(async (event) => {
                     phase: 'resolution',
                     message: `Resolved ${diagnostics.resolution.resolvedViaBatch}/${total} entities in batch lookup`,
                 });
+
+                // Warm the stocks MCP cache in the background. Cold symbols
+                // exceed the gateway's 30s timeout (the server takes ~60s),
+                // so these calls will mostly 502 on a cold cache — but they
+                // still warm the upstream cache, so the market-signal lookups
+                // below (and the next scan) resolve in seconds instead of
+                // timing out. Fire-and-forget; never blocks the scan.
+                prewarmStocks(
+                    entities.map(
+                        (e) =>
+                            e.resolvedName ||
+                            batchResolutions.get(e.inputName.trim())?.resolvedName ||
+                            e.inputName
+                    ),
+                    event
+                );
 
                 // --- Fast-mode: batch-fetch a few key PIDs across all entities ---
                 const resolvedNeids = entities

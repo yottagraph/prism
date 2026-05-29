@@ -1,130 +1,43 @@
 import type { H3Event } from 'h3';
 
-import { callMcpTool, extractMcpStructuredContent } from './mcpGateway';
 import type { CitationRef } from './types';
 
-type CitationPayload = {
-    ref?: string;
-    hash?: string;
-    title?: string;
-    url?: string;
-    source?: string;
-    publisher?: string;
-    date?: string;
-    published_at?: string;
-    snippet?: string;
-    summary?: string;
-};
+/**
+ * Citation resolution.
+ *
+ * NOTE: This used to call the `elemental_get_citations` MCP tool with the
+ * string `ref`/`refs` values pulled off property responses. That tool does
+ * NOT accept string refs — its only argument is `trails`, an array of
+ * structured provenance coordinates (`{ efid, record_index, atom_index }`)
+ * captured from `_meta.lovelace/provenance` on a previous tool response.
+ * The scoring code never captures those coordinates, so every one of those
+ * calls failed validation (`unexpected additional properties ["refs"/"ref"]`)
+ * and silently fell back to a bare `{ ref, source: 'Elemental' }` entry —
+ * hundreds of wasted MCP round-trips per render that produced no citations.
+ *
+ * Until provenance trails are threaded through every fetch, we synthesize the
+ * same fallback locally and skip the network entirely. Behavior is unchanged
+ * for callers; only the wasted calls are removed.
+ *
+ * TODO: thread `_meta.lovelace/provenance` trails from the originating tool
+ * responses through to here, then call `elemental_get_citations` with a
+ * `{ trails: [...] }` payload to render real source details.
+ */
 
-function normalizeCitation(payload: CitationPayload | undefined, fallbackRef: string): CitationRef {
-    const ref = payload?.ref || payload?.hash || fallbackRef;
-    const source = payload?.source || payload?.publisher;
-    const date = payload?.date || payload?.published_at;
-    const snippet = payload?.snippet || payload?.summary;
-    return {
-        ref,
-        title: payload?.title,
-        url: payload?.url,
-        source: source || (payload ? 'Elemental' : undefined),
-        date,
-        snippet,
-    };
-}
-
-function getContextCache(event: H3Event): Map<string, CitationRef> {
-    const context = event.context as Record<string, unknown>;
-    const existing = context.__citationCache;
-    if (existing instanceof Map) return existing as Map<string, CitationRef>;
-    const cache = new Map<string, CitationRef>();
-    context.__citationCache = cache;
-    return cache;
-}
-
-function extractCitationRows(result: any): CitationPayload[] {
-    const structured = extractMcpStructuredContent<any>(result) ?? result;
-    if (!structured || typeof structured !== 'object') return [];
-    if (Array.isArray(structured.citations)) return structured.citations as CitationPayload[];
-    if (Array.isArray(structured.results)) return structured.results as CitationPayload[];
-    if (Array.isArray(structured.items)) return structured.items as CitationPayload[];
-    if (Array.isArray(structured.data)) return structured.data as CitationPayload[];
-    if (structured.citation && typeof structured.citation === 'object') {
-        return [structured.citation as CitationPayload];
-    }
-    return [];
-}
-
-async function fetchOneRef(ref: string, event: H3Event): Promise<CitationRef | null> {
-    try {
-        const result = await callMcpTool(
-            'elemental',
-            'elemental_get_citations',
-            { refs: [ref] },
-            event
-        );
-        const rows = extractCitationRows(result);
-        if (rows.length > 0) return normalizeCitation(rows[0], ref);
-    } catch (error) {
-        console.warn('[citations] batch-by-ref failed', { ref, error });
-    }
-    try {
-        const result = await callMcpTool('elemental', 'elemental_get_citations', { ref }, event);
-        const rows = extractCitationRows(result);
-        if (rows.length > 0) return normalizeCitation(rows[0], ref);
-    } catch (error) {
-        console.warn('[citations] singular-ref failed', { ref, error });
-    }
-    return null;
+function fallbackCitation(ref: string): CitationRef {
+    return { ref, source: 'Elemental' };
 }
 
 export async function resolveRefs(
     refs: string[],
-    event: H3Event
+    _event: H3Event
 ): Promise<Map<string, CitationRef>> {
-    const uniqueRefs = Array.from(
-        new Set(
-            refs.filter((ref): ref is string => typeof ref === 'string' && ref.trim().length > 0)
-        )
-    );
     const out = new Map<string, CitationRef>();
-    if (!uniqueRefs.length) return out;
-
-    const cache = getContextCache(event);
-    const missing: string[] = [];
-    for (const ref of uniqueRefs) {
-        const hit = cache.get(ref);
-        if (hit) {
-            out.set(ref, hit);
-        } else {
-            missing.push(ref);
-        }
+    for (const ref of refs) {
+        if (typeof ref !== 'string') continue;
+        const trimmed = ref.trim();
+        if (!trimmed || out.has(trimmed)) continue;
+        out.set(trimmed, fallbackCitation(trimmed));
     }
-    if (!missing.length) return out;
-
-    try {
-        const result = await callMcpTool(
-            'elemental',
-            'elemental_get_citations',
-            { refs: missing },
-            event
-        );
-        const rows = extractCitationRows(result);
-        rows.forEach((row) => {
-            const normalized = normalizeCitation(row, row?.ref || row?.hash || '');
-            if (!normalized.ref) return;
-            cache.set(normalized.ref, normalized);
-            out.set(normalized.ref, normalized);
-        });
-    } catch (error) {
-        console.warn('[citations] multi-ref fetch failed', error);
-    }
-
-    for (const ref of missing) {
-        if (out.has(ref)) continue;
-        const citation = await fetchOneRef(ref, event);
-        const normalized = citation || { ref, source: 'Elemental' };
-        cache.set(ref, normalized);
-        out.set(ref, normalized);
-    }
-
     return out;
 }

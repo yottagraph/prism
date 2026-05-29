@@ -53,13 +53,92 @@ function getSemaphore(serverName: string): Semaphore {
  * Retry helpers
  * ------------------------------------------------------------------- */
 
+// 429 = rate limited (always worth a backoff retry).
+// 502/504 = the portal gateway gave up waiting on a slow upstream (this is
+// what the `stocks` MCP returns on a cold symbol, where the server takes
+// ~60s but the gateway caps at 30s). Retrying those inline rarely lands
+// inside the request window and just multiplies latency, so they are NOT
+// retried for "slow" servers (see SLOW_UPSTREAM_SERVERS).
 const RETRIABLE_STATUS_CODES = new Set([429, 502, 503, 504]);
 const MAX_ATTEMPTS = 3;
 const BASE_DELAY_MS = 500;
 
-function isRetriable(error: any): boolean {
+// Per-call hard timeout. The gateway itself times out upstream calls at
+// ~30s; this is a defensive ceiling so a hung socket can never pin a
+// semaphore slot indefinitely.
+const CALL_TIMEOUT_MS: Record<string, number> = {
+    stocks: 32_000,
+    polymarket: 20_000,
+    elemental: 20_000,
+};
+const DEFAULT_CALL_TIMEOUT_MS = 20_000;
+
+// Servers whose upstream is known to be slow (cold computations exceed the
+// gateway's 30s ceiling). For these we do not retry gateway-timeout codes
+// (502/504) and we guard them with a circuit breaker.
+const SLOW_UPSTREAM_SERVERS = new Set(['stocks']);
+
+function isRetriable(error: any, serverName: string): boolean {
     const code = error?.statusCode ?? error?.status;
-    return typeof code === 'number' && RETRIABLE_STATUS_CODES.has(code);
+    if (typeof code !== 'number') return false;
+    if (code === 429) return true;
+    // Don't retry gateway-timeout codes for slow upstreams — it never helps
+    // inside the request window and triples the wall-clock cost.
+    if (SLOW_UPSTREAM_SERVERS.has(serverName)) return false;
+    return RETRIABLE_STATUS_CODES.has(code);
+}
+
+/* ------------------------------------------------------------------- *
+ * Circuit breaker (slow / failing upstreams)
+ * ------------------------------------------------------------------- */
+
+interface BreakerState {
+    failures: number;
+    openUntil: number;
+}
+
+const BREAKER_THRESHOLD = 3; // consecutive timeouts before tripping
+const BREAKER_COOLDOWN_MS = 60_000; // skip the server while open
+const breakers = new Map<string, BreakerState>();
+
+function isBreakerTrippingStatus(code: number | undefined): boolean {
+    // Network failure (0/undefined) or a gateway upstream-timeout (502/504).
+    return code === undefined || code === 0 || code === 502 || code === 504;
+}
+
+function breakerOpen(serverName: string): boolean {
+    if (!SLOW_UPSTREAM_SERVERS.has(serverName)) return false;
+    const state = breakers.get(serverName);
+    return !!state && state.openUntil > Date.now();
+}
+
+function recordBreakerResult(serverName: string, trippingFailure: boolean): void {
+    if (!SLOW_UPSTREAM_SERVERS.has(serverName)) return;
+    let state = breakers.get(serverName);
+    if (!state) {
+        state = { failures: 0, openUntil: 0 };
+        breakers.set(serverName, state);
+    }
+    if (trippingFailure) {
+        state.failures += 1;
+        if (state.failures >= BREAKER_THRESHOLD) {
+            state.openUntil = Date.now() + BREAKER_COOLDOWN_MS;
+            state.failures = 0;
+            console.warn(
+                `[mcpGateway] circuit opened for "${serverName}" after ${BREAKER_THRESHOLD} ` +
+                    `consecutive upstream timeouts; skipping calls for ${BREAKER_COOLDOWN_MS / 1000}s. ` +
+                    `(Cold symbols warm the server cache as a side effect, so subsequent loads recover.)`
+            );
+        }
+    } else {
+        state.failures = 0;
+        state.openUntil = 0;
+    }
+}
+
+/** Reset all circuit breakers — call at the start of a fresh scan. */
+export function resetMcpBreakers(): void {
+    breakers.clear();
 }
 
 function backoffMs(attempt: number): number {
@@ -138,16 +217,34 @@ async function postRpcOnce(
         sessionId,
     });
 
+    const timeoutMs = CALL_TIMEOUT_MS[serverName] ?? DEFAULT_CALL_TIMEOUT_MS;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
     let response: Response;
     try {
         response = await fetch(mcpUrl(serverName), {
             method: 'POST',
             headers,
             body,
+            signal: controller.signal,
         });
     } catch (err) {
-        logCtx.finish({ status: 0, ok: false, error: err });
+        const aborted = controller.signal.aborted;
+        logCtx.finish({
+            status: aborted ? 504 : 0,
+            ok: false,
+            error: aborted ? `aborted after ${timeoutMs}ms` : err,
+        });
+        if (aborted) {
+            throw createError({
+                statusCode: 504,
+                statusMessage: `MCP ${serverName} timed out after ${timeoutMs}ms`,
+            });
+        }
         throw err;
+    } finally {
+        clearTimeout(timer);
     }
 
     const responseText = await response.text();
@@ -203,7 +300,7 @@ async function postRpc(serverName: string, payload: Record<string, unknown>, ses
             return await postRpcOnce(serverName, payload, sessionId, attempt);
         } catch (err: any) {
             lastError = err;
-            if (attempt < MAX_ATTEMPTS && isRetriable(err)) {
+            if (attempt < MAX_ATTEMPTS && isRetriable(err, serverName)) {
                 const delay = backoffMs(attempt);
                 await sleep(delay);
                 continue;
@@ -287,12 +384,25 @@ async function ensureSession(serverName: string) {
     return sessionId;
 }
 
+export interface CallMcpToolOptions {
+    /** Skip the circuit breaker (used by background prewarm). */
+    bypassBreaker?: boolean;
+}
+
 export async function callMcpTool(
     serverName: string,
     toolName: string,
     args: Record<string, unknown>,
-    _event?: H3Event
+    _event?: H3Event,
+    opts: CallMcpToolOptions = {}
 ) {
+    if (!opts.bypassBreaker && breakerOpen(serverName)) {
+        throw createError({
+            statusCode: 503,
+            statusMessage: `MCP ${serverName} circuit open (upstream slow); call skipped`,
+        });
+    }
+
     const run = async (sessionId: string) =>
         postRpc(
             serverName,
@@ -323,8 +433,9 @@ export async function callMcpTool(
     await sem.acquire();
     try {
         const sessionId = await ensureSession(serverName);
+        let result;
         try {
-            return extractResult(await run(sessionId));
+            result = extractResult(await run(sessionId));
         } catch (error: any) {
             if (
                 String(error?.statusMessage || '').includes('session') ||
@@ -332,12 +443,49 @@ export async function callMcpTool(
             ) {
                 mcpSessionIds.delete(serverName);
                 const fresh = await ensureSession(serverName);
-                return extractResult(await run(fresh));
+                result = extractResult(await run(fresh));
+            } else {
+                throw error;
             }
-            throw error;
         }
+        recordBreakerResult(serverName, false);
+        return result;
+    } catch (error: any) {
+        const code = error?.statusCode ?? error?.status;
+        recordBreakerResult(serverName, isBreakerTrippingStatus(code));
+        throw error;
     } finally {
         sem.release();
+    }
+}
+
+/**
+ * Fire-and-forget warm-up for the `stocks` MCP. Cold symbols take ~60s for
+ * the upstream to compute, which exceeds the gateway's 30s timeout — so the
+ * first request 502s but the server still finishes and caches the result.
+ * Kicking these off early (and ignoring the inevitable cold-call 502s) means
+ * the actual market-signal lookups (and the next page load) hit a warm cache
+ * and return in seconds instead of timing out. Bounded concurrency keeps us
+ * within the stocks semaphore. Bypasses the circuit breaker on purpose: its
+ * whole job is to keep warming while the breaker protects the scoring path.
+ */
+export function prewarmStocks(companyNames: string[], event?: H3Event): void {
+    const unique = Array.from(
+        new Set(
+            companyNames
+                .map((n) => (typeof n === 'string' ? n.trim() : ''))
+                .filter((n) => n.length > 0)
+        )
+    );
+    for (const name of unique) {
+        // Detached on purpose — never await, never throw into the caller.
+        callMcpTool(
+            'stocks',
+            'get_daily_stock_prices',
+            { company_name: name, lookback_days: 45 },
+            event,
+            { bypassBreaker: true }
+        ).catch(() => undefined);
     }
 }
 
