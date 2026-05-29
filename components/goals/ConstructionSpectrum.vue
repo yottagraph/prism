@@ -23,18 +23,32 @@
             <div class="zone zone--balanced" title="Moderate: medium-horizon holdings" />
             <div class="zone zone--growth" title="Aggressive: long-horizon, high-growth holdings" />
 
-            <!-- Bucket markers -->
+            <!-- Bucket dots (fanned vertically when they cluster at the same risk) -->
             <div
-                v-for="bucket in buckets"
-                :key="bucket.id"
-                class="bucket-marker"
-                :style="markerStyle(bucket)"
-                :title="`${bucket.name}: avg risk score ${bucket.avgRiskScore}`"
-                @click="$emit('open', bucket.id)"
+                v-for="m in layout"
+                :key="m.id"
+                class="bucket-dot"
+                :style="dotStyle(m)"
+                :title="`${m.name}: avg risk score ${m.avgRiskScore}`"
+                @click="$emit('open', m.id)"
+            />
+        </div>
+
+        <!-- Label area: rows stagger to avoid overlap -->
+        <div class="label-area" :style="{ height: `${labelRows * 18 + 4}px` }">
+            <button
+                v-for="m in layout"
+                :key="`label-${m.id}`"
+                type="button"
+                class="bucket-label"
+                :class="labelAlignClass(m.pct)"
+                :style="labelStyle(m)"
+                :title="`${m.name}: avg risk score ${m.avgRiskScore}`"
+                @click="$emit('open', m.id)"
             >
-                <div class="marker-dot" :style="dotStyle(bucket)" />
-                <div class="marker-label text-caption">{{ bucket.name }}</div>
-            </div>
+                <span class="label-swatch" :style="{ background: m.color }" />
+                <span class="label-text">{{ m.name }}</span>
+            </button>
         </div>
 
         <!-- Sub-labels -->
@@ -57,9 +71,10 @@
 </template>
 
 <script setup lang="ts">
+    import { computed } from 'vue';
     import type { BucketCardViewModel } from './BucketCard.vue';
 
-    defineProps<{
+    const props = defineProps<{
         buckets: BucketCardViewModel[];
     }>();
 
@@ -67,30 +82,85 @@
         open: [bucketId: string];
     }>();
 
+    interface MarkerLayout {
+        id: string;
+        name: string;
+        avgRiskScore: number;
+        /** Horizontal position on the 0–100 axis, clamped to [5, 95]. */
+        pct: number;
+        /** Vertical lane assigned so close markers don't overlap. */
+        row: number;
+        color: string;
+    }
+
+    /** Minimum horizontal gap (in %) two labels need before they can share a row. */
+    const MIN_GAP_PCT = 22;
+
+    function colorFor(fitColor: string): string {
+        const token =
+            fitColor === 'success'
+                ? 'var(--v-theme-success)'
+                : fitColor === 'error'
+                  ? 'var(--v-theme-error)'
+                  : fitColor === 'warning'
+                    ? 'var(--v-theme-warning)'
+                    : 'var(--v-theme-primary)';
+        return `rgb(${token})`;
+    }
+
     /**
-     * Position the marker horizontally on the 0-100 axis.
-     * avgRiskScore: conservative~25, moderate~50, aggressive~75.
-     * We clamp to [5, 95] so labels always stay visible inside the track.
+     * Assign each bucket a horizontal position and a vertical row via a greedy
+     * sweep. Buckets that land too close horizontally get pushed to a lower row
+     * so their dots and labels never stack on top of each other.
      */
-    function markerStyle(bucket: BucketCardViewModel): Record<string, string> {
-        const pct = Math.min(95, Math.max(5, bucket.avgRiskScore));
+    const layout = computed<MarkerLayout[]>(() => {
+        const sorted = [...props.buckets].sort((a, b) => a.avgRiskScore - b.avgRiskScore);
+        // Tracks the rightmost occupied pct per row.
+        const rowEdges: number[] = [];
+        return sorted.map((bucket) => {
+            const pct = Math.min(95, Math.max(5, bucket.avgRiskScore));
+            let row = rowEdges.findIndex((edge) => pct - edge >= MIN_GAP_PCT);
+            if (row === -1) {
+                row = rowEdges.length;
+            }
+            rowEdges[row] = pct;
+            return {
+                id: bucket.id,
+                name: bucket.name,
+                avgRiskScore: bucket.avgRiskScore,
+                pct,
+                row,
+                color: colorFor(bucket.fitColor),
+            };
+        });
+    });
+
+    const labelRows = computed(() =>
+        layout.value.length === 0 ? 0 : Math.max(...layout.value.map((m) => m.row)) + 1
+    );
+
+    /** Fan dots vertically within the track so identical-risk buckets stay visible. */
+    function dotStyle(m: MarkerLayout): Record<string, string> {
+        const offset = (m.row - (labelRows.value - 1) / 2) * 11;
         return {
-            left: `${pct}%`,
+            left: `${m.pct}%`,
+            top: `calc(50% + ${offset}px)`,
+            background: m.color,
         };
     }
 
-    function dotStyle(bucket: BucketCardViewModel): Record<string, string> {
-        const color =
-            bucket.fitColor === 'success'
-                ? 'var(--v-theme-success)'
-                : bucket.fitColor === 'error'
-                  ? 'var(--v-theme-error)'
-                  : bucket.fitColor === 'warning'
-                    ? 'var(--v-theme-warning)'
-                    : 'var(--v-theme-primary)';
+    function labelStyle(m: MarkerLayout): Record<string, string> {
         return {
-            background: `rgb(${color})`,
+            left: `${m.pct}%`,
+            top: `${m.row * 18}px`,
         };
+    }
+
+    /** Keep edge labels from clipping the card. */
+    function labelAlignClass(pct: number): string {
+        if (pct <= 15) return 'align-start';
+        if (pct >= 85) return 'align-end';
+        return 'align-center';
     }
 </script>
 
@@ -110,7 +180,7 @@
 
     .spectrum-track {
         position: relative;
-        height: 56px;
+        height: 48px;
         border-radius: 6px;
         display: flex;
         overflow: visible;
@@ -138,42 +208,70 @@
         border-radius: 0 6px 6px 0;
     }
 
-    .bucket-marker {
+    .bucket-dot {
         position: absolute;
-        top: 0;
-        transform: translateX(-50%);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        cursor: pointer;
-        z-index: 1;
-        height: 100%;
-        justify-content: center;
-        gap: 4px;
-    }
-
-    .bucket-marker:hover .marker-label {
-        opacity: 1;
-    }
-
-    .marker-dot {
         width: 14px;
         height: 14px;
         border-radius: 50%;
-        border: 2px solid rgba(var(--v-theme-surface), 0.8);
+        border: 2px solid rgba(var(--v-theme-surface), 0.9);
         box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+        transform: translate(-50%, -50%);
+        cursor: pointer;
+        z-index: 1;
+        transition: transform 0.15s;
+    }
+
+    .bucket-dot:hover {
+        transform: translate(-50%, -50%) scale(1.25);
+        z-index: 2;
+    }
+
+    .label-area {
+        position: relative;
+        margin-top: 6px;
+    }
+
+    .bucket-label {
+        position: absolute;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 0;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        font-size: 10px;
+        line-height: 1.3;
+        color: rgba(var(--v-theme-on-surface), 0.85);
+        max-width: 120px;
+        white-space: nowrap;
+    }
+
+    .bucket-label.align-center {
+        transform: translateX(-50%);
+    }
+
+    .bucket-label.align-start {
+        transform: translateX(0);
+    }
+
+    .bucket-label.align-end {
+        transform: translateX(-100%);
+    }
+
+    .bucket-label:hover {
+        color: rgb(var(--v-theme-primary));
+    }
+
+    .label-swatch {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
         flex-shrink: 0;
     }
 
-    .marker-label {
-        white-space: nowrap;
-        max-width: 100px;
+    .label-text {
         overflow: hidden;
         text-overflow: ellipsis;
-        font-size: 10px;
-        opacity: 0.85;
-        text-align: center;
-        line-height: 1.2;
-        transition: opacity 0.15s;
     }
 </style>
