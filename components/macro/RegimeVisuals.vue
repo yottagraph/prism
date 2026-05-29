@@ -244,11 +244,28 @@
         if (inflation) {
             const tt = polyTooltip(inflation);
             tiles.push({
-                label: 'Elevated inflation',
+                label: 'Inflation outlook',
                 display: `${Math.round(inflation.value)}%`,
                 trend: inflation.trend,
                 colorClass: colorClass(inflation.macroScore),
                 pct: Math.min(inflation.value, 100),
+                sparkline: null,
+                source: 'polymarket',
+                tooltipTitle: tt.title,
+                tooltipDetail: tt.detail,
+            });
+        }
+
+        // --- Polymarket: Unemployment risk ---
+        const polyUnrate = findSignal(props.poly, 'unemployment');
+        if (polyUnrate) {
+            const tt = polyTooltip(polyUnrate);
+            tiles.push({
+                label: 'Unemp. risk',
+                display: `${Math.round(polyUnrate.value)}%`,
+                trend: polyUnrate.trend,
+                colorClass: colorClass(polyUnrate.macroScore),
+                pct: Math.min(polyUnrate.value, 100),
                 sparkline: null,
                 source: 'polymarket',
                 tooltipTitle: tt.title,

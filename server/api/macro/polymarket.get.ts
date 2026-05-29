@@ -85,13 +85,20 @@ const INDICATORS: IndicatorConfig[] = [
     },
     {
         label: 'Unemployment',
-        searchQueries: ['US unemployment rate 2026', 'unemployment rate above'],
-        slugIncludes: 'unemployment',
+        searchQueries: [
+            'will us unemployment rate exceed',
+            'us unemployment above 5 percent',
+            'us unemployment rate rise 2026',
+            'unemployment rate 2026 exceed',
+        ],
+        slugIncludes: 'unemploy',
+        slugExcludes: ['crypto', 'bitcoin', 'eth'],
         scoreDirection: 'lower_is_better',
     },
 ];
 
 let cachedSignals: { signals: MacroSignal[]; expiresAt: number } | null = null;
+// Cache is intentionally module-scoped; it resets on every server restart / HMR reload.
 const CACHE_TTL_MS = 60 * 60 * 1000;
 
 async function findCandidateSlug(
