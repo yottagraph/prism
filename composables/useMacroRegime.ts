@@ -49,14 +49,15 @@ function formatPct(value: number): string {
 export function useMacroRegime(): { regime: ReturnType<typeof computed<MacroRegime>> } {
     const { signals: fredSignals } = useFredMacroContext({ autoRefresh: false });
     const { signals: polySignals } = useMacroContext({ autoRefresh: false });
-    const { activePortfolio: active, scanStartedAt } = usePortfolio();
+    const { activePortfolio: active } = usePortfolio();
 
     const regime = computed<MacroRegime>(() => {
         const fred = fredSignals.value;
         const poly = polySignals.value;
 
-        // Only mark ready if a scan has actually been initiated AND data is loaded.
-        const ready = !!scanStartedAt.value && (fred.length > 0 || poly.length > 0);
+        // Ready as soon as signals are loaded, regardless of whether the scan
+        // was started in this session (signals persist across page loads via SSE).
+        const ready = fred.length > 0 || poly.length > 0;
 
         // --- Derive key indicators ---
         const recessionSignal = findSignal(poly, 'recession');

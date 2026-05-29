@@ -172,6 +172,12 @@ export interface MacroSignal {
     trend: 'up' | 'down' | 'flat';
     note: string;
     macroScore?: number; // -1..+1; positive = improving macro
+    /** ISO date string for Polymarket market resolution date */
+    endDate?: string;
+    /** FRED historical values (most recent N observations) */
+    history?: number[];
+    historyStart?: string | null;
+    historyEnd?: string | null;
 }
 
 export interface MacroContextOptions {

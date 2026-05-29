@@ -58,12 +58,20 @@ export default defineEventHandler(async (event) => {
     const polyList = formatSignals(body.poly ?? []);
     const tiltList = (body.sectorTilt ?? []).map((t) => `${t.label} (${t.count})`).join(', ');
 
-    const prompt = `You are a macro portfolio analyst writing a 2-3 sentence TL;DR for a risk dashboard. Write directly in plain prose — do NOT open with "The macro regime" or repeat the regime label as a phrase. Start immediately with the key rate/growth dynamic or the most important signal, weave in the supporting data points, and close with what it means for this portfolio's sector mix. Max 75 words. No bullet points, no headers, no preamble.
+    const prompt = `Write 2-3 plain sentences (max 75 words) explaining the current economic backdrop and what it means for this portfolio. Write the way Paul Krugman does in The New York Times: clear, accessible, grounded in the numbers but never jargon-heavy. A non-economist should fully understand it.
 
-Current regime classification: ${body.regimeLabel}
-Realized fundamentals (FRED): ${fredList || 'n/a'}
-Forward outlook, market-implied (Polymarket): ${polyList || 'n/a'}
-Portfolio sector mix across ${body.totalEntities} entities: ${tiltList || 'n/a'}`;
+Strict style rules:
+- Never use: "overweight", "underweight", "rate-sensitive", "risk assets", "macro regime", "tailwind", "headwind", or any Wall Street jargon.
+- Do NOT start the response with "The macro regime", a regime label, or "Based on".
+- Start with what is actually happening in the economy (jobs, prices, growth, rates) and what bettors/traders expect next.
+- End with one concrete sentence about how that affects this specific portfolio's companies.
+- Use plain numbers where helpful (e.g. "the Fed's benchmark rate sits at 5.3%", "odds of a recession this year sit around 20%").
+
+Data:
+Regime label (internal only, do NOT quote this): ${body.regimeLabel}
+Realized U.S. fundamentals (FRED): ${fredList || 'n/a'}
+Market-implied outlook (Polymarket prediction markets): ${polyList || 'n/a'}
+Portfolio: ${body.totalEntities} entities, sector mix: ${tiltList || 'n/a'}`;
 
     try {
         const result = await callGemini({

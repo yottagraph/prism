@@ -9,6 +9,7 @@ interface MacroSignal {
     trend: 'up' | 'down' | 'flat';
     note: string;
     macroScore?: number;
+    endDate?: string;
 }
 
 /**
@@ -220,6 +221,7 @@ async function fetchMacroSignal(event: any, config: IndicatorConfig): Promise<Ma
         probability = Math.min(1, Math.max(0, probability));
 
         const pct = Math.round(probability * 1000) / 10;
+        const rawEndDate = market.endDate || eventData.endDate || null;
         return {
             label: config.label,
             value: pct,
@@ -229,6 +231,7 @@ async function fetchMacroSignal(event: any, config: IndicatorConfig): Promise<Ma
             trend: deriveTrend(probability),
             note: market.question || eventData.title || candidate.result.title || config.label,
             macroScore: computeMacroScore(probability, config.scoreDirection),
+            endDate: rawEndDate ? rawEndDate.slice(0, 10) : undefined,
         };
     } catch {
         return null;

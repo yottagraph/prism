@@ -26,6 +26,18 @@
                             </v-btn>
                         </div>
                         <div ref="chatBody" class="chat-body pa-3">
+                            <v-alert
+                                v-if="agentUnavailable"
+                                type="warning"
+                                variant="tonal"
+                                density="comfortable"
+                                class="mb-3"
+                                icon="mdi-robot-off-outline"
+                            >
+                                No agent is deployed for this project yet. Deploy one with
+                                <code>/deploy_agent</code> or from the Broadchurch portal, then
+                                reload.
+                            </v-alert>
                             <div v-if="!chat.length" class="text-center text-medium-emphasis pa-8">
                                 <v-icon size="48" color="primary" class="mb-3">
                                     mdi-message-text-outline
@@ -294,6 +306,7 @@
     import { useAgentChat } from '~/composables/useAgentChat';
     import { useAgentPipeline } from '~/composables/useAgentPipeline';
     import { usePortfolio } from '~/composables/usePortfolio';
+    import { useTenantConfig } from '~/composables/useTenantConfig';
 
     const { activePortfolio: active, weights } = usePortfolio();
     const {
@@ -334,8 +347,23 @@
         'What macro signals should I worry about right now?',
     ];
 
-    onMounted(() => {
-        selectAgent('prism');
+    const { fetchConfig } = useTenantConfig();
+    const agentUnavailable = ref(false);
+
+    onMounted(async () => {
+        // The portal/authorize and Agent Engine routes are keyed by the
+        // deployed agent's engine_id — NOT a guessed name. Discover it from
+        // the tenant config instead of hardcoding an ID.
+        const cfg = await fetchConfig();
+        const agents = cfg?.agents ?? [];
+        // Prefer this project's agent by name, else fall back to the first.
+        const agent = agents.find((a) => a.name === 'prism_agent') ?? agents[0];
+
+        if (agent?.engine_id) {
+            selectAgent(agent.engine_id);
+        } else {
+            agentUnavailable.value = true;
+        }
     });
 
     // Pipeline updater bound to the current send — replaced on each new message.

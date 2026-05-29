@@ -22,8 +22,17 @@
             v-if="!regime.ready && !scanning"
             class="macro-empty flex-grow-1 d-flex flex-column align-center justify-center text-center pa-6"
         >
-            <v-icon size="32" class="mb-2 text-medium-emphasis">mdi-earth</v-icon>
-            <div class="text-body-2 text-medium-emphasis">Run a scan to load the macro regime.</div>
+            <v-progress-circular
+                v-if="hasScored"
+                size="28"
+                width="2"
+                indeterminate
+                class="mb-3 text-medium-emphasis"
+            />
+            <v-icon v-else size="32" class="mb-2 text-medium-emphasis">mdi-earth</v-icon>
+            <div class="text-body-2 text-medium-emphasis">
+                {{ hasScored ? 'Loading macro data…' : 'Run a scan to load the macro regime.' }}
+            </div>
         </div>
 
         <!-- Content shown once signals are loaded -->
@@ -52,7 +61,7 @@
 </template>
 
 <script setup lang="ts">
-    import { ref, watch } from 'vue';
+    import { computed, onMounted, ref, watch } from 'vue';
 
     import { useFredMacroContext, useMacroContext } from '~/composables/useRelationships';
     import { useMacroRegime } from '~/composables/useMacroRegime';
@@ -61,11 +70,24 @@
     const { signals: fredSignals, refresh: refreshFred } = useFredMacroContext();
     const { signals: polySignals, refresh: refreshPoly } = useMacroContext();
     const { regime } = useMacroRegime();
-    const { scanning, scanStartedAt, scanCompletedAt } = usePortfolio();
+    const { scanning, scanStartedAt, scanCompletedAt, activePortfolio } = usePortfolio();
+
+    const hasScored = computed(
+        () => activePortfolio.value?.entities?.some((e: any) => e.scores != null) ?? false
+    );
 
     const summaryText = ref('');
     const summaryLoading = ref(false);
     const summaryForKey = ref('');
+
+    // On mount: if the portfolio already has scored entities but signals haven't
+    // been loaded yet (e.g. page refresh after a previous scan), auto-load them.
+    onMounted(() => {
+        if (hasScored.value && fredSignals.value.length === 0) {
+            void refreshFred();
+            void refreshPoly();
+        }
+    });
 
     watch(
         scanStartedAt,
