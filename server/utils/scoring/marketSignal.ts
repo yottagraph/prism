@@ -220,6 +220,89 @@ export async function computeMarketSignalScore(
         }
     }
 
+    // Path C: Elemental financial_instrument OHLCV — mirrors the entity stock
+    // tab resolution so that coverage.stock reflects the same data source.
+    if (!hasRealData) {
+        try {
+            const schema = await getSchema(event);
+            const pidMap = normalizePidMap(schema);
+            const closePid = pidMap.close_price;
+            if (closePid) {
+                const relResult = await callMcpTool(
+                    'elemental',
+                    'elemental_get_related',
+                    {
+                        entity_id: { id_type: 'neid', id: neid },
+                        related_flavor: 'financial_instrument',
+                        direction: 'both',
+                        limit: 15,
+                    },
+                    event
+                );
+                const structured = extractMcpStructuredContent<{
+                    relationships?: Array<{ neid?: string; name?: string }>;
+                }>(relResult);
+                const rels = Array.isArray(structured?.relationships)
+                    ? (structured!.relationships as Array<{ neid?: string; name?: string }>)
+                    : [];
+
+                // Equity candidate filters (same regexes as stockProfile.ts)
+                const PREFIXED = /^(NYSE|NASDAQ|AMEX|NYSEARCA|BATS|OTC):\s*([A-Z][A-Z0-9\-\.]*)/i;
+                const BARE = /^\$?[A-Z]{1,5}(?:[.\-][A-Z]{1,2})?$/;
+                const ISIN = /^[A-Z]{2}[A-Z0-9]{9}\d$/;
+                const equities = rels.filter((r) => {
+                    if (!r.name || !r.neid) return false;
+                    if (ISIN.test(r.name)) return false;
+                    return PREFIXED.test(r.name) || BARE.test(r.name);
+                });
+
+                if (equities.length > 0) {
+                    const equityNeids = equities
+                        .slice(0, 8)
+                        .map((r) => r.neid)
+                        .filter((n): n is string => Boolean(n));
+                    const priceRows = await getPropertyValues(
+                        equityNeids,
+                        [closePid],
+                        false,
+                        event
+                    );
+                    const instrCount = new Map<string, number>();
+                    for (const row of priceRows) {
+                        if (
+                            row.eid &&
+                            String(row.pid) === closePid &&
+                            typeof row.value === 'number'
+                        ) {
+                            instrCount.set(row.eid, (instrCount.get(row.eid) || 0) + 1);
+                        }
+                    }
+                    const maxCount = instrCount.size > 0 ? Math.max(...instrCount.values()) : 0;
+                    if (maxCount >= 5) {
+                        hasRealData = true;
+                        priceCount = maxCount;
+                        const bestEid = [...instrCount.entries()].sort(
+                            (a, b) => b[1] - a[1]
+                        )[0]?.[0];
+                        const bestInstr = equities.find((r) => r.neid === bestEid);
+                        metrics.push({
+                            label: 'Price rows (Elemental)',
+                            value: String(maxCount),
+                        });
+                        findings.push({
+                            text: `Market price data available via Elemental instrument${
+                                bestInstr?.name ? ` ${bestInstr.name}` : ''
+                            } (${maxCount} close price observations).`,
+                            citations: [],
+                        });
+                    }
+                }
+            }
+        } catch (error) {
+            console.warn('[market signal] Elemental instrument fallback (Path C) failed', error);
+        }
+    }
+
     const result: MarketResult = {
         score,
         hasRealData,

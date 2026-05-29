@@ -624,11 +624,13 @@
     );
 
     // Auto-generate when the tab is opened (active flips to true).
+    // immediate: true ensures we run on first mount when the tab is already active.
     watch(
         () => props.active,
         (isActive) => {
             if (isActive) maybeAutoGenerate();
-        }
+        },
+        { immediate: true }
     );
 
     // Also trigger when scan data lands while the tab is already open.

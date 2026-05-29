@@ -4,6 +4,7 @@ import { getSchema, normalizePidMap, getPropertyValues, extractPropertyFacts } f
 import type { ElementalPropertyFact, ElementalSchema } from './elemental';
 import { callMcpTool, extractMcpStructuredContent } from './mcpGateway';
 import { getEntityQuads, isGalaxyEnabled, type GalaxyQuad } from './galaxy';
+import { normalizeArticleDate } from './newsSummary24h';
 
 export interface ContextEvent {
     eventType: string;
@@ -241,7 +242,7 @@ function extractArticlesFromQuads(quads: GalaxyQuad[]): ContextArticle[] {
     return articleQuads.map((q) => ({
         headline: null,
         source: null,
-        publishedDate: q.time || null,
+        publishedDate: normalizeArticleDate(q.time),
         sentiment: null,
         url: null,
         ref: null,
@@ -495,9 +496,11 @@ async function buildFromLegacy(
                   ? String(row.name)
                   : null,
             source: row?.properties?.source?.value ? String(row.properties.source.value) : null,
-            publishedDate: row?.properties?.published_date?.value
-                ? String(row.properties.published_date.value)
-                : null,
+            publishedDate: normalizeArticleDate(
+                row?.properties?.published_date?.value
+                    ? String(row.properties.published_date.value)
+                    : null
+            ),
             sentiment,
             url: row?.properties?.url?.value ? String(row.properties.url.value) : null,
             ref:

@@ -190,6 +190,31 @@ function rankInstrumentCandidates(items: RelatedInstrument[]): RelatedInstrument
     });
 }
 
+/**
+ * Score how well a ticker symbol matches a company name.
+ * Higher = better match. Used to prefer an issuer's own stock (e.g. "F" for
+ * Ford Motor Company) over a related-but-different ticker (e.g. "RIVN").
+ */
+function tickerMatchScore(ticker: string | null, companyName: string): number {
+    if (!ticker || !companyName) return 0;
+    const t = ticker.toUpperCase().replace(/[^A-Z]/g, '');
+    const words = companyName
+        .toUpperCase()
+        .replace(/[^A-Z\s]/g, '')
+        .split(/\s+/)
+        .filter(Boolean);
+    // Exact word match (e.g. "IBM" appears as a word in the company name)
+    if (words.some((w) => w === t)) return 100;
+    // Ticker is a prefix of a significant word (e.g. "F" prefixes "FORD")
+    if (words.some((w) => w.startsWith(t) && w.length >= t.length)) return 80;
+    // Ticker matches the acronym formed by the first letter of each word
+    const acronym = words.map((w) => w[0]).join('');
+    if (acronym === t || acronym.startsWith(t)) return 60;
+    // Ticker length >= 3 and is a substring of a word
+    if (t.length >= 3 && words.some((w) => w.includes(t))) return 30;
+    return 0;
+}
+
 function pickLatestStringFact(facts: ElementalPropertyFact[]): string | null {
     if (!facts.length) return null;
     const sorted = [...facts].sort((a, b) => {
@@ -400,14 +425,27 @@ export async function getStockEntityProfile(
                 if (typeof row.value !== 'number') continue;
                 countByEid.set(row.eid, (countByEid.get(row.eid) || 0) + 1);
             }
-            // Pick the candidate with the most close_price rows. Fall back to
-            // first-in-ranking if every candidate is empty.
+            // Pick the best candidate. Among those with close_price data,
+            // prefer the one whose ticker most closely matches the company name
+            // (e.g. prefer "F" for Ford over "RIVN" even if RIVN has more rows).
+            // Only fall back to pure row-count when name matching is a tie.
             primary =
-                equityCandidates
-                    .slice()
-                    .sort(
-                        (a, b) => (countByEid.get(b.neid) || 0) - (countByEid.get(a.neid) || 0)
-                    )[0] || null;
+                equityCandidates.slice().sort((a, b) => {
+                    const countA = countByEid.get(a.neid) || 0;
+                    const countB = countByEid.get(b.neid) || 0;
+                    // Prefer candidates that actually have price data
+                    const hasA = countA > 0 ? 1 : 0;
+                    const hasB = countB > 0 ? 1 : 0;
+                    if (hasA !== hasB) return hasB - hasA;
+                    // Among equals, prefer the one whose ticker matches the company name
+                    const { ticker: tA } = parseInstrumentName(a.name);
+                    const { ticker: tB } = parseInstrumentName(b.name);
+                    const scoreA = tickerMatchScore(tA, entityName);
+                    const scoreB = tickerMatchScore(tB, entityName);
+                    if (scoreA !== scoreB) return scoreB - scoreA;
+                    // Final tiebreak: most price rows
+                    return countB - countA;
+                })[0] || null;
             // Build a tiny seed series from the probe so we can keep going
             // without a second roundtrip if there's data.
             if (primary && (countByEid.get(primary.neid) || 0) > 0) {

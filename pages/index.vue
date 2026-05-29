@@ -167,16 +167,16 @@
                     />
                 </v-window-item>
                 <v-window-item value="fhs" style="min-height: 400px">
-                    <FhsTable v-if="active" :entities="sortedEntities" :loading="scanning" />
+                    <MonitorFhsTable v-if="active" :entities="sortedEntities" :loading="scanning" />
                 </v-window-item>
                 <v-window-item value="ers" style="min-height: 400px">
-                    <ErsTable v-if="active" :entities="sortedEntities" :loading="scanning" />
+                    <MonitorErsTable v-if="active" :entities="sortedEntities" :loading="scanning" />
                 </v-window-item>
                 <v-window-item value="acs" style="min-height: 400px">
-                    <AcsTable v-if="active" :entities="sortedEntities" :loading="scanning" />
+                    <MonitorAcsTable v-if="active" :entities="sortedEntities" :loading="scanning" />
                 </v-window-item>
                 <v-window-item value="summary" style="min-height: 600px">
-                    <PortfolioSummaryTab
+                    <SummaryPortfolioSummaryTab
                         v-if="active"
                         :entities="sortedEntities"
                         :portfolio-id="active.id"
@@ -197,8 +197,6 @@
                     </div>
                 </v-window-item>
             </v-window>
-
-            <AgentActivityFeed :entries="activity" class="mt-3" />
         </div>
 
         <v-dialog v-model="newPortfolioOpen" max-width="540">
@@ -258,7 +256,7 @@
         saveAssessment,
     } = usePortfolio();
 
-    const { runPipeline, activity, pushActivity } = useAgentPipeline();
+    const { runPipeline, pushActivity } = useAgentPipeline();
 
     // Pre-warm the relationship universe so /relationships loads instantly after a scan.
     useRelationships(active, scanning);

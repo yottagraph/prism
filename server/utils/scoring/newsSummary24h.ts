@@ -28,12 +28,37 @@ export interface NewsSummary24hResult {
     detail: LensDetail;
 }
 
+/**
+ * Normalize a raw date string to something Date.parse() can handle.
+ * Handles ISO 8601, "YYYY-MM-DD HH:MM:SS", date-only strings, and numeric
+ * epoch values (seconds or milliseconds from Galaxy q.time).
+ */
+export function normalizeArticleDate(raw: string | null | undefined): string | null {
+    if (!raw) return null;
+    const s = String(raw).trim();
+    if (!s) return null;
+    // Numeric epoch — could be seconds or milliseconds
+    const numeric = Number(s);
+    if (Number.isFinite(numeric) && numeric > 0) {
+        // Heuristic: anything < 2e10 is seconds, otherwise ms
+        const ms = numeric < 2e10 ? numeric * 1000 : numeric;
+        return new Date(ms).toISOString();
+    }
+    // "YYYY-MM-DD HH:MM:SS" → ISO (replace space with T)
+    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(s)) {
+        return s.replace(' ', 'T');
+    }
+    // Already ISO or date-only — return as-is
+    return s;
+}
+
 function classifyActivity(
     ratio: number | null,
     sentiment: number | null,
-    dailyAvg: number | null
+    mentions30d: number
 ): ActivityLabel {
-    if (dailyAvg != null && dailyAvg < 1) return 'insufficient_data';
+    // Only flag as "low volume" when there are genuinely zero mentions in 30d
+    if (mentions30d === 0) return 'insufficient_data';
     if (ratio == null || sentiment == null) return 'normal';
     if (ratio > 3 && sentiment > 0.15) return 'high_positive';
     if (ratio > 3 && sentiment < -0.15) return 'high_negative';
@@ -56,6 +81,7 @@ export async function computeNewsSummary24h(
 
     let hasRealData = false;
     let mentionCount24h = 0;
+    let mentions30d = 0;
     let sentimentAvg30d: number | null = null;
     let mentionDailyAvg30d: number | null = null;
     let mentionRatioToday: number | null = null;
@@ -121,10 +147,9 @@ export async function computeNewsSummary24h(
             const nowMs = Date.now();
             const since24h = nowMs - 24 * 60 * 60 * 1000;
             const since30d = nowMs - 30 * 24 * 60 * 60 * 1000;
-            let mentions30d = 0;
             articleRows.forEach((row) => {
-                const published = row.publishedDate ?? '';
-                const ts = Date.parse(published);
+                const normalized = normalizeArticleDate(row.publishedDate);
+                const ts = normalized ? Date.parse(normalized) : NaN;
                 if (!Number.isFinite(ts)) return;
                 if (ts >= since30d) {
                     mentions30d += 1;
@@ -156,11 +181,7 @@ export async function computeNewsSummary24h(
         console.warn('[news summary 24h] failed', error);
     }
 
-    const mentionRatioLabel = classifyActivity(
-        mentionRatioToday,
-        sentimentAvg30d,
-        mentionDailyAvg30d
-    );
+    const mentionRatioLabel = classifyActivity(mentionRatioToday, sentimentAvg30d, mentions30d);
     const sentimentTrend =
         sentimentAvg30d == null
             ? null

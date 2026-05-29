@@ -10,12 +10,9 @@
                             class="signal-tile"
                             :class="{ 'poly-tile': tile.source === 'polymarket' }"
                         >
-                            <!-- Row 1: label + source badge -->
+                            <!-- Row 1: label only -->
                             <div class="tile-header">
                                 <span class="tile-label">{{ tile.label }}</span>
-                                <span v-if="tile.source === 'polymarket'" class="poly-badge"
-                                    >PM</span
-                                >
                             </div>
 
                             <!-- Row 2: value (left) + trend icon (right) — baseline-aligned -->
@@ -70,6 +67,8 @@
                                 </svg>
                                 <div v-else class="tile-bar-placeholder" />
                             </div>
+                            <!-- PM badge — absolutely anchored bottom-right -->
+                            <span v-if="tile.source === 'polymarket'" class="poly-badge">PM</span>
                         </div>
                     </template>
                     <!-- Tooltip content -->
@@ -335,12 +334,13 @@
         display: grid;
         grid-template-rows: auto auto 14px;
         gap: 3px;
-        padding: 7px 10px;
+        padding: 7px 10px 12px; /* extra bottom padding for the PM badge */
         border-radius: 7px;
         background: rgba(var(--v-theme-surface-variant), 0.45);
         border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
         cursor: default;
-        min-width: 0; /* allow shrinking inside grid */
+        min-width: 0;
+        position: relative;
     }
 
     .poly-tile {
@@ -365,15 +365,17 @@
     }
 
     .poly-badge {
-        flex-shrink: 0;
-        font-size: 0.58rem;
+        position: absolute;
+        bottom: 4px;
+        right: 6px;
+        font-size: 0.55rem;
         font-weight: 700;
         letter-spacing: 0.05em;
-        color: rgba(var(--v-theme-primary), 0.9);
-        background: rgba(var(--v-theme-primary), 0.14);
+        color: rgba(var(--v-theme-primary), 0.85);
+        background: rgba(var(--v-theme-primary), 0.12);
         border-radius: 3px;
-        padding: 0 3px;
-        line-height: 1.5;
+        padding: 1px 4px;
+        line-height: 1.4;
     }
 
     /* Row 2: value + trend — baseline aligned, trend always right */
