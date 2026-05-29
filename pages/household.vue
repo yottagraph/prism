@@ -1,5 +1,6 @@
 <template>
     <div class="d-flex flex-column fill-height">
+        <!-- ── Header ──────────────────────────────────────────────── -->
         <div class="flex-shrink-0 pa-4 page-header">
             <div class="d-flex align-center" style="gap: 8px">
                 <v-icon size="large" color="primary" class="mr-2">mdi-home-account</v-icon>
@@ -12,7 +13,6 @@
                     </p>
                 </div>
                 <v-spacer />
-                <!-- User switcher -->
                 <v-select
                     v-model="activeUserIdModel"
                     :items="userOptions"
@@ -31,7 +31,7 @@
                 />
             </div>
 
-            <!-- User profile summary -->
+            <!-- Profile chips -->
             <div v-if="activeUser" class="d-flex align-center mt-3" style="gap: 12px">
                 <v-chip size="small" variant="tonal" color="default">
                     Age {{ activeUser.age }}
@@ -57,141 +57,164 @@
                 <nuxt-link to="/">Goal Bucket</nuxt-link> to create one.
             </v-alert>
 
-            <!-- Summary strip -->
+            <!-- ── Two-question hero band ──────────────────────────── -->
             <v-row v-if="buckets.length > 0" dense class="mb-4">
-                <v-col cols="6" sm="3">
-                    <v-card variant="tonal" color="primary" class="pa-3 text-center">
-                        <div class="text-h5 font-weight-bold">{{ buckets.length }}</div>
-                        <div class="text-caption text-medium-emphasis">Buckets</div>
-                    </v-card>
-                </v-col>
-                <v-col cols="6" sm="3">
-                    <v-card variant="tonal" :color="summaryFitColor" class="pa-3 text-center">
-                        <div class="text-h5 font-weight-bold">{{ appropriateBuckets }}</div>
-                        <div class="text-caption text-medium-emphasis">On track</div>
-                    </v-card>
-                </v-col>
-                <v-col cols="6" sm="3">
-                    <v-card variant="tonal" color="error" class="pa-3 text-center">
-                        <div class="text-h5 font-weight-bold">{{ aggressiveBuckets }}</div>
-                        <div class="text-caption text-medium-emphasis">Too aggressive</div>
-                    </v-card>
-                </v-col>
-                <v-col cols="6" sm="3">
-                    <v-card variant="tonal" color="default" class="pa-3 text-center">
-                        <div class="text-h5 font-weight-bold">{{ totalHoldings }}</div>
-                        <div class="text-caption text-medium-emphasis">Total holdings</div>
-                    </v-card>
-                </v-col>
-            </v-row>
-
-            <!-- Bucket cards -->
-            <v-row dense class="mb-4">
-                <v-col v-for="bucket in bucketCards" :key="bucket.id" cols="12" md="6" xl="4">
-                    <v-card variant="outlined" class="bucket-card pa-4 fill-height">
+                <!-- Question A: Are the goals built right? -->
+                <v-col cols="12" md="6">
+                    <v-card
+                        variant="tonal"
+                        :color="summaryFitColor"
+                        class="hero-panel pa-4 fill-height"
+                    >
                         <div class="d-flex align-center mb-2">
-                            <v-icon
-                                :color="priorityColor(bucket.priority)"
-                                class="mr-2"
-                                size="small"
-                            >
-                                mdi-target
-                            </v-icon>
+                            <v-icon size="small" class="mr-2">mdi-bullseye-arrow</v-icon>
                             <span class="text-subtitle-2 font-weight-medium">
-                                {{ bucket.name }}
+                                Are the goals built right?
                             </span>
+                        </div>
+                        <div class="d-flex align-center" style="gap: 16px">
+                            <div class="text-center">
+                                <div class="text-h4 font-weight-bold">
+                                    {{ appropriateBuckets }}
+                                </div>
+                                <div class="text-caption">On track</div>
+                            </div>
+                            <div v-if="aggressiveBuckets > 0" class="text-center">
+                                <div class="text-h4 font-weight-bold text-error">
+                                    {{ aggressiveBuckets }}
+                                </div>
+                                <div class="text-caption">Too aggressive</div>
+                            </div>
+                            <div v-if="conservativeBuckets > 0" class="text-center">
+                                <div class="text-h4 font-weight-bold text-warning">
+                                    {{ conservativeBuckets }}
+                                </div>
+                                <div class="text-caption">Too conservative</div>
+                            </div>
                             <v-spacer />
-                            <v-chip
-                                v-if="bucket.fit"
-                                :color="bucket.fitColor"
-                                size="x-small"
-                                variant="flat"
-                                label
-                            >
-                                {{ bucket.fitLabel }}
-                            </v-chip>
-                            <span v-else class="text-caption text-medium-emphasis"
-                                >No goal set</span
-                            >
+                            <div class="text-right">
+                                <div class="text-caption text-medium-emphasis">
+                                    {{ buckets.length }} bucket{{ buckets.length !== 1 ? 's' : '' }}
+                                </div>
+                                <div class="text-caption text-medium-emphasis">
+                                    {{ totalHoldings }} holdings
+                                </div>
+                            </div>
                         </div>
-
-                        <div v-if="bucket.goal" class="mb-2 d-flex align-center" style="gap: 8px">
-                            <v-chip size="x-small" variant="tonal" color="default">
-                                {{ bucket.goal.horizonYears }}y horizon
-                            </v-chip>
-                            <v-chip
-                                v-if="bucket.goal.priority"
-                                size="x-small"
-                                variant="tonal"
-                                :color="priorityColor(bucket.goal.priority)"
-                            >
-                                {{ bucket.goal.priority }}
-                            </v-chip>
-                        </div>
-
-                        <p v-if="bucket.fit" class="text-body-2 text-medium-emphasis mb-3">
-                            {{ bucket.fit.reason }}
+                        <p class="text-caption text-medium-emphasis mt-3 mb-0">
+                            Horizon fit checks whether each bucket's actual risk profile matches its
+                            investment timeline and your stated tolerance.
                         </p>
+                    </v-card>
+                </v-col>
 
-                        <div v-if="bucket.fit" class="d-flex align-center mb-2" style="gap: 8px">
-                            <span class="text-caption text-medium-emphasis">Actual:</span>
-                            <v-chip
-                                :color="bandColor(bucket.fit.actualBand)"
-                                size="x-small"
-                                variant="tonal"
-                            >
-                                {{ capitalize(bucket.fit.actualBand) }}
-                            </v-chip>
-                            <v-icon size="x-small">mdi-arrow-right</v-icon>
-                            <span class="text-caption text-medium-emphasis">Target:</span>
-                            <v-chip
-                                :color="bandColor(bucket.fit.targetBand)"
-                                size="x-small"
-                                variant="tonal"
-                            >
-                                {{ capitalize(bucket.fit.targetBand) }}
-                            </v-chip>
-                        </div>
-
-                        <div class="d-flex align-center mt-auto pt-2">
-                            <span class="text-caption text-medium-emphasis">
-                                {{ bucket.entityCount }} holding{{
-                                    bucket.entityCount !== 1 ? 's' : ''
-                                }}
+                <!-- Question B: Are the holdings healthy? -->
+                <v-col cols="12" md="6">
+                    <v-card
+                        variant="tonal"
+                        :color="healthPanelColor"
+                        class="hero-panel pa-4 fill-height"
+                    >
+                        <div class="d-flex align-center mb-2">
+                            <v-icon size="small" class="mr-2">mdi-shield-search</v-icon>
+                            <span class="text-subtitle-2 font-weight-medium">
+                                Are the holdings healthy?
                             </span>
-                            <v-spacer />
-                            <v-btn
-                                size="x-small"
-                                variant="text"
-                                :to="'/'"
-                                @click="setActivePortfolio(bucket.id)"
-                            >
-                                Open
-                                <v-icon size="x-small" end>mdi-arrow-right</v-icon>
-                            </v-btn>
                         </div>
 
-                        <!-- Overlap indicator -->
+                        <!-- Not scanned yet -->
                         <div
-                            v-if="bucket.overlappingNames.length > 0"
-                            class="mt-2 pa-2 rounded bg-warning-lighten-5"
+                            v-if="hhHealth.scanned === 0"
+                            class="d-flex align-center"
+                            style="gap: 8px"
                         >
-                            <span class="text-caption text-warning-darken-2">
-                                <v-icon size="x-small" color="warning">mdi-alert-outline</v-icon>
-                                Also in other buckets:
-                                {{ bucket.overlappingNames.slice(0, 3).join(', ')
-                                }}{{
-                                    bucket.overlappingNames.length > 3
-                                        ? ` +${bucket.overlappingNames.length - 3}`
-                                        : ''
-                                }}
+                            <v-icon size="20" color="medium-emphasis">mdi-radar</v-icon>
+                            <span class="text-body-2 text-medium-emphasis">
+                                Open a bucket and run a scan to assess holdings.
                             </span>
                         </div>
+
+                        <!-- Scanned -->
+                        <template v-else>
+                            <div class="d-flex align-center" style="gap: 16px">
+                                <div class="text-center">
+                                    <div class="text-h4 font-weight-bold">
+                                        {{ hhHealth.scanned }}
+                                    </div>
+                                    <div class="text-caption">Scored</div>
+                                </div>
+                                <div v-if="hhHealth.needsAttention > 0" class="text-center">
+                                    <div class="text-h4 font-weight-bold text-warning">
+                                        {{ hhHealth.needsAttention }}
+                                    </div>
+                                    <div class="text-caption">Need attention</div>
+                                </div>
+                                <div v-else class="text-center">
+                                    <v-icon size="32" color="success"
+                                        >mdi-check-circle-outline</v-icon
+                                    >
+                                    <div class="text-caption">All clear</div>
+                                </div>
+                                <v-spacer />
+                                <div class="text-right">
+                                    <v-chip
+                                        v-if="hhHealth.worstTier"
+                                        :color="tierColor(hhHealth.worstTier)"
+                                        size="small"
+                                        label
+                                        variant="flat"
+                                    >
+                                        {{ tierLabel(hhHealth.worstTier) }} risk
+                                    </v-chip>
+                                    <div class="text-caption text-medium-emphasis mt-1">
+                                        Worst across portfolio
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Tier bar -->
+                            <div class="d-flex align-center mt-3" style="gap: 6px; flex-wrap: wrap">
+                                <template v-for="tier in ALL_TIERS" :key="tier">
+                                    <span v-if="hhHealth.tierCounts[tier] > 0" class="text-caption">
+                                        {{ hhHealth.tierCounts[tier] }} {{ tier }}
+                                    </span>
+                                </template>
+                            </div>
+                        </template>
+
+                        <p class="text-caption text-medium-emphasis mt-3 mb-0">
+                            Powered by multi-source fusion: SEC filings · news pressure · market
+                            signals · sanctions screening.
+                        </p>
                     </v-card>
                 </v-col>
             </v-row>
 
-            <!-- Cross-bucket concentration -->
+            <!-- ── Construction spectrum ───────────────────────────── -->
+            <GoalsConstructionSpectrum
+                v-if="buckets.length > 0"
+                :buckets="spectrumBuckets"
+                class="mb-4"
+                @open="onOpenBucket"
+            />
+
+            <!-- ── Bucket cards ────────────────────────────────────── -->
+            <v-row dense class="mb-4">
+                <v-col
+                    v-for="card in bucketCardsWithOverlap"
+                    :key="card.id"
+                    cols="12"
+                    md="6"
+                    xl="4"
+                >
+                    <GoalsBucketCard
+                        :card="card"
+                        :health="bucketHealthMap[card.id] ?? emptyHealth"
+                        @open="onOpenBucket"
+                    />
+                </v-col>
+            </v-row>
+
+            <!-- ── Cross-bucket concentration ─────────────────────── -->
             <template v-if="duplicateHoldings.length > 0">
                 <h2 class="text-subtitle-1 font-weight-medium mb-2">
                     <v-icon size="small" class="mr-1">mdi-content-copy</v-icon>
@@ -238,14 +261,20 @@
 
 <script setup lang="ts">
     import { computed, ref } from 'vue';
+    import { useRouter } from 'vue-router';
     import { useUser } from '~/composables/useUser';
     import { usePortfolio } from '~/composables/usePortfolio';
+    import type { RiskTier } from '~/composables/useFusedScoring';
+    import { tierColor, tierLabel } from '~/composables/useFusedScoring';
     import type { RiskBand, HorizonFit } from '~/utils/goals/riskFit';
     import { bucketRiskProfile, horizonFit, VERDICT_COLORS } from '~/utils/goals/riskFit';
     import type { MacroFactorBucket } from '~/utils/macro/sectorFactors';
+    import { bucketHoldingsHealth, householdHoldingsHealth } from '~/utils/goals/holdingsHealth';
+    import type { BucketHoldingsHealth } from '~/utils/goals/holdingsHealth';
+    import type { BucketCardViewModel } from '~/components/goals/BucketCard.vue';
 
+    const router = useRouter();
     const { users, activeUserId, activeUser, setActiveUser, updateUser, markOnboarded } = useUser();
-
     const { portfolios, setActivePortfolio } = usePortfolio(activeUserId);
 
     const onboardingOpen = ref(false);
@@ -270,8 +299,10 @@
 
     const buckets = computed(() => portfolios.value);
 
-    // Per-bucket risk fit
-    const bucketCards = computed(() => {
+    const ALL_TIERS: RiskTier[] = ['critical', 'high', 'medium', 'low'];
+
+    // ── Per-bucket risk fit + health (one pass) ─────────────────────
+    const enrichedBuckets = computed(() => {
         if (!activeUser.value) return [];
         return buckets.value.map((bucket) => {
             const holdingVols = bucket.entities.map(
@@ -294,6 +325,7 @@
                           bucket.goal.purpose
                       )
                     : null;
+            const health = bucketHoldingsHealth(bucket.entities);
 
             return {
                 id: bucket.id,
@@ -310,15 +342,16 @@
                           : 'Too conservative'
                     : null,
                 fitColor: fit ? VERDICT_COLORS[fit.verdict] : 'default',
-                overlappingNames: [] as string[], // filled below
+                overlappingNames: [] as string[],
+                avgRiskScore: profile.avgScore,
+                health,
             };
         });
     });
 
-    // Fill overlap info
-    const bucketCardsWithOverlap = computed(() => {
-        const cards = bucketCards.value;
-        // Build a map: resolved name -> buckets containing it
+    // Fill overlap info (fixes the existing bug: was iterating bucketCards, not with-overlap)
+    const bucketCardsWithOverlap = computed((): BucketCardViewModel[] => {
+        const cards = enrichedBuckets.value;
         const nameMap = new Map<string, string[]>();
         for (const card of cards) {
             const bucket = buckets.value.find((b) => b.id === card.id);
@@ -338,19 +371,48 @@
         });
     });
 
-    // Summary stats
+    // Map bucketId -> health for BucketCard prop
+    const bucketHealthMap = computed((): Record<string, BucketHoldingsHealth> => {
+        const map: Record<string, BucketHoldingsHealth> = {};
+        for (const e of enrichedBuckets.value) {
+            map[e.id] = e.health;
+        }
+        return map;
+    });
+
+    // Spectrum view-model (shape required by ConstructionSpectrum)
+    const spectrumBuckets = computed(() => bucketCardsWithOverlap.value);
+
+    // Household-level health rollup
+    const hhHealth = computed(() => householdHoldingsHealth(buckets.value));
+
+    // Hero band — Dimension A stats
     const appropriateBuckets = computed(
-        () => bucketCardsWithOverlap.value.filter((c) => c.fit?.verdict === 'appropriate').length
+        () => enrichedBuckets.value.filter((c) => c.fit?.verdict === 'appropriate').length
     );
     const aggressiveBuckets = computed(
-        () => bucketCardsWithOverlap.value.filter((c) => c.fit?.verdict === 'too_aggressive').length
+        () => enrichedBuckets.value.filter((c) => c.fit?.verdict === 'too_aggressive').length
+    );
+    const conservativeBuckets = computed(
+        () => enrichedBuckets.value.filter((c) => c.fit?.verdict === 'too_conservative').length
     );
     const totalHoldings = computed(() => buckets.value.reduce((s, b) => s + b.entities.length, 0));
+
     const summaryFitColor = computed(() =>
-        appropriateBuckets.value === buckets.value.filter((b) => b.goal).length
-            ? 'success'
-            : 'warning'
+        aggressiveBuckets.value > 0
+            ? 'error'
+            : conservativeBuckets.value > 0
+              ? 'warning'
+              : 'success'
     );
+
+    // Hero band — Dimension B color
+    const healthPanelColor = computed(() => {
+        if (hhHealth.value.scanned === 0) return 'default';
+        if (hhHealth.value.tierCounts.critical > 0) return 'error';
+        if (hhHealth.value.tierCounts.high > 0) return 'warning';
+        return 'success';
+    });
 
     // Cross-bucket duplicates
     const duplicateHoldings = computed(() => {
@@ -368,47 +430,38 @@
             .map(([name, bs]) => ({ name, buckets: bs }));
     });
 
-    function bandColor(band: RiskBand): string {
-        switch (band) {
-            case 'aggressive':
-                return 'error';
-            case 'moderate':
-                return 'warning';
-            case 'conservative':
-                return 'success';
-            default:
-                return 'default';
-        }
+    // Empty health sentinel for type safety before map hydrates
+    const emptyHealth: BucketHoldingsHealth = {
+        total: 0,
+        scanned: 0,
+        tierCounts: { critical: 0, high: 0, medium: 0, low: 0 },
+        worstTier: null,
+        needsAttention: 0,
+        avgFused: null,
+        lensWorst: { fhs: null, ers: null, acs: null },
+    };
+
+    function onOpenBucket(bucketId: string) {
+        setActivePortfolio(bucketId);
+        router.push('/');
     }
 
+    // Color helpers
     function toleranceColor(t: number): string {
         if (t <= 2) return 'success';
         if (t === 3) return 'warning';
         return 'error';
     }
-
-    function priorityColor(priority: string | null): string {
-        switch (priority) {
-            case 'essential':
-                return 'error';
-            case 'important':
-                return 'primary';
-            case 'aspirational':
-                return 'secondary';
-            default:
-                return 'default';
-        }
-    }
-
-    function capitalize(s: string): string {
-        return s.charAt(0).toUpperCase() + s.slice(1);
-    }
 </script>
 
 <style scoped>
-    .bucket-card {
-        border-radius: 8px;
-        display: flex;
-        flex-direction: column;
+    .page-header {
+        border-bottom: 1px solid rgba(var(--dynamic-fg-rgb), 0.05);
+        background: rgba(var(--dynamic-bg-rgb), 0.3);
+    }
+
+    .hero-panel {
+        border-radius: 10px;
+        min-height: 160px;
     }
 </style>

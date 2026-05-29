@@ -177,16 +177,135 @@
                 </v-expansion-panel>
             </v-expansion-panels>
 
-            <!-- Horizon Fit card — shown when the active bucket has a goal -->
-            <GoalsHorizonFitCard
-                v-if="active"
-                :goal="active.goal"
-                :user="activeUser"
-                :holding-vols="sortedEntities.map((e) => e.monitor?.stockVolatility30d ?? null)"
-                :holding-sectors="sortedEntities.map((e) => (e.monitor?.sector as any) ?? null)"
-                class="mb-3"
-                @edit-goal="goalEditorOpen = true"
-            />
+            <!-- Two-dimension strip: A) Horizon fit · B) Holdings health -->
+            <v-row v-if="active" dense class="mb-3 align-stretch">
+                <!-- Dimension A: Goal alignment -->
+                <v-col cols="12" md="6">
+                    <GoalsHorizonFitCard
+                        :goal="active.goal"
+                        :user="activeUser"
+                        :holding-vols="
+                            sortedEntities.map((e) => e.monitor?.stockVolatility30d ?? null)
+                        "
+                        :holding-sectors="
+                            sortedEntities.map((e) => (e.monitor?.sector as any) ?? null)
+                        "
+                        class="fill-height"
+                        @edit-goal="goalEditorOpen = true"
+                    />
+                </v-col>
+
+                <!-- Dimension B: Holdings health -->
+                <v-col cols="12" md="6">
+                    <v-card variant="outlined" class="pa-4 fill-height">
+                        <div class="d-flex align-center mb-3">
+                            <v-icon color="primary" class="mr-2" size="small">
+                                mdi-shield-search
+                            </v-icon>
+                            <span class="text-subtitle-2 font-weight-medium">Holdings Health</span>
+                            <v-spacer />
+                            <v-chip
+                                v-if="bucketHealth.worstTier"
+                                :color="tierColor(bucketHealth.worstTier)"
+                                size="small"
+                                label
+                                variant="flat"
+                            >
+                                {{ tierLabel(bucketHealth.worstTier) }} risk
+                            </v-chip>
+                        </div>
+
+                        <!-- Unscanned -->
+                        <div
+                            v-if="bucketHealth.scanned === 0"
+                            class="text-body-2 text-medium-emphasis"
+                        >
+                            Run a scan to assess holdings across SEC, news, market, and sanctions.
+                        </div>
+
+                        <!-- Scanned -->
+                        <template v-else>
+                            <div class="d-flex align-center mb-3" style="gap: 12px">
+                                <div class="text-center">
+                                    <div class="text-h5 font-weight-bold">
+                                        {{ bucketHealth.scanned }}
+                                    </div>
+                                    <div class="text-caption text-medium-emphasis">Scored</div>
+                                </div>
+                                <div v-if="bucketHealth.needsAttention > 0" class="text-center">
+                                    <div class="text-h5 font-weight-bold text-warning">
+                                        {{ bucketHealth.needsAttention }}
+                                    </div>
+                                    <div class="text-caption text-medium-emphasis">
+                                        Need attention
+                                    </div>
+                                </div>
+                                <div v-else class="d-flex align-center" style="gap: 4px">
+                                    <v-icon color="success" size="20">
+                                        mdi-check-circle-outline
+                                    </v-icon>
+                                    <span class="text-caption text-medium-emphasis">All clear</span>
+                                </div>
+                                <v-spacer />
+                                <div v-if="bucketHealth.avgFused !== null" class="text-right">
+                                    <div class="text-subtitle-2 font-weight-bold">
+                                        {{ bucketHealth.avgFused }}
+                                    </div>
+                                    <div class="text-caption text-medium-emphasis">Avg fused</div>
+                                </div>
+                            </div>
+
+                            <!-- Lens worst -->
+                            <div
+                                v-if="anyLensData"
+                                class="d-flex align-center"
+                                style="gap: 12px; flex-wrap: wrap"
+                            >
+                                <div
+                                    v-if="bucketHealth.lensWorst.fhs !== null"
+                                    class="lens-score-item"
+                                >
+                                    <span class="text-caption text-medium-emphasis">Solvency</span>
+                                    <span
+                                        class="text-caption font-weight-bold"
+                                        :class="`text-${tierColor(scoreToLabel(bucketHealth.lensWorst.fhs))}`"
+                                    >
+                                        {{ bucketHealth.lensWorst.fhs }}
+                                    </span>
+                                </div>
+                                <div
+                                    v-if="bucketHealth.lensWorst.ers !== null"
+                                    class="lens-score-item"
+                                >
+                                    <span class="text-caption text-medium-emphasis">Executive</span>
+                                    <span
+                                        class="text-caption font-weight-bold"
+                                        :class="`text-${tierColor(scoreToLabel(bucketHealth.lensWorst.ers))}`"
+                                    >
+                                        {{ bucketHealth.lensWorst.ers }}
+                                    </span>
+                                </div>
+                                <div
+                                    v-if="bucketHealth.lensWorst.acs !== null"
+                                    class="lens-score-item"
+                                >
+                                    <span class="text-caption text-medium-emphasis">Cyber/ACS</span>
+                                    <span
+                                        class="text-caption font-weight-bold"
+                                        :class="`text-${tierColor(scoreToLabel(bucketHealth.lensWorst.acs))}`"
+                                    >
+                                        {{ bucketHealth.lensWorst.acs }}
+                                    </span>
+                                </div>
+                            </div>
+                        </template>
+
+                        <p class="text-caption text-medium-emphasis mt-3 mb-0" style="opacity: 0.7">
+                            Multi-source fusion: SEC · news · market · sanctions
+                        </p>
+                    </v-card>
+                </v-col>
+            </v-row>
 
             <v-row dense class="mb-3 align-stretch">
                 <v-col cols="12" class="d-flex flex-column summary-col summary-col--20">
@@ -352,6 +471,8 @@
         ResolvedEntityInput,
     } from '~/composables/usePortfolio';
     import type { RiskTier } from '~/composables/useFusedScoring';
+    import { tierColor, tierLabel, scoreToLabel } from '~/composables/useFusedScoring';
+    import { bucketHoldingsHealth } from '~/utils/goals/holdingsHealth';
     import { usePortfolio } from '~/composables/usePortfolio';
     import { useUser } from '~/composables/useUser';
     import { useAgentPipeline } from '~/composables/useAgentPipeline';
@@ -451,6 +572,16 @@
 
     const allResolved = computed(
         () => !!active.value && active.value.entities.every((e) => e.scores && e.neid)
+    );
+
+    // ── Dimension B: holdings health for the active bucket ──────────
+    const bucketHealth = computed(() => bucketHoldingsHealth(active.value?.entities ?? []));
+
+    const anyLensData = computed(
+        () =>
+            bucketHealth.value.lensWorst.fhs !== null ||
+            bucketHealth.value.lensWorst.ers !== null ||
+            bucketHealth.value.lensWorst.acs !== null
     );
 
     const tierCounts = computed<Record<RiskTier, number>>(() => {
@@ -779,6 +910,13 @@
 
     .font-mono {
         font-family: var(--font-mono, ui-monospace, monospace);
+    }
+
+    .lens-score-item {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1px;
     }
 
     @media (min-width: 960px) {
