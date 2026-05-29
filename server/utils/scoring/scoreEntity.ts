@@ -404,6 +404,29 @@ export async function scoreEntity(
         fdic: auxCoverage.fdic,
     };
 
+    // Collect per-lens warnings to surface in the scan-details panel.
+    const warnings: string[] = [];
+    const isTimeout = (lens: {
+        hasRealData: boolean;
+        detail: { metrics: Array<{ label: string; value: string | number | null }> };
+    }) => !lens.hasRealData && lens.detail.metrics[0]?.value === 'timeout';
+
+    if (isTimeout(solvency))
+        warnings.push('FHS (solvency) timed out — SEC/FDIC data may be incomplete');
+    if (isTimeout(executive))
+        warnings.push('ERS (executive) timed out — leadership data may be incomplete');
+    if (isTimeout(news)) warnings.push('News pressure score timed out');
+    if (isTimeout(market))
+        warnings.push('Stock prices unavailable — market MCP did not respond in time');
+    if (isTimeout(eventPressure)) warnings.push('Event pressure timed out');
+    if (isTimeout(cikVelocity)) warnings.push('CIK velocity (EDGAR) timed out');
+    if (isTimeout(news24h)) warnings.push('24h news summary timed out');
+    if (!news24h.hasRealData && !isTimeout(news24h))
+        warnings.push('No article data found — entity may not be indexed for news');
+    if (news24h.mentionRatioLabel === 'insufficient_data')
+        warnings.push('News activity: low mention volume (<1 article/day avg over 30d)');
+    if (isTimeout(polymarket)) warnings.push('Polymarket data timed out');
+
     return {
         scores,
         drivers: deriveDriversFromLenses(lensDetails, subs),
@@ -415,6 +438,7 @@ export async function scoreEntity(
         }),
         confidenceLevel: confidence(scores),
         coverageDetail,
+        warnings: warnings.length > 0 ? warnings : undefined,
         coverage: {
             sec: solvency.hasRealData || executive.hasRealData,
             news: news.hasRealData || news24h.hasRealData,

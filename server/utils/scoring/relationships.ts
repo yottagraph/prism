@@ -56,23 +56,46 @@ function flavorToKind(flavor: string): NodeKind | null {
 function propertyKindHint(property: string): NodeKind | null {
     const p = property.toLowerCase();
     if (
-        p.includes('officer') || p.includes('director') || p.includes('board') ||
-        p.includes('executive') || p.includes('employ') || p.includes('trustee')
-    ) return 'person';
+        p.includes('officer') ||
+        p.includes('director') ||
+        p.includes('board') ||
+        p.includes('executive') ||
+        p.includes('employ') ||
+        p.includes('trustee')
+    )
+        return 'person';
     if (
-        p.includes('subsidiary') || p.includes('owned_by') || p.includes('beneficial_owner') ||
-        p.includes('affiliated') || p.includes('acqui') || p.includes('controls') ||
-        p.includes('traded_on') || p.includes('listed') || p.includes('exchange') ||
-        p.includes('shareholder') || p.includes('investor') || p.includes('owns')
-    ) return 'company';
+        p.includes('subsidiary') ||
+        p.includes('owned_by') ||
+        p.includes('beneficial_owner') ||
+        p.includes('affiliated') ||
+        p.includes('acqui') ||
+        p.includes('controls') ||
+        p.includes('traded_on') ||
+        p.includes('listed') ||
+        p.includes('exchange') ||
+        p.includes('shareholder') ||
+        p.includes('investor') ||
+        p.includes('owns')
+    )
+        return 'company';
     if (
-        p.includes('issued_by') || p.includes('lender') || p.includes('bond') ||
-        p.includes('loan') || p.includes('credit') || p.includes('debt')
-    ) return 'instrument';
+        p.includes('issued_by') ||
+        p.includes('lender') ||
+        p.includes('bond') ||
+        p.includes('loan') ||
+        p.includes('credit') ||
+        p.includes('debt')
+    )
+        return 'instrument';
     if (
-        p.includes('located_at') || p.includes('location') || p.includes('headquarter') ||
-        p.includes('registered_in') || p.includes('address')
-    ) return 'location';
+        p.includes('located_at') ||
+        p.includes('location') ||
+        p.includes('headquarter') ||
+        p.includes('registered_in') ||
+        p.includes('address')
+    )
+        return 'location';
     return null;
 }
 

@@ -17,30 +17,36 @@
             </v-chip>
         </div>
 
-        <!-- 2-3 sentence narrative summary (replaces the metric chip lanes) -->
-        <div class="flex-grow-1 d-flex flex-column">
+        <!-- Empty / awaiting state -->
+        <div
+            v-if="!regime.ready && !scanning"
+            class="macro-empty flex-grow-1 d-flex flex-column align-center justify-center text-center pa-6"
+        >
+            <v-icon size="32" class="mb-2 text-medium-emphasis">mdi-earth</v-icon>
+            <div class="text-body-2 text-medium-emphasis">Run a scan to load the macro regime.</div>
+        </div>
+
+        <!-- Content shown once signals are loaded -->
+        <div v-else class="flex-grow-1 d-flex flex-column" style="gap: 12px">
+            <!-- 2-3 sentence narrative -->
             <div v-if="summaryLoading" class="text-body-2 text-medium-emphasis d-flex align-center">
                 <v-progress-circular size="16" width="2" indeterminate class="mr-2" />
                 Synthesizing macro summary…
             </div>
-
-            <p v-else-if="summaryText" class="macro-summary text-body-1">
+            <p v-else-if="summaryText" class="macro-summary text-body-1 mb-0">
                 {{ summaryText }}
             </p>
-
-            <div
-                v-else
-                class="macro-empty flex-grow-1 d-flex flex-column align-center justify-center text-center pa-6"
-            >
-                <v-icon size="32" class="mb-2 text-medium-emphasis">mdi-earth</v-icon>
-                <div class="text-body-2 text-medium-emphasis">
-                    {{
-                        scanning
-                            ? 'Macro summary available once the scan completes.'
-                            : 'Run a scan to load the macro regime summary.'
-                    }}
-                </div>
+            <div v-else-if="scanning" class="text-body-2 text-medium-emphasis">
+                Macro summary available once the scan completes.
             </div>
+
+            <!-- Visual indicators (stat tiles + sector tilt) -->
+            <MacroRegimeVisuals
+                v-if="regime.ready"
+                :fred="fredSignals"
+                :poly="polySignals"
+                :regime="regime"
+            />
         </div>
     </v-card>
 </template>
@@ -59,12 +65,8 @@
 
     const summaryText = ref('');
     const summaryLoading = ref(false);
-    // Track what the summary was generated for so we don't re-fire needlessly.
     const summaryForKey = ref('');
 
-    // Pull the portfolio-wide macro signals once a scan begins so the regime
-    // and summary have data to work with. (The signals themselves are not shown
-    // as chips anymore — they feed the narrative below.)
     watch(
         scanStartedAt,
         (started) => {
@@ -78,7 +80,7 @@
         { immediate: true }
     );
 
-    async function fetchSummary() {
+    async function fetchSummary(retry = true) {
         const fred = fredSignals.value;
         const poly = polySignals.value;
         if (!fred.length && !poly.length) return;
@@ -86,7 +88,6 @@
         const sectorTilt = regime.value.sectorTilt;
         const totalEntities = sectorTilt.reduce((sum, t) => sum + t.count, 0);
 
-        // Cache key: regime + completion timestamp so each finished scan refreshes.
         const key = `${scanCompletedAt.value ?? 0}::${regime.value.label}`;
         if (summaryForKey.value === key) return;
         summaryForKey.value = key;
@@ -119,16 +120,18 @@
             });
             summaryText.value = res.summary ?? '';
         } catch {
-            // Fail silently — the empty state covers the no-summary case.
+            // Retry once after a short delay; on second failure stay silent so
+            // the visual indicators still render even without the paragraph.
             summaryText.value = '';
             summaryForKey.value = '';
+            if (retry) {
+                setTimeout(() => void fetchSummary(false), 8_000);
+            }
         } finally {
             summaryLoading.value = false;
         }
     }
 
-    // The Gemini summary should only be generated AFTER a scan completes, so it
-    // reflects the fully-scored portfolio rather than a half-finished run.
     watch(
         [scanCompletedAt, fredSignals, polySignals],
         ([completedAt]) => {

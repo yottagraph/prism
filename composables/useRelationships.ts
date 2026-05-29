@@ -168,6 +168,7 @@ export function useRelationships(
 export interface MacroSignal {
     label: string;
     value: number;
+    displayValue?: string;
     trend: 'up' | 'down' | 'flat';
     note: string;
     macroScore?: number; // -1..+1; positive = improving macro
@@ -188,12 +189,25 @@ function useMacroSignals(stateKey: string, endpoint: string, options: MacroConte
     const loading = ref(false);
 
     async function refresh() {
+        if (loading.value) return;
         loading.value = true;
         try {
             const res = await $fetch<MacroSignal[]>(endpoint);
-            signals.value = Array.isArray(res) ? res : [];
+            if (Array.isArray(res) && res.length > 0) {
+                signals.value = res;
+            }
+            // If the response is empty or malformed, keep the last good signals
+            // so the panel doesn't blank out on a transient failure.
         } catch {
-            signals.value = [];
+            // On error, keep whatever signals we had — retry once after 5s so a
+            // cold-start MCP doesn't permanently blank the macro panel.
+            if (signals.value.length === 0) {
+                setTimeout(() => {
+                    loading.value = false;
+                    void refresh();
+                }, 5_000);
+                return;
+            }
         } finally {
             loading.value = false;
         }

@@ -391,6 +391,7 @@ export interface ScoreComputationResult {
     coverage: SourceCoverage;
     coverageDetail: SourceCoverageDetail;
     lensDetails: Partial<Record<LensKey, LensDetail>>;
+    warnings?: string[];
     monitor?: MonitorEntitySignalsSummary &
         MonitorEntityNewsSummary &
         MonitorEntityStockSummary &

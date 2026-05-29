@@ -7,7 +7,11 @@
 <script setup lang="ts">
     const props = defineProps<{ value?: string | null }>();
 
-    const label = computed(() => (props.value ? props.value.replaceAll('_', ' ') : 'low data'));
+    const label = computed(() => {
+        if (!props.value) return 'low data';
+        if (props.value === 'insufficient_data') return 'low volume';
+        return props.value.replaceAll('_', ' ');
+    });
     const chipColor = computed(() => {
         const value = (props.value || '').toLowerCase();
         if (value.includes('high_negative') || value.includes('crisis')) return 'error';

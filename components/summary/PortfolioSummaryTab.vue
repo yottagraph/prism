@@ -424,6 +424,10 @@
         entities: EntityProp[];
         portfolioId: string;
         portfolioName: string;
+        /** True when the Summary tab is the active tab. */
+        active?: boolean;
+        /** Timestamp (ms) of the last completed scan, for cache staleness check. */
+        scanCompletedAt?: number | null;
         macro?: MacroProp;
         coverageDetail?: any;
     }>();
@@ -573,6 +577,33 @@
         'What coverage gaps might understate the risk?',
     ];
 
+    const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
+
+    /**
+     * Load a cached summary if one exists and is fresh enough, otherwise
+     * auto-generate when the tab becomes active and a scan has been run.
+     * "Fresh" means generated_at < 4h ago AND generated_at is AFTER the last
+     * scan completion (so a re-scan always produces a new briefing).
+     */
+    function maybeAutoGenerate() {
+        if (!hasScannedEntities.value || generating.value) return;
+
+        const newest = history.value[0];
+        if (newest) {
+            const age = Date.now() - new Date(newest.generated_at).getTime();
+            const scanTs = props.scanCompletedAt ?? 0;
+            const generatedTs = new Date(newest.generated_at).getTime();
+            const freshEnough = age < FOUR_HOURS_MS && generatedTs >= scanTs;
+            if (freshEnough) {
+                if (!currentSummary.value) loadHistoryItem(newest);
+                return;
+            }
+        }
+
+        // No fresh cache — auto-generate with defaults.
+        void generate(false);
+    }
+
     // --- Load history on portfolio change ---
     watch(
         () => props.portfolioId,
@@ -591,6 +622,19 @@
         },
         { immediate: true }
     );
+
+    // Auto-generate when the tab is opened (active flips to true).
+    watch(
+        () => props.active,
+        (isActive) => {
+            if (isActive) maybeAutoGenerate();
+        }
+    );
+
+    // Also trigger when scan data lands while the tab is already open.
+    watch(hasScannedEntities, (ready) => {
+        if (ready && props.active) maybeAutoGenerate();
+    });
 
     // --- Generate ---
     function seedGenerationSteps() {

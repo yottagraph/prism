@@ -415,6 +415,14 @@ export default defineEventHandler(async (event) => {
                                         entity: resolved.resolvedName,
                                         detail: `Scored fused risk ${scored.scores.fused}`,
                                     });
+                                    if (scored.warnings?.length) {
+                                        for (const w of scored.warnings) {
+                                            emit('status', {
+                                                phase: 'warning',
+                                                message: `${resolved.resolvedName}: ${w}`,
+                                            });
+                                        }
+                                    }
                                     result = { ...resolved, ...scored };
                                     coverage.sec += scored.coverage.sec ? 1 : 0;
                                     coverage.news += scored.coverage.news ? 1 : 0;

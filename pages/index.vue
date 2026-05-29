@@ -87,7 +87,7 @@
                             <span class="text-subtitle-2">Scan details</span>
                             <v-spacer />
                             <span class="text-caption text-medium-emphasis">
-                                {{ recentScanStatus.length }} latest updates
+                                {{ recentScanStatus.length }} events
                             </span>
                         </div>
                     </v-expansion-panel-title>
@@ -181,6 +181,8 @@
                         :entities="sortedEntities"
                         :portfolio-id="active.id"
                         :portfolio-name="active.name"
+                        :active="monitorTab === 'summary'"
+                        :scan-completed-at="scanCompletedAt"
                         :macro="{
                             regime: regime.label,
                             synthesis: regime.synthesis,
@@ -477,7 +479,7 @@
         return agg;
     });
 
-    const recentScanStatus = computed(() => scanStatusHistory.value.slice(-10).reverse());
+    const recentScanStatus = computed(() => scanStatusHistory.value.slice(-40).reverse());
     const nowMs = ref(Date.now());
     let clockTimer: ReturnType<typeof setInterval> | null = null;
 
