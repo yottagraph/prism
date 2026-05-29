@@ -21,6 +21,8 @@ export interface MarketResult {
     latestPriceDate: string | null;
     /** Ticker symbol resolved during market signal computation (Path B or C). */
     ticker?: string | null;
+    /** Annualized volatility % from Path B (null when MCP unavailable). */
+    annualizedVolPct?: number | null;
     detail: LensDetail;
 }
 
@@ -46,6 +48,7 @@ export async function computeMarketSignalScore(
     let earliestPriceDate: string | null = null;
     let latestPriceDate: string | null = null;
     let resolvedTicker: string | null = null;
+    let resolvedAnnualizedVolPct: number | null = null;
     const metrics: LensDetail['metrics'] = [];
     const findings: EvidenceItem[] = [];
 
@@ -183,6 +186,7 @@ export async function computeMarketSignalScore(
                           dayReturns.length
                         : 0;
                 const annualizedVolPct = Math.sqrt(variance) * Math.sqrt(252) * 100;
+                resolvedAnnualizedVolPct = annualizedVolPct;
 
                 hasRealData = true;
                 score = clampScore(
@@ -329,6 +333,7 @@ export async function computeMarketSignalScore(
         earliestPriceDate,
         latestPriceDate,
         ticker: resolvedTicker,
+        annualizedVolPct: resolvedAnnualizedVolPct,
         detail: {
             metrics: metrics.length
                 ? metrics

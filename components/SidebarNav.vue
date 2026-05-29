@@ -4,7 +4,7 @@
             <div class="brand-icon mr-2">P</div>
             <div>
                 <div class="brand-name">Prism</div>
-                <div class="brand-tag text-caption">Portfolio risk</div>
+                <div class="brand-tag text-caption">Goals-based investing</div>
             </div>
         </div>
         <v-divider />
@@ -37,10 +37,16 @@
 
     const items = [
         {
+            to: '/household',
+            icon: 'mdi-home-account',
+            title: 'Overview',
+            subtitle: 'All buckets, all goals',
+        },
+        {
             to: '/',
-            icon: 'mdi-view-dashboard-outline',
-            title: 'Portfolio',
-            subtitle: 'Ranked entities + scores',
+            icon: 'mdi-briefcase-variant-outline',
+            title: 'Goal Bucket',
+            subtitle: 'Holdings + horizon fit',
         },
         {
             to: '/relationships',

@@ -593,7 +593,7 @@ export async function scoreEntity(
                 market.detail.metrics.find((metric) => metric.label.toLowerCase().includes('rsi'))
                     ?.value ?? null,
             stockMacdSignal: null,
-            stockVolatility30d: null,
+            stockVolatility30d: market.annualizedVolPct ?? null,
             edgarTrend: cikVelocity.trend,
             edgarQoqPct: cikVelocity.qoqPct,
             edgarLatestMentions: cikVelocity.latestMentions,

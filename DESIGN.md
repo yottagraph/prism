@@ -2,20 +2,21 @@
 
 ## Vision
 
-# Portfolio Risk Monitoring Prototype - Product Requirements Document
+# Goals-Based Personal Investing Prototype - Product Requirements Document
 
 **Created:** 2026-05-19  
+**Updated:** 2026-05-29 (pivoted from institutional credit-risk to personal goals-based investing)  
 **Author:** Cursor + Product Team  
-**Status:** Draft  
-**App ID:** portfolio-risk  
-**Target Repo:** `portfolio-risk-prototype` (standalone sibling repo)  
-**Source Context Repo:** `my-DSERP-FSI`
+**Status:** Active  
+**App ID:** portfolio-risk
 
 ---
 
 ## 0. Document Purpose
 
-Define a build-ready product and engineering spec for a standalone demo app that shows how Elemental can power a portfolio risk monitoring workflow. The prototype demonstrates multi-source context fusion (SEC, news, stocks, prediction markets), agent-driven analytics, and relationship exploration across companies, people, instruments, and locations — all sourced from Elemental's knowledge graph.
+Define a build-ready product and engineering spec for a personal goals-based investing demo. The prototype shows how Elemental can power a retail investing dashboard: a named investor has several goal "buckets" (Retirement, House, Emergency Fund, etc.), each with a purpose and time horizon. The hero insight is **horizon-vs-risk fit** — are this bucket's holdings appropriate for how soon you'll need the money?
+
+The institutional scoring engine (SEC, news, stocks, prediction markets) is repurposed as evidence for "what's happening to your holdings", not deleted.
 
 This PRD is stored in the FSI repository for traceability and pattern reuse. Implementation is explicitly out-of-repo in a separate codebase.
 

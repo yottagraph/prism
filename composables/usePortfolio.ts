@@ -10,6 +10,7 @@
 import { computed, ref } from 'vue';
 
 import portfolioFixture from '~/assets/portfolios-fixture.json';
+import householdFixture from '~/assets/household-fixture.json';
 import { searchEntities } from '~/utils/elementalHelpers';
 import {
     type CitationRef,
@@ -126,6 +127,17 @@ export interface PortfolioEntity extends Pick<MonitorEntity, 'signalAgreement' |
     conflicts?: Array<{ lens: string; delta: number }>;
 }
 
+export interface GoalMeta {
+    /** Short purpose label, e.g. "Retirement", "House Down Payment". */
+    purpose: string;
+    /** Investment horizon in years. */
+    horizonYears: number;
+    /** Optional financial target in dollars. */
+    targetAmount?: number;
+    /** How critical this goal is. */
+    priority?: 'essential' | 'important' | 'aspirational';
+}
+
 export interface PortfolioDoc {
     id: string;
     name: string;
@@ -133,6 +145,10 @@ export interface PortfolioDoc {
     createdAt: number;
     entities: PortfolioEntity[];
     scoring?: ScoringSettings;
+    /** Demo user who owns this bucket. */
+    ownerUserId?: string;
+    /** Goal metadata for goals-based framing. */
+    goal?: GoalMeta;
 }
 
 interface PortfolioPrefsShape {
@@ -175,10 +191,32 @@ const debugPrefs = useAppFeaturePrefs('debug-settings', {
     scanDiagnosticsLogs: false,
 });
 
-// Preloaded demo portfolios. Names are real, well-known issuers so entity
-// resolution against Elemental returns hits.
+// Preloaded demo portfolios. Prefer household fixture (goals-based) over the
+// legacy CLO fixture when available.
 function defaultPortfolios(): PortfolioDoc[] {
     const now = Date.now();
+
+    // Household fixture takes precedence (goals-based personas)
+    const householdPortfolios = (householdFixture as any)?.portfolios;
+    if (Array.isArray(householdPortfolios) && householdPortfolios.length > 0) {
+        return householdPortfolios.map((portfolio: any) => ({
+            id: portfolio.id,
+            name: portfolio.name,
+            description: portfolio.description || '',
+            createdAt: portfolio.createdAt ?? now,
+            ownerUserId: portfolio.ownerUserId ?? 'maya',
+            ...(portfolio.goal ? { goal: portfolio.goal } : {}),
+            entities: (portfolio.entities || []).map((entity: any) => ({
+                inputName: entity.inputName,
+                resolvedName: entity.resolvedName || entity.inputName,
+                neid: entity.neid || null,
+                addedAt: now,
+                scores: null,
+            })),
+        }));
+    }
+
+    // Legacy fallback: portfolios-fixture.json
     const fixturePortfolios = (portfolioFixture as any)?.portfolios;
     if (Array.isArray(fixturePortfolios) && fixturePortfolios.length > 0) {
         return fixturePortfolios.map((portfolio: any) => ({
@@ -358,28 +396,51 @@ function migratePortfolioScoring(portfolios: PortfolioDoc[], legacyWeights?: Sou
     return migrated;
 }
 
-function ensurePrefs() {
+/** Assign ownerUserId to portfolios that pre-date the goals pivot. */
+function migratePortfolioOwnership(portfolios: PortfolioDoc[], defaultUserId: string) {
+    let migrated = false;
+    for (const portfolio of portfolios) {
+        if (!portfolio.ownerUserId) {
+            portfolio.ownerUserId = defaultUserId;
+            migrated = true;
+        }
+    }
+    return migrated;
+}
+
+function ensurePrefs(activeUserId?: string) {
     if (!prefs.value) {
+        const defaults = defaultPortfolios();
         prefs.value = useAppFeaturePrefs<PortfolioPrefsShape>('portfolio-risk', {
-            portfolios: defaultPortfolios(),
-            activePortfolioId: 'clo-mid-market',
+            portfolios: defaults,
+            activePortfolioId: defaults[0]?.id ?? 'maya-retirement',
             weights: DEFAULT_WEIGHTS,
         });
         if (!prefs.value.portfolios || prefs.value.portfolios.length === 0) {
-            prefs.value.portfolios = defaultPortfolios();
-            prefs.value.activePortfolioId = 'clo-mid-market';
+            prefs.value.portfolios = defaults;
+            prefs.value.activePortfolioId = defaults[0]?.id ?? 'maya-retirement';
         }
         migratePortfolioScoring(prefs.value.portfolios, prefs.value.weights);
+        migratePortfolioOwnership(prefs.value.portfolios, activeUserId ?? 'default');
     }
     return prefs.value!;
 }
 
-export function usePortfolio() {
-    const p = ensurePrefs();
+export function usePortfolio(activeUserId?: globalThis.Ref<string | null>) {
+    const p = ensurePrefs(activeUserId?.value ?? undefined);
 
-    const portfolios = computed(() => p.portfolios);
+    /** All portfolios owned by the active user (or all if no filter). */
+    const portfolios = computed(() => {
+        const uid = activeUserId?.value;
+        if (!uid) return p.portfolios;
+        return p.portfolios.filter((pp) => !pp.ownerUserId || pp.ownerUserId === uid);
+    });
+
     const activePortfolio = computed(
-        () => p.portfolios.find((pp) => pp.id === p.activePortfolioId) ?? p.portfolios[0] ?? null
+        () =>
+            portfolios.value.find((pp) => pp.id === p.activePortfolioId) ??
+            portfolios.value[0] ??
+            null
     );
     const activeScoring = computed({
         get: (): ScoringSettings => {
@@ -429,6 +490,7 @@ export function usePortfolio() {
             name,
             description: '',
             createdAt: now,
+            ownerUserId: activeUserId?.value ?? 'default',
             entities: names
                 .map((n) => n.trim())
                 .filter(Boolean)
@@ -446,9 +508,22 @@ export function usePortfolio() {
         return portfolio;
     }
 
+    function updateGoal(portfolioId: string, goal: GoalMeta | null) {
+        const idx = p.portfolios.findIndex((pp) => pp.id === portfolioId);
+        if (idx < 0) return;
+        if (goal === null) {
+            const { goal: _removed, ...rest } = p.portfolios[idx];
+            p.portfolios[idx] = rest as PortfolioDoc;
+        } else {
+            p.portfolios[idx] = { ...p.portfolios[idx], goal };
+        }
+        p.portfolios = [...p.portfolios];
+    }
+
     function createPortfolioFromEntities(
         name: string,
-        entities: ResolvedEntityInput[]
+        entities: ResolvedEntityInput[],
+        goal?: import('./usePortfolio').GoalMeta
     ): PortfolioDoc {
         const now = Date.now();
         const id = `${slugify(name)}-${now.toString(36)}`;
@@ -457,7 +532,10 @@ export function usePortfolio() {
             name,
             description: '',
             createdAt: now,
+            ownerUserId: activeUserId?.value ?? 'default',
+            ...(goal ? { goal } : {}),
             entities: entities
+
                 .filter((e) => e.inputName?.trim())
                 .map((e) => ({
                     inputName: e.inputName.trim(),
@@ -751,6 +829,7 @@ export function usePortfolio() {
         addEntities,
         addResolvedEntities,
         removeEntity,
+        updateGoal,
         saveAssessment,
         scanPortfolio,
     };

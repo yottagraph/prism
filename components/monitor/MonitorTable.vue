@@ -87,14 +87,24 @@
                         />
                     </template>
                     <template #item.actions="{ item }">
-                        <v-btn
-                            v-if="item.neid"
-                            icon="mdi-arrow-right"
-                            variant="text"
-                            size="x-small"
-                            :aria-label="`Open ${item.resolvedName}`"
-                            @click.stop="emit('open', item.entity)"
-                        />
+                        <div class="d-flex align-center justify-end">
+                            <v-btn
+                                v-if="item.neid"
+                                icon="mdi-arrow-right"
+                                variant="text"
+                                size="x-small"
+                                :aria-label="`Open ${item.resolvedName}`"
+                                @click.stop="emit('open', item.entity)"
+                            />
+                            <v-btn
+                                icon="mdi-close"
+                                variant="text"
+                                size="x-small"
+                                color="medium-emphasis"
+                                :aria-label="`Remove ${item.resolvedName}`"
+                                @click.stop="emit('remove', item.entity)"
+                            />
+                        </div>
                     </template>
                 </v-data-table>
             </div>
@@ -120,6 +130,7 @@
     const emit = defineEmits<{
         open: [entity: PortfolioEntity];
         assess: [entity: any, value: 'HIGH' | 'MEDIUM' | 'LOW' | 'IGNORE' | null];
+        remove: [entity: PortfolioEntity];
     }>();
 
     const category = ref('ALL');
@@ -146,7 +157,7 @@
         // ACS lens
         { title: 'ACS', key: 'acsScore', sortable: true, width: 90 },
         { title: 'Analyst', key: 'analyst', sortable: false, width: 130 },
-        { title: '', key: 'actions', sortable: false, width: 40 },
+        { title: '', key: 'actions', sortable: false, width: 80 },
     ];
 
     const rows = computed(() =>

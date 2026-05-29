@@ -2,7 +2,28 @@
     <div class="d-flex flex-column fill-height">
         <div class="flex-shrink-0 pa-4 page-header">
             <div class="d-flex align-center flex-wrap" style="gap: 4px 0">
-                <v-icon size="large" color="primary" class="mr-3">
+                <!-- User switcher -->
+                <v-select
+                    v-model="activeUserIdModel"
+                    :items="userOptions"
+                    variant="plain"
+                    density="compact"
+                    hide-details
+                    prepend-inner-icon="mdi-account-circle-outline"
+                    style="max-width: 180px"
+                    class="mr-1"
+                />
+                <v-btn
+                    icon="mdi-pencil-outline"
+                    variant="text"
+                    size="small"
+                    aria-label="Edit profile"
+                    @click="onboardingOpen = true"
+                />
+
+                <v-divider vertical class="mx-2" style="height: 28px; align-self: center" />
+
+                <v-icon size="large" color="primary" class="mr-2">
                     mdi-briefcase-variant-outline
                 </v-icon>
 
@@ -12,9 +33,32 @@
                     variant="plain"
                     density="comfortable"
                     hide-details
-                    class="portfolio-title-select mr-2"
-                    style="max-width: 320px"
+                    class="portfolio-title-select mr-1"
+                    style="max-width: 260px"
                 />
+
+                <!-- Goal metadata chip + edit button -->
+                <template v-if="active">
+                    <v-chip
+                        v-if="active.goal"
+                        size="small"
+                        variant="tonal"
+                        color="primary"
+                        class="mr-1"
+                        prepend-icon="mdi-target"
+                        @click="goalEditorOpen = true"
+                    >
+                        {{ active.goal.purpose }} · {{ active.goal.horizonYears }}y
+                    </v-chip>
+                    <v-btn
+                        v-else
+                        icon="mdi-target"
+                        variant="text"
+                        size="small"
+                        aria-label="Set goal for this bucket"
+                        @click="goalEditorOpen = true"
+                    />
+                </template>
 
                 <v-btn
                     color="primary"
@@ -29,14 +73,14 @@
                     icon="mdi-plus"
                     variant="text"
                     class="ml-1"
-                    aria-label="Create new portfolio"
+                    aria-label="Create new goal bucket"
                     @click="newPortfolioOpen = true"
                 />
                 <v-btn
                     icon="mdi-account-multiple-plus-outline"
                     variant="text"
                     class="ml-1"
-                    aria-label="Add entities to portfolio"
+                    aria-label="Add holdings to bucket"
                     :disabled="!active"
                     @click="addEntitiesOpen = true"
                 />
@@ -44,7 +88,9 @@
                 <v-spacer />
 
                 <span v-if="active" class="text-caption text-medium-emphasis mr-3">
-                    <strong>{{ active.entities.length }}</strong> entities
+                    <strong>{{ active.entities.length }}</strong> holding{{
+                        active.entities.length !== 1 ? 's' : ''
+                    }}
                 </span>
                 <span
                     v-if="scanning"
@@ -65,13 +111,13 @@
                 </span>
                 <span v-else-if="allResolved" class="text-caption text-success">
                     <v-icon size="x-small" class="mr-1">mdi-check-circle</v-icon>
-                    All entities scored
+                    All holdings scored
                 </span>
                 <span v-else class="text-caption text-medium-emphasis">
                     <v-icon size="x-small" color="warning" class="mr-1"
                         >mdi-information-outline</v-icon
                     >
-                    Run scan to resolve + score
+                    Run scan to analyze holdings
                 </span>
             </div>
         </div>
@@ -131,6 +177,17 @@
                 </v-expansion-panel>
             </v-expansion-panels>
 
+            <!-- Horizon Fit card — shown when the active bucket has a goal -->
+            <GoalsHorizonFitCard
+                v-if="active"
+                :goal="active.goal"
+                :user="activeUser"
+                :holding-vols="sortedEntities.map((e) => e.monitor?.stockVolatility30d ?? null)"
+                :holding-sectors="sortedEntities.map((e) => (e.monitor?.sector as any) ?? null)"
+                class="mb-3"
+                @edit-goal="goalEditorOpen = true"
+            />
+
             <v-row dense class="mb-3 align-stretch">
                 <v-col cols="12" class="d-flex flex-column summary-col summary-col--20">
                     <SourceFusionBar
@@ -155,18 +212,32 @@
                 </v-col>
             </v-row>
 
-            <v-tabs
-                ref="tabsEl"
-                v-model="monitorTab"
-                class="mb-3"
-                @update:model-value="scrollToTabs"
-            >
-                <v-tab value="monitor">Monitor</v-tab>
-                <v-tab value="fhs">FHS</v-tab>
-                <v-tab value="ers">ERS</v-tab>
-                <v-tab value="acs">ACS</v-tab>
-                <v-tab value="summary">Summary</v-tab>
-            </v-tabs>
+            <div class="d-flex align-center mb-1">
+                <v-tabs
+                    ref="tabsEl"
+                    v-model="monitorTab"
+                    style="flex: 1"
+                    @update:model-value="scrollToTabs"
+                >
+                    <v-tab value="monitor">Holdings</v-tab>
+                    <v-tab value="summary">Summary</v-tab>
+                    <template v-if="showAdvanced">
+                        <v-tab value="fhs">FHS</v-tab>
+                        <v-tab value="ers">ERS</v-tab>
+                        <v-tab value="acs">ACS</v-tab>
+                    </template>
+                </v-tabs>
+                <v-btn
+                    size="small"
+                    variant="text"
+                    :color="showAdvanced ? 'primary' : 'default'"
+                    :prepend-icon="showAdvanced ? 'mdi-chevron-up' : 'mdi-tune-variant'"
+                    class="ml-2 text-caption"
+                    @click="showAdvanced = !showAdvanced"
+                >
+                    Advanced
+                </v-btn>
+            </div>
             <v-window v-model="monitorTab">
                 <v-window-item value="monitor" style="min-height: 400px">
                     <MonitorTable
@@ -175,6 +246,7 @@
                         :loading="scanning"
                         @open="goToEntity"
                         @assess="onAssess"
+                        @remove="onRemoveEntity"
                     />
                 </v-window-item>
                 <v-window-item value="fhs" style="min-height: 400px">
@@ -232,6 +304,42 @@
         />
 
         <PortfolioAddEntitiesDialog v-model="addEntitiesOpen" mode="add" @submit="onAddEntities" />
+
+        <OnboardingOnboardingDialog
+            v-model="onboardingOpen"
+            :user="activeUser"
+            @submit="onOnboardingSubmit"
+        />
+
+        <GoalsGoalEditorDialog
+            v-model="goalEditorOpen"
+            :bucket-name="active?.name"
+            :existing-goal="active?.goal"
+            :user-risk-tolerance="activeUser?.riskTolerance"
+            @submit="onGoalSubmit"
+            @clear="onGoalClear"
+        />
+
+        <v-dialog
+            :model-value="!!entityToRemove"
+            max-width="420"
+            @update:model-value="entityToRemove = null"
+        >
+            <v-card>
+                <v-card-title class="text-body-1 font-weight-medium">Remove entity?</v-card-title>
+                <v-card-text class="text-body-2">
+                    Remove
+                    <strong>{{ entityToRemove?.resolvedName || entityToRemove?.inputName }}</strong>
+                    from <strong>{{ active?.name }}</strong
+                    >? This only affects this portfolio.
+                </v-card-text>
+                <v-card-actions>
+                    <v-spacer />
+                    <v-btn variant="text" @click="entityToRemove = null">Cancel</v-btn>
+                    <v-btn color="error" variant="tonal" @click="confirmRemoveEntity">Remove</v-btn>
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
     </div>
 </template>
 
@@ -245,11 +353,22 @@
     } from '~/composables/usePortfolio';
     import type { RiskTier } from '~/composables/useFusedScoring';
     import { usePortfolio } from '~/composables/usePortfolio';
+    import { useUser } from '~/composables/useUser';
     import { useAgentPipeline } from '~/composables/useAgentPipeline';
     import { useFredMacroContext, useRelationships } from '~/composables/useRelationships';
     import { useMacroRegime } from '~/composables/useMacroRegime';
 
     const router = useRouter();
+
+    const {
+        users,
+        activeUserId,
+        activeUser,
+        setActiveUser,
+        createUser,
+        updateUser,
+        markOnboarded,
+    } = useUser();
 
     const {
         portfolios,
@@ -267,8 +386,10 @@
         lastScanCoverageDetail,
         createPortfolioFromEntities,
         addResolvedEntities,
+        removeEntity,
+        updateGoal,
         saveAssessment,
-    } = usePortfolio();
+    } = usePortfolio(activeUserId);
 
     const { runPipeline, pushActivity } = useAgentPipeline();
 
@@ -294,6 +415,7 @@
     });
 
     const lastScanError = ref('');
+    const showAdvanced = ref(false);
     const monitorTab = ref<'monitor' | 'fhs' | 'ers' | 'acs' | 'summary'>('monitor');
     const tabsEl = ref<HTMLElement | null>(null);
 
@@ -553,6 +675,67 @@
         if (!active.value) return;
         addResolvedEntities(active.value.id, payload.entities);
     }
+
+    const entityToRemove = ref<PortfolioEntity | null>(null);
+
+    function onRemoveEntity(entity: PortfolioEntity) {
+        entityToRemove.value = entity;
+    }
+
+    function confirmRemoveEntity() {
+        if (!active.value || !entityToRemove.value) return;
+        removeEntity(active.value.id, entityToRemove.value.inputName);
+        entityToRemove.value = null;
+    }
+
+    // --- Onboarding / user management ---
+    const onboardingOpen = ref(false);
+    const editingUser = ref(false);
+
+    // Show onboarding when the active user hasn't completed it yet.
+    watch(
+        activeUser,
+        (u) => {
+            if (u && !u.onboarded) {
+                onboardingOpen.value = true;
+            }
+        },
+        { immediate: true }
+    );
+
+    function onOnboardingSubmit(
+        profile: Omit<import('~/composables/useUser').DemoUser, 'id' | 'createdAt' | 'onboarded'>
+    ) {
+        if (activeUser.value) {
+            updateUser(activeUser.value.id, profile);
+            markOnboarded(activeUser.value.id);
+        }
+    }
+
+    // User-switcher options
+    const userOptions = computed(() => users.value.map((u) => ({ title: u.name, value: u.id })));
+
+    const activeUserIdModel = computed({
+        get: () => activeUserId.value,
+        set: (v) => {
+            if (v) setActiveUser(v);
+        },
+    });
+
+    // --- Goal editor ---
+    const goalEditorOpen = ref(false);
+
+    function onGoalSubmit(goal: import('~/composables/usePortfolio').GoalMeta) {
+        if (active.value) updateGoal(active.value.id, goal);
+    }
+
+    function onGoalClear() {
+        if (active.value) updateGoal(active.value.id, null);
+    }
+
+    const yearsToRetirement = computed(() =>
+        activeUser.value ? Math.max(0, activeUser.value.retirementAge - activeUser.value.age) : null
+    );
 </script>
 
 <style scoped>

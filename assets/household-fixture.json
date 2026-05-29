@@ -1,0 +1,231 @@
+{
+    "generatedAt": "2026-05-29T00:00:00Z",
+    "users": [
+        {
+            "id": "maya",
+            "name": "Maya",
+            "age": 28,
+            "retirementAge": 63,
+            "riskTolerance": 4,
+            "onboarded": true,
+            "createdAt": 1748476800000
+        },
+        {
+            "id": "david-priya",
+            "name": "David & Priya",
+            "age": 44,
+            "retirementAge": 65,
+            "riskTolerance": 3,
+            "onboarded": true,
+            "createdAt": 1748476800000
+        },
+        {
+            "id": "robert",
+            "name": "Robert",
+            "age": 63,
+            "retirementAge": 65,
+            "riskTolerance": 2,
+            "onboarded": true,
+            "createdAt": 1748476800000
+        }
+    ],
+    "defaultActiveUserId": "maya",
+    "portfolios": [
+        {
+            "id": "maya-retirement",
+            "name": "Retirement",
+            "description": "Long horizon growth portfolio for Maya's retirement.",
+            "createdAt": 1748476800000,
+            "ownerUserId": "maya",
+            "goal": {
+                "purpose": "Retirement",
+                "horizonYears": 35,
+                "priority": "essential"
+            },
+            "entities": [
+                { "inputName": "Apple", "resolvedName": "Apple", "neid": null },
+                { "inputName": "Microsoft", "resolvedName": "Microsoft", "neid": null },
+                { "inputName": "NVIDIA", "resolvedName": "NVIDIA", "neid": null },
+                { "inputName": "Amazon", "resolvedName": "Amazon", "neid": null },
+                { "inputName": "Alphabet", "resolvedName": "Alphabet", "neid": null }
+            ]
+        },
+        {
+            "id": "maya-house",
+            "name": "House Down Payment",
+            "description": "4-year savings target for a first home — intentionally growth-heavy to trigger the red flag.",
+            "createdAt": 1748476800000,
+            "ownerUserId": "maya",
+            "goal": {
+                "purpose": "House Down Payment",
+                "horizonYears": 4,
+                "targetAmount": 120000,
+                "priority": "important"
+            },
+            "entities": [
+                { "inputName": "Tesla", "resolvedName": "Tesla", "neid": null },
+                {
+                    "inputName": "Palantir Technologies",
+                    "resolvedName": "Palantir Technologies",
+                    "neid": null
+                },
+                { "inputName": "Coinbase", "resolvedName": "Coinbase", "neid": null },
+                { "inputName": "MicroStrategy", "resolvedName": "MicroStrategy", "neid": null }
+            ]
+        },
+        {
+            "id": "maya-emergency",
+            "name": "Emergency Fund",
+            "description": "Liquid safety net — 6 months of expenses.",
+            "createdAt": 1748476800000,
+            "ownerUserId": "maya",
+            "goal": {
+                "purpose": "Emergency Fund",
+                "horizonYears": 1,
+                "targetAmount": 30000,
+                "priority": "essential"
+            },
+            "entities": [
+                { "inputName": "JPMorgan Chase", "resolvedName": "JPMorgan Chase", "neid": null },
+                {
+                    "inputName": "Johnson & Johnson",
+                    "resolvedName": "Johnson & Johnson",
+                    "neid": null
+                },
+                {
+                    "inputName": "Procter & Gamble",
+                    "resolvedName": "Procter & Gamble",
+                    "neid": null
+                }
+            ]
+        },
+        {
+            "id": "david-retirement",
+            "name": "Retirement",
+            "description": "Mid-career retirement savings with a balanced approach.",
+            "createdAt": 1748476800000,
+            "ownerUserId": "david-priya",
+            "goal": {
+                "purpose": "Retirement",
+                "horizonYears": 21,
+                "priority": "essential"
+            },
+            "entities": [
+                { "inputName": "Apple", "resolvedName": "Apple", "neid": null },
+                { "inputName": "JPMorgan Chase", "resolvedName": "JPMorgan Chase", "neid": null },
+                {
+                    "inputName": "UnitedHealth Group",
+                    "resolvedName": "UnitedHealth Group",
+                    "neid": null
+                },
+                { "inputName": "Exxon Mobil", "resolvedName": "Exxon Mobil", "neid": null },
+                {
+                    "inputName": "Berkshire Hathaway",
+                    "resolvedName": "Berkshire Hathaway",
+                    "neid": null
+                }
+            ]
+        },
+        {
+            "id": "david-college",
+            "name": "College Fund",
+            "description": "10-year 529-style education savings.",
+            "createdAt": 1748476800000,
+            "ownerUserId": "david-priya",
+            "goal": {
+                "purpose": "College Fund",
+                "horizonYears": 10,
+                "targetAmount": 200000,
+                "priority": "important"
+            },
+            "entities": [
+                { "inputName": "Microsoft", "resolvedName": "Microsoft", "neid": null },
+                {
+                    "inputName": "Verizon Communications",
+                    "resolvedName": "Verizon Communications",
+                    "neid": null
+                },
+                { "inputName": "Walmart", "resolvedName": "Walmart", "neid": null },
+                { "inputName": "Costco", "resolvedName": "Costco", "neid": null }
+            ]
+        },
+        {
+            "id": "david-reno",
+            "name": "Home Renovation",
+            "description": "3-year savings for a kitchen and basement remodel.",
+            "createdAt": 1748476800000,
+            "ownerUserId": "david-priya",
+            "goal": {
+                "purpose": "Home Renovation",
+                "horizonYears": 3,
+                "targetAmount": 80000,
+                "priority": "aspirational"
+            },
+            "entities": [
+                { "inputName": "Home Depot", "resolvedName": "Home Depot", "neid": null },
+                {
+                    "inputName": "Lowe's Companies",
+                    "resolvedName": "Lowe's Companies",
+                    "neid": null
+                },
+                {
+                    "inputName": "Johnson & Johnson",
+                    "resolvedName": "Johnson & Johnson",
+                    "neid": null
+                }
+            ]
+        },
+        {
+            "id": "robert-retirement-income",
+            "name": "Retirement Income",
+            "description": "2-year runway to retirement — currently too aggressive, needs rebalancing.",
+            "createdAt": 1748476800000,
+            "ownerUserId": "robert",
+            "goal": {
+                "purpose": "Retirement Income",
+                "horizonYears": 2,
+                "priority": "essential"
+            },
+            "entities": [
+                { "inputName": "Tesla", "resolvedName": "Tesla", "neid": null },
+                { "inputName": "NVIDIA", "resolvedName": "NVIDIA", "neid": null },
+                {
+                    "inputName": "Advanced Micro Devices",
+                    "resolvedName": "Advanced Micro Devices",
+                    "neid": null
+                },
+                { "inputName": "Amazon", "resolvedName": "Amazon", "neid": null }
+            ]
+        },
+        {
+            "id": "robert-legacy",
+            "name": "Legacy & Giving",
+            "description": "Long-term wealth transfer for family and charitable causes.",
+            "createdAt": 1748476800000,
+            "ownerUserId": "robert",
+            "goal": {
+                "purpose": "Legacy & Giving",
+                "horizonYears": 20,
+                "priority": "aspirational"
+            },
+            "entities": [
+                {
+                    "inputName": "Berkshire Hathaway",
+                    "resolvedName": "Berkshire Hathaway",
+                    "neid": null
+                },
+                {
+                    "inputName": "Johnson & Johnson",
+                    "resolvedName": "Johnson & Johnson",
+                    "neid": null
+                },
+                {
+                    "inputName": "Procter & Gamble",
+                    "resolvedName": "Procter & Gamble",
+                    "neid": null
+                },
+                { "inputName": "Exxon Mobil", "resolvedName": "Exxon Mobil", "neid": null }
+            ]
+        }
+    ]
+}
