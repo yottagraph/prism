@@ -144,7 +144,12 @@
                 </v-col>
             </v-row>
 
-            <v-tabs v-model="monitorTab" class="mb-3">
+            <v-tabs
+                ref="tabsEl"
+                v-model="monitorTab"
+                class="mb-3"
+                @update:model-value="scrollToTabs"
+            >
                 <v-tab value="monitor">Monitor</v-tab>
                 <v-tab value="fhs">FHS</v-tab>
                 <v-tab value="ers">ERS</v-tab>
@@ -152,7 +157,7 @@
                 <v-tab value="summary">Summary</v-tab>
             </v-tabs>
             <v-window v-model="monitorTab">
-                <v-window-item value="monitor">
+                <v-window-item value="monitor" style="min-height: 400px">
                     <MonitorTable
                         v-if="active"
                         :entities="sortedEntities"
@@ -161,13 +166,13 @@
                         @assess="onAssess"
                     />
                 </v-window-item>
-                <v-window-item value="fhs">
+                <v-window-item value="fhs" style="min-height: 400px">
                     <FhsTable v-if="active" :entities="sortedEntities" :loading="scanning" />
                 </v-window-item>
-                <v-window-item value="ers">
+                <v-window-item value="ers" style="min-height: 400px">
                     <ErsTable v-if="active" :entities="sortedEntities" :loading="scanning" />
                 </v-window-item>
-                <v-window-item value="acs">
+                <v-window-item value="acs" style="min-height: 400px">
                     <AcsTable v-if="active" :entities="sortedEntities" :loading="scanning" />
                 </v-window-item>
                 <v-window-item value="summary" style="min-height: 600px">
@@ -276,6 +281,15 @@
 
     const lastScanError = ref('');
     const monitorTab = ref<'monitor' | 'fhs' | 'ers' | 'acs' | 'summary'>('monitor');
+    const tabsEl = ref<HTMLElement | null>(null);
+
+    function scrollToTabs() {
+        nextTick(() => {
+            const el = tabsEl.value as any;
+            const node: HTMLElement | null = el?.$el ?? el;
+            node?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    }
     const { regime } = useMacroRegime();
     watch(scanError, (e) => {
         if (e) lastScanError.value = e;
