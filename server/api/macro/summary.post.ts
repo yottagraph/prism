@@ -68,7 +68,7 @@ Portfolio sector mix across ${body.totalEntities} entities: ${tiltList || 'n/a'}
     try {
         const result = await callGemini({
             prompt,
-            model: 'gemini-2.5-flash-preview-05-20',
+            model: 'gemini-2.5-flash',
             maxTokens: 220,
             temperature: 0.3,
             timeoutMs: 20_000,

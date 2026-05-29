@@ -474,6 +474,17 @@ export async function scoreEntity(
             polymarketNegativeMarkets: polymarket.negativeMarkets,
             polymarketMarkets: polymarket.markets,
             sector: entityIndustry,
+            sanctions: acs.sanctions
+                ? {
+                      listed: true,
+                      authority: acs.sanctions.programs[0] ?? null,
+                      sector: acs.sanctions.sectors[0] ?? null,
+                      topic: acs.sanctions.topics[0] ?? null,
+                      since: acs.sanctions.startDate,
+                      listId: acs.sanctions.listIds[0] ?? null,
+                      url: acs.sanctions.sourceUrls[0] ?? null,
+                  }
+                : null,
         },
     };
 }

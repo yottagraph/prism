@@ -457,7 +457,7 @@
         style: 'standard' as 'brief' | 'standard' | 'detailed',
         focus: 'balanced' as 'balanced' | 'risks' | 'regulatory' | 'market',
         tone: 'formal' as 'formal' | 'conversational' | 'action',
-        model: 'gemini-2.5-flash-preview-05-20',
+        model: 'gemini-2.5-flash',
         thinkingMode: false,
         timePeriod: '30' as '7' | '30' | '90',
     };
@@ -471,8 +471,8 @@
     ];
 
     const modelOptions = [
-        { value: 'gemini-2.5-flash-preview-05-20', label: 'Gemini 2.5 Flash (fast)' },
-        { value: 'gemini-2.5-pro-preview-05-06', label: 'Gemini 2.5 Pro (quality)' },
+        { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (fast)' },
+        { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (quality)' },
     ];
 
     // --- Computed ---

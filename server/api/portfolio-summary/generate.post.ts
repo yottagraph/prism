@@ -104,7 +104,7 @@ const DEFAULT_CONFIG: ReportConfig = {
     style: 'standard',
     focus: 'balanced',
     tone: 'formal',
-    model: 'gemini-2.5-flash-preview-05-20',
+    model: 'gemini-2.5-flash',
     thinkingMode: false,
     timePeriod: '30',
 };
@@ -330,7 +330,7 @@ Write the briefing now:`;
     try {
         const result = await callGemini({
             prompt,
-            model: config.model || 'gemini-2.5-flash-preview-05-20',
+            model: config.model || 'gemini-2.5-flash',
             maxTokens: config.style === 'brief' ? 2000 : config.style === 'detailed' ? 5000 : 3000,
             temperature: 0.3,
             timeoutMs: 120_000,

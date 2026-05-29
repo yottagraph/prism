@@ -2,9 +2,15 @@ import type { H3Event } from 'h3';
 
 import { makeCacheKey, readScoringCache, writeScoringCache } from '../cache';
 import type { ContextPackage } from '../contextPackage';
-import { getEntityName, getSchema } from '../elemental';
+import {
+    extractPropertyFacts,
+    getEntityName,
+    getPropertyValues,
+    getSchema,
+    normalizePidMap,
+} from '../elemental';
 import { getFlavorEntities } from '../galaxy';
-import type { AcsThresholds, LensDetail } from '../types';
+import type { AcsThresholds, EvidenceItem, LensDetail } from '../types';
 import { computeAcsComposite } from './composite';
 import { runDirectScreening, type ScreeningListEntry } from './directScreening';
 import { traverseOwnershipGraph } from './graphTraversal';
@@ -15,6 +21,8 @@ export interface AcsResult {
     hasRealData: boolean;
     detail: LensDetail;
     screeningSourceEmpty?: boolean;
+    /** Present only when the entity is directly flagged on a sanctions source. */
+    sanctions?: SanctionsDetail;
 }
 
 let screeningListCache: {
@@ -70,6 +78,144 @@ export async function loadScreeningListFromElemental(
     }
 }
 
+export interface SanctionsDetail {
+    sanctioned: boolean;
+    /** Issuing authority / program names (resolved from the program reference). */
+    programs: string[];
+    topics: string[];
+    sectors: string[];
+    startDate: string | null;
+    sourceUrls: string[];
+    listIds: string[];
+}
+
+/**
+ * Read the OpenSanctions / OFAC / CSL screening facts attached directly to the
+ * entity. These are the same properties that drive the "Sanctions flagged"
+ * coverage count, so when an entity is flagged we surface WHY here in ACS:
+ * the issuing authority, topic, sector, listing date, and source URL.
+ *
+ * `sanction_program` is a reference (data_nindex) to the issuing-authority
+ * entity, so its raw value is a numeric id that we resolve to a display name.
+ */
+async function fetchEntitySanctions(event: H3Event, neid: string): Promise<SanctionsDetail> {
+    const empty: SanctionsDetail = {
+        sanctioned: false,
+        programs: [],
+        topics: [],
+        sectors: [],
+        startDate: null,
+        sourceUrls: [],
+        listIds: [],
+    };
+    try {
+        const schema = await getSchema(event);
+        const pid = normalizePidMap(schema);
+        const flagPids = ['sanctioned', 'sanctions_topic', 'sanctions_id', 'sanction_program']
+            .map((n) => pid[n])
+            .filter((p): p is string => typeof p === 'string' && p.length > 0);
+        if (!flagPids.length) return empty;
+
+        const wanted = {
+            topic: pid['sanctions_topic'],
+            id: pid['sanctions_id'],
+            program: pid['sanction_program'],
+            startDate: pid['sanction_start_date'],
+            sector: pid['sanction_sector'],
+            sourceUrl: pid['sanction_source_url'],
+        };
+        const allPids = [
+            ...new Set(
+                Object.values(wanted)
+                    .concat(pid['sanctioned'])
+                    .filter((p): p is string => typeof p === 'string' && p.length > 0)
+            ),
+        ];
+
+        const values = await getPropertyValues([neid], allPids, true, event);
+        const strings = (p?: string): string[] =>
+            p
+                ? extractPropertyFacts(values, p)
+                      .map((f) => (typeof f.value === 'string' ? f.value.trim() : String(f.value)))
+                      .filter((v) => v.length > 0)
+                : [];
+
+        const topics = [...new Set(strings(wanted.topic))];
+        const listIds = [...new Set(strings(wanted.id))];
+        const sectors = [...new Set(strings(wanted.sector))];
+        const sourceUrls = [...new Set(strings(wanted.sourceUrl))];
+        const startDates = strings(wanted.startDate).sort();
+        const sanctioned =
+            topics.length > 0 ||
+            listIds.length > 0 ||
+            strings(pid['sanctioned']).length > 0 ||
+            strings(wanted.program).length > 0;
+
+        if (!sanctioned) return empty;
+
+        // Resolve the program references (numeric ids) to authority names.
+        const programRefs = [...new Set(strings(wanted.program))].slice(0, 4);
+        const programs = (
+            await Promise.all(
+                programRefs.map(async (raw) => {
+                    try {
+                        return await getEntityName(raw.padStart(20, '0'), event);
+                    } catch {
+                        return '';
+                    }
+                })
+            )
+        ).filter((n): n is string => typeof n === 'string' && n.length > 0);
+
+        return {
+            sanctioned: true,
+            programs: [...new Set(programs)],
+            topics,
+            sectors,
+            startDate: startDates[0] ? startDates[0].slice(0, 10) : null,
+            sourceUrls,
+            listIds,
+        };
+    } catch (error) {
+        console.warn('[acs] sanctions fetch failed', error);
+        return empty;
+    }
+}
+
+/** Build human-readable ACS findings/metrics from a sanctions hit. */
+function buildSanctionsEvidence(s: SanctionsDetail): {
+    metrics: LensDetail['metrics'];
+    finding: EvidenceItem;
+} {
+    const authority = s.programs.length ? s.programs.join(', ') : 'an external screening list';
+    const parts: string[] = [
+        `Entity is directly listed on a sanctions/screening source via ${authority}.`,
+    ];
+    if (s.sectors.length) parts.push(`Sector: ${s.sectors.join(', ')}.`);
+    if (s.startDate) parts.push(`Listed since ${s.startDate}.`);
+    if (s.listIds.length) parts.push(`Reference: ${s.listIds.slice(0, 2).join(', ')}.`);
+
+    const metrics: LensDetail['metrics'] = [{ label: 'Sanctions', value: 'LISTED' }];
+    if (s.programs.length)
+        metrics.push({ label: 'Issuing authority', value: s.programs.join(', ') });
+    if (s.sectors.length) metrics.push({ label: 'Sanctioned sector', value: s.sectors.join(', ') });
+    if (s.startDate) metrics.push({ label: 'Listed since', value: s.startDate });
+
+    return {
+        metrics,
+        finding: {
+            text: parts.join(' '),
+            date: s.startDate ?? undefined,
+            citations: s.sourceUrls.slice(0, 2).map((url) => ({
+                source: s.programs[0] || 'Sanctions list',
+                url,
+                title: s.programs[0] ? `${s.programs[0]} listing` : 'Sanctions listing',
+                date: s.startDate ?? undefined,
+            })),
+        },
+    };
+}
+
 export async function computeAcsScore(
     event: H3Event,
     portfolioId: string,
@@ -85,8 +231,11 @@ export async function computeAcsScore(
     const screeningSourceEmpty = screeningList.length === 0;
 
     const name = await getEntityName(neid, event);
+    const [traversed, sanctions] = await Promise.all([
+        traverseOwnershipGraph(event, neid, 3, ctx),
+        fetchEntitySanctions(event, neid),
+    ]);
     const directMatches = runDirectScreening(name, [], screeningList);
-    const traversed = await traverseOwnershipGraph(event, neid, 3, ctx);
     const pathMatches = traversed.flatMap((node) =>
         runDirectScreening(node.name, [], screeningList)
     );
@@ -103,38 +252,57 @@ export async function computeAcsScore(
         acsThresholds
     );
 
+    // A direct sanctions listing on the entity itself is a top-severity adverse
+    // signal — surface it prominently and floor the ACS score at critical,
+    // regardless of whether the (separate) screening-list flavor is configured.
+    const sanctionsFloor = acsThresholds?.ofacExactOverride ?? 90;
+    const score = sanctions.sanctioned
+        ? Math.max(composite.score, sanctionsFloor)
+        : composite.score;
+    const riskLevel =
+        score >= 75 ? 'critical' : score >= 50 ? 'high' : score >= 25 ? 'medium' : 'low';
+
+    const sanctionsEvidence = sanctions.sanctioned ? buildSanctionsEvidence(sanctions) : null;
+
+    const baseFindings =
+        composite.detail.findings.length > 0
+            ? composite.detail.findings
+            : screeningSourceEmpty
+              ? [
+                    {
+                        text: 'No configured screening-list source. Direct and path list-matching were skipped; graph traversal, jurisdiction exposure, and FOCI analysis are still active.',
+                        citations: [],
+                    },
+                ]
+              : [
+                    {
+                        text: 'No direct or ownership-path screening hits were found.',
+                        citations: [],
+                    },
+                ];
+
     const out: AcsResult = {
-        score: composite.score,
-        hasRealData: composite.hasRealData,
+        score,
+        hasRealData: composite.hasRealData || sanctions.sanctioned,
         screeningSourceEmpty,
+        sanctions: sanctions.sanctioned ? sanctions : undefined,
         detail: {
             metrics: [
-                { label: 'Risk level', value: composite.riskLevel },
+                { label: 'Risk level', value: riskLevel },
                 {
                     label: 'Confidence',
                     value: `${composite.confidence} (${composite.confidenceLevel})`,
                 },
-                ...(screeningSourceEmpty
+                ...(sanctionsEvidence ? sanctionsEvidence.metrics : []),
+                ...(screeningSourceEmpty && !sanctions.sanctioned
                     ? [{ label: 'Screening source', value: 'No screening source configured' }]
                     : []),
                 ...composite.detail.metrics,
             ],
-            findings:
-                composite.detail.findings.length > 0
-                    ? composite.detail.findings
-                    : screeningSourceEmpty
-                      ? [
-                            {
-                                text: 'No screening source configured. Direct and path screening were skipped. Only graph traversal, jurisdiction exposure, and FOCI analysis are active.',
-                                citations: [],
-                            },
-                        ]
-                      : [
-                            {
-                                text: 'No direct or ownership-path screening hits were found.',
-                                citations: [],
-                            },
-                        ],
+            // Lead with the sanctions explanation when the entity is flagged.
+            findings: sanctionsEvidence
+                ? [sanctionsEvidence.finding, ...baseFindings]
+                : baseFindings,
         },
     };
     await writeScoringCache(event, cacheKey, out, 7 * 24 * 60 * 60);

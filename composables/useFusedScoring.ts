@@ -412,4 +412,14 @@ export interface MonitorEntity {
     polymarketMarkets?: Array<{ question?: string; active?: boolean; category?: string }>;
     /** Industry/sector from Elemental, used for portfolio macro regime overlay. */
     sector?: string | null;
+    /** Direct sanctions/screening listing on the entity, surfaced in the ACS tab. */
+    sanctions?: {
+        listed: boolean;
+        authority: string | null;
+        sector: string | null;
+        topic: string | null;
+        since: string | null;
+        listId: string | null;
+        url: string | null;
+    } | null;
 }

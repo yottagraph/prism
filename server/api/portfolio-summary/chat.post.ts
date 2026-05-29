@@ -25,7 +25,7 @@ export default defineEventHandler(async (event) => {
     }
 
     const portfolio = body.portfolioName || 'Portfolio';
-    const model = body.model || 'gemini-2.5-flash-preview-05-20';
+    const model = body.model || 'gemini-2.5-flash';
 
     const prompt = `You are a portfolio risk analyst assistant. The user is looking at a risk intelligence briefing for "${portfolio}" and has a follow-up question.
 

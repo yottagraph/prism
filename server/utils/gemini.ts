@@ -39,7 +39,7 @@ export async function callGemini(opts: CallGeminiOptions): Promise<GeminiResult>
         throw new Error('GEMINI_API_KEY is not set');
     }
 
-    const model = opts.model ?? 'gemini-2.5-flash-preview-05-20';
+    const model = opts.model ?? 'gemini-2.5-flash';
     const maxTokens = opts.maxTokens ?? 4000;
     const temperature = opts.temperature ?? 0.3;
     const timeoutMs = opts.timeoutMs ?? 120_000;
