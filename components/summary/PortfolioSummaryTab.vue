@@ -1,9 +1,9 @@
 <template>
-    <div class="portfolio-summary-tab fill-height d-flex" style="overflow: hidden">
+    <div class="portfolio-summary-tab d-flex" style="min-height: 560px; overflow: hidden">
         <!-- Main content area -->
         <div
             class="flex-grow-1 d-flex flex-column"
-            style="min-width: 0; height: 100%; overflow: hidden"
+            style="min-width: 0; min-height: 560px; overflow: hidden"
         >
             <!-- Empty — no scan yet -->
             <div

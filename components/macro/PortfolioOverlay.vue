@@ -1,39 +1,17 @@
 <template>
-    <div v-if="regime.sectorTilt.length || insightText">
-        <!-- Sector tilt chips — all shown, no truncation -->
-        <div
-            v-if="regime.sectorTilt.length"
-            class="d-flex flex-wrap align-center"
-            style="gap: 6px; row-gap: 4px"
-        >
-            <v-chip
-                v-for="tilt in regime.sectorTilt"
-                :key="tilt.bucket"
-                size="x-small"
-                variant="tonal"
-                :prepend-icon="tilt.icon"
-                :color="bucketColor(tilt.bucket)"
-            >
-                {{ tilt.label }}
-                <span class="ml-1 font-weight-medium">{{ tilt.count }}</span>
-            </v-chip>
-        </div>
-
-        <!-- Gemini-generated portfolio insight -->
-        <div v-if="insightText || insightLoading" class="mt-1" style="text-align: left">
-            <span v-if="insightLoading" class="text-caption text-medium-emphasis">
-                <v-progress-circular size="10" width="1.5" indeterminate class="mr-1" />
-                Analyzing portfolio…
-            </span>
-            <span v-else class="text-caption text-medium-emphasis">{{ insightText }}</span>
-        </div>
+    <!-- Gemini-generated portfolio insight replaces the sector tilt chips -->
+    <div v-if="insightText || insightLoading" style="text-align: left">
+        <span v-if="insightLoading" class="text-caption text-medium-emphasis">
+            <v-progress-circular size="10" width="1.5" indeterminate class="mr-1" />
+            Analyzing portfolio…
+        </span>
+        <span v-else class="text-caption text-medium-emphasis">{{ insightText }}</span>
     </div>
 </template>
 
 <script setup lang="ts">
     import { ref, watch } from 'vue';
     import type { MacroRegime } from '~/composables/useMacroRegime';
-    import type { MacroFactorBucket } from '~/utils/macro/sectorFactors';
 
     const props = defineProps<{
         regime: MacroRegime;
@@ -43,19 +21,6 @@
     const insightLoading = ref(false);
     // Track which regime label the insight was generated for to avoid re-firing.
     const insightForLabel = ref('');
-
-    const BUCKET_COLORS: Record<MacroFactorBucket, string> = {
-        rate_sensitive: 'blue',
-        defensive: 'teal',
-        cyclical: 'orange',
-        growth_tech: 'purple',
-        energy: 'amber',
-        unclassified: 'default',
-    };
-
-    function bucketColor(bucket: MacroFactorBucket): string {
-        return BUCKET_COLORS[bucket] ?? 'default';
-    }
 
     async function fetchInsight() {
         if (!props.regime.ready || !props.regime.sectorTilt.length) return;
