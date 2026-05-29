@@ -16,7 +16,14 @@
         <v-spacer />
         <div v-if="usage" class="d-flex align-center gap-2 text-caption text-medium-emphasis">
             <v-icon size="x-small">mdi-lightning-bolt</v-icon>
-            <span>{{ usage.total_tokens.toLocaleString() }} tokens</span>
+            <span
+                >{{ usage.prompt_tokens.toLocaleString() }} in<template
+                    v-if="usage.thinking_tokens"
+                >
+                    &middot; {{ usage.thinking_tokens.toLocaleString() }} thinking</template
+                >
+                &middot; {{ usage.completion_tokens.toLocaleString() }} out</span
+            >
             <span v-if="usage.cost_usd">&middot; ${{ usage.cost_usd.toFixed(4) }}</span>
         </div>
         <v-btn
@@ -59,7 +66,13 @@
         entityCount: number;
         readTime?: string;
         model?: string;
-        usage?: { total_tokens: number; cost_usd?: number } | null;
+        usage?: {
+            prompt_tokens: number;
+            completion_tokens: number;
+            thinking_tokens?: number;
+            total_tokens: number;
+            cost_usd?: number;
+        } | null;
         agentSteps?: any[];
         showAgentDetails?: boolean;
         feedback?: 'positive' | 'negative' | null;

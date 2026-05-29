@@ -9,6 +9,7 @@
 export interface GeminiUsage {
     prompt_tokens: number;
     completion_tokens: number;
+    thinking_tokens: number;
     total_tokens: number;
     cost_usd: number;
     model: string;
@@ -106,8 +107,9 @@ export async function callGemini(opts: CallGeminiOptions): Promise<GeminiResult>
     }
 
     const promptTokens = json.usageMetadata?.promptTokenCount ?? 0;
+    const thinkingTokens = json.usageMetadata?.thoughtsTokenCount ?? 0;
     const completionTokens = json.usageMetadata?.candidatesTokenCount ?? 0;
-    const totalTokens = promptTokens + completionTokens;
+    const totalTokens = json.usageMetadata?.totalTokenCount ?? promptTokens + completionTokens;
     const costUsd =
         (promptTokens * COST_PER_1M_INPUT + completionTokens * COST_PER_1M_OUTPUT) / 1_000_000;
 
@@ -116,6 +118,7 @@ export async function callGemini(opts: CallGeminiOptions): Promise<GeminiResult>
         usage: {
             prompt_tokens: promptTokens,
             completion_tokens: completionTokens,
+            thinking_tokens: thinkingTokens,
             total_tokens: totalTokens,
             cost_usd: Math.round(costUsd * 100_000) / 100_000,
             model,
