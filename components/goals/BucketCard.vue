@@ -267,13 +267,13 @@
 
 <!-- Inline sub-component for a single lens score -->
 <script lang="ts">
-    import { defineComponent, h, computed as vComputed } from 'vue';
+    import { defineComponent, h, computed as vComputed, type PropType } from 'vue';
     import { scoreLabelColor } from '~/composables/useFusedScoring';
 
     export const LensScore = defineComponent({
         props: {
             label: { type: String, required: true },
-            score: { type: Number, default: null },
+            score: { type: Number as PropType<number | null>, default: null },
         },
         setup(props) {
             const color = vComputed(() =>
