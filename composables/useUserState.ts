@@ -32,7 +32,7 @@ const REQUIRED_ACCESS = 'read:all';
 
 let _cookie = ref<string | undefined>(undefined);
 let _accessToken = ref<string | undefined>(undefined);
-let _crypto = globalThis.crypto;
+let _crypto = globalThis.crypto as unknown as Parameters<typeof Iron.seal>[0];
 let _picture = ref<string | undefined>(undefined);
 const _permissions = ref('');
 let _userId = ref<string | undefined>(undefined);

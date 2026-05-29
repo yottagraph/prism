@@ -6,7 +6,7 @@
  * tilt to produce a plain-language portfolio implication.
  */
 
-import { computed } from 'vue';
+import { computed, type ComputedRef } from 'vue';
 import { useFredMacroContext, useMacroContext } from './useRelationships';
 import { usePortfolio } from './usePortfolio';
 import { computeSectorTilt, type SectorTilt } from '~/utils/macro/sectorFactors';
@@ -46,7 +46,7 @@ function formatPct(value: number): string {
     return `${Math.round(value)}%`;
 }
 
-export function useMacroRegime(): { regime: ReturnType<typeof computed<MacroRegime>> } {
+export function useMacroRegime(): { regime: ComputedRef<MacroRegime> } {
     const { signals: fredSignals } = useFredMacroContext({ autoRefresh: false });
     const { signals: polySignals } = useMacroContext({ autoRefresh: false });
     const { activePortfolio: active } = usePortfolio();

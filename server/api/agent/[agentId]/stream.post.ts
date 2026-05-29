@@ -102,7 +102,7 @@ export default defineEventHandler(async (event) => {
 
     async function acquireToken(force: boolean = false): Promise<TokenCache> {
         try {
-            return await getAgentToken(gatewayUrl, orgId, agentId, userId, force);
+            return await getAgentToken(gatewayUrl, orgId, agentId!, userId, force);
         } catch (e: any) {
             const portalMsg = e.data?.statusMessage || e.message || '';
             const isMintFailure =

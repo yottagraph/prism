@@ -117,7 +117,7 @@
 
     const sigmaContainer = ref<HTMLDivElement | null>(null);
     let sigmaInstance: Sigma | null = null;
-    let leafletLayer: { kill?: () => void } | null = null;
+    let leafletLayer: { clean?: () => void } | null = null;
 
     const geoNodesCount = computed(() => {
         if (graphMode.value !== 'geographic') return 0;
@@ -139,8 +139,8 @@
     const renderEdgeCount = computed(() => visibleEdges.value.length);
 
     function killSigma() {
-        if (leafletLayer && typeof (leafletLayer as any).kill === 'function') {
-            (leafletLayer as any).kill();
+        if (leafletLayer && typeof leafletLayer.clean === 'function') {
+            leafletLayer.clean();
         }
         leafletLayer = null;
         if (sigmaInstance) {

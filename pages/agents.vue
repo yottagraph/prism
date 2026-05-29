@@ -333,6 +333,7 @@
             role: message.role,
             text: message.text,
             evidence: [] as string[],
+            error: message.error === true,
         }))
     );
     const draft = ref('');

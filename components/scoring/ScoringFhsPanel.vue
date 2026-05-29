@@ -63,10 +63,7 @@
                     <v-row dense>
                         <v-col cols="6">
                             <v-text-field
-                                :model-value="
-                                    fhs.distressEvents[field.key as keyof typeof fhs.distressEvents]
-                                        .baseScore
-                                "
+                                :model-value="distressEntry(field.key).baseScore"
                                 type="number"
                                 density="comfortable"
                                 variant="outlined"
@@ -81,10 +78,7 @@
                         </v-col>
                         <v-col cols="6">
                             <v-text-field
-                                :model-value="
-                                    fhs.distressEvents[field.key as keyof typeof fhs.distressEvents]
-                                        .weight
-                                "
+                                :model-value="distressEntry(field.key).weight"
                                 type="number"
                                 density="comfortable"
                                 variant="outlined"
@@ -201,6 +195,12 @@
             ...props.fhs,
             tierWeights: { ...props.fhs.tierWeights, [key]: Number(raw) || 0 },
         });
+    }
+
+    function distressEntry(key: string): DistressEventEntry {
+        return props.fhs.distressEvents[
+            key as keyof Omit<DistressEventConfig, 'recencyWindowDays'>
+        ] as DistressEventEntry;
     }
 
     function updateDistressEntry(key: string, field: keyof DistressEventEntry, raw: unknown) {

@@ -203,7 +203,7 @@ export default defineEventHandler(async (event) => {
 
     const signals = results
         .map((r) => (r.status === 'fulfilled' ? r.value : null))
-        .filter((s): s is MacroSignal => s != null);
+        .filter((s): s is NonNullable<typeof s> => s != null);
 
     if (signals.length > 0) {
         cachedSignals = { signals, expiresAt: Date.now() + CACHE_TTL_MS };

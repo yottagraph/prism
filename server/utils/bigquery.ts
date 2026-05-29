@@ -187,7 +187,7 @@ function configError(): Error {
 
 async function gatewayFetch<T>(
     path: string,
-    init?: RequestInit & { method?: string; body?: unknown }
+    init?: Omit<RequestInit, 'body'> & { method?: string; body?: unknown }
 ): Promise<T> {
     const env = readGatewayEnv();
     if (!env) throw configError();
