@@ -338,6 +338,11 @@ function defaultPortfolios(): PortfolioDoc[] {
 // portfolios + active selection.
 const prefs = ref<ReturnType<typeof useAppFeaturePrefs<PortfolioPrefsShape>> | null>(null);
 const scanning = ref(false);
+const scanningAll = ref(false);
+const scanAllProgress = ref<{ doneBuckets: number; totalBuckets: number }>({
+    doneBuckets: 0,
+    totalBuckets: 0,
+});
 const scanProgress = ref<{ done: number; total: number }>({ done: 0, total: 0 });
 const scanStatusMessage = ref('Idle');
 const scanStatusHistory = ref<Array<{ at: number; phase: string; message: string }>>([]);
@@ -808,12 +813,39 @@ export function usePortfolio(activeUserId?: globalThis.Ref<string | null>) {
         }
     }
 
+    /**
+     * Scan every bucket owned by the active user sequentially.
+     * Exposes module-level `scanningAll` / `scanAllProgress` for the global header.
+     */
+    async function scanActiveUserPortfolios(opts: { force?: boolean } = {}) {
+        const buckets = portfolios.value;
+        if (buckets.length === 0) return;
+        scanningAll.value = true;
+        scanAllProgress.value = { doneBuckets: 0, totalBuckets: buckets.length };
+        for (const bucket of buckets) {
+            await scanPortfolio(bucket.id, opts);
+            scanAllProgress.value = {
+                doneBuckets: scanAllProgress.value.doneBuckets + 1,
+                totalBuckets: buckets.length,
+            };
+        }
+        scanningAll.value = false;
+    }
+
+    /** True when at least one entity across the active user's buckets has been scored. */
+    const hasAnyScored = computed(() =>
+        portfolios.value.some((bucket) => bucket.entities.some((e) => e.scores))
+    );
+
     return {
         portfolios,
         activePortfolio,
         activeScoring,
         weights,
         scanning: computed(() => scanning.value),
+        scanningAll: computed(() => scanningAll.value),
+        scanAllProgress: computed(() => scanAllProgress.value),
+        hasAnyScored,
         scanProgress: computed(() => scanProgress.value),
         scanStatusMessage: computed(() => scanStatusMessage.value),
         scanStatusHistory: computed(() => scanStatusHistory.value),
@@ -832,6 +864,7 @@ export function usePortfolio(activeUserId?: globalThis.Ref<string | null>) {
         updateGoal,
         saveAssessment,
         scanPortfolio,
+        scanActiveUserPortfolios,
     };
 }
 

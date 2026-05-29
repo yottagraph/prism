@@ -67,7 +67,7 @@
                     prepend-icon="mdi-play-circle-outline"
                     @click="onScan"
                 >
-                    {{ allResolved ? 'Re-scan' : 'Run scan' }}
+                    {{ allResolved ? 'Re-analyze' : 'Analyze' }}
                 </v-btn>
                 <v-btn
                     icon="mdi-plus"
@@ -111,13 +111,13 @@
                 </span>
                 <span v-else-if="allResolved" class="text-caption text-success">
                     <v-icon size="x-small" class="mr-1">mdi-check-circle</v-icon>
-                    All holdings scored
+                    All holdings analyzed
                 </span>
                 <span v-else class="text-caption text-medium-emphasis">
                     <v-icon size="x-small" color="warning" class="mr-1"
                         >mdi-information-outline</v-icon
                     >
-                    Run scan to analyze holdings
+                    Analyze to assess holdings
                 </span>
             </div>
         </div>
@@ -184,6 +184,7 @@
                     <GoalsHorizonFitCard
                         :goal="active.goal"
                         :user="activeUser"
+                        :analyzed="bucketHealth.scanned > 0"
                         :holding-vols="
                             sortedEntities.map((e) => e.monitor?.stockVolatility30d ?? null)
                         "

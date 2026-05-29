@@ -8,7 +8,18 @@
             <v-chip v-if="fit" :color="verdictColor" size="small" variant="flat" label>
                 {{ verdictLabel }}
             </v-chip>
-            <span v-else class="text-caption text-medium-emphasis">Set a goal to see fit</span>
+            <v-chip
+                v-else-if="goal && !analyzed"
+                color="default"
+                size="small"
+                variant="tonal"
+                label
+            >
+                Not analyzed
+            </v-chip>
+            <span v-else-if="!goal" class="text-caption text-medium-emphasis"
+                >Set a goal to see fit</span
+            >
         </div>
 
         <!-- No goal set -->
@@ -30,10 +41,17 @@
             </div>
         </template>
 
-        <!-- Goal set but no scan yet -->
+        <!-- Goal set but not yet analyzed -->
+        <template v-else-if="!analyzed">
+            <div class="text-body-2 text-medium-emphasis">
+                Use the Analyze button to check if this bucket's risk matches its timeline.
+            </div>
+        </template>
+
+        <!-- Goal set, analyzed, but no fit result -->
         <template v-else-if="!fit">
             <div class="text-body-2 text-medium-emphasis">
-                Add holdings and run a scan to see risk fit.
+                Add holdings and analyze to see risk fit.
             </div>
         </template>
 
@@ -144,6 +162,8 @@
         user?: DemoUser | null;
         holdingVols?: (number | null | undefined)[];
         holdingSectors?: (MacroFactorBucket | null | undefined)[];
+        /** Pass true once at least one entity in the bucket has been scored. */
+        analyzed?: boolean;
     }>();
 
     defineEmits<{
@@ -151,6 +171,7 @@
     }>();
 
     const fit = computed((): HorizonFit | null => {
+        if (!props.analyzed) return null;
         if (!props.goal || !props.user) return null;
         const vols = props.holdingVols ?? [];
         const sectors = props.holdingSectors ?? [];

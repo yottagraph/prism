@@ -65,7 +65,7 @@
                 <v-icon size="10" class="mr-1">mdi-shield-search</v-icon>
                 Holdings health
                 <span class="ml-1 text-caption" style="opacity: 0.6"
-                    >SEC · news · market · sanctions</span
+                    >SEC · news · market · ownership</span
                 >
             </span>
 
@@ -128,12 +128,12 @@
                 </div>
 
                 <!-- Lens worst scores -->
-                <div v-if="anyLensData" class="d-flex align-center mt-2" style="gap: 8px">
-                    <LensScore label="Solvency" :score="health.lensWorst.fhs" />
-                    <LensScore label="Executive" :score="health.lensWorst.ers" />
+                <div class="d-flex align-center mt-2" style="gap: 8px">
+                    <LensScore label="Fin. strength" :score="health.lensWorst.fhs" />
+                    <LensScore label="Leadership" :score="health.lensWorst.ers" />
                     <LensScore
                         v-if="health.lensWorst.acs !== null"
-                        label="Cyber/ACS"
+                        label="Ownership"
                         :score="health.lensWorst.acs"
                     />
                 </div>

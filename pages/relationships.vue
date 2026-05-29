@@ -1,7 +1,7 @@
 <template>
     <div class="d-flex flex-column fill-height">
         <div class="flex-shrink-0 pa-4 page-header">
-            <PageHeader title="Relationship Explorer" icon="mdi-graph-outline" />
+            <PageHeader title="Relationships" icon="mdi-graph-outline" />
             <div v-if="active" class="d-flex align-center mt-1" style="gap: 8px">
                 <span class="text-caption text-medium-emphasis">
                     Connected universe of <strong>{{ active.name }}</strong> ·
@@ -17,6 +17,32 @@
         </div>
 
         <div class="flex-grow-1 overflow-y-auto pa-4">
+            <!-- Pre-analysis empty state -->
+            <div
+                v-if="!hasAnyScored && !loading"
+                class="d-flex flex-column align-center justify-center"
+                style="min-height: 260px; gap: 16px"
+            >
+                <v-icon size="56" color="medium-emphasis">mdi-graph-outline</v-icon>
+                <div class="text-center">
+                    <p class="text-subtitle-1 font-weight-medium mb-1">
+                        Analyze your holdings to build the connected universe
+                    </p>
+                    <p class="text-body-2 text-medium-emphasis mb-3">
+                        Elemental resolves entities, maps relationships, and surfaces
+                        cross-portfolio connections.
+                    </p>
+                    <v-btn
+                        color="primary"
+                        variant="tonal"
+                        prepend-icon="mdi-play-circle-outline"
+                        @click="scanActiveUserPortfolios({ force: false })"
+                    >
+                        Analyze all goals
+                    </v-btn>
+                </div>
+            </div>
+
             <v-alert
                 v-if="error"
                 type="error"
@@ -26,7 +52,7 @@
                 :text="error"
                 closable
             />
-            <v-card>
+            <v-card v-if="hasAnyScored || loading">
                 <v-tabs v-model="tab" color="primary" align-tabs="start">
                     <v-tab value="companies">
                         <v-icon size="small" class="mr-2">mdi-domain</v-icon>
@@ -265,10 +291,17 @@
     import { computed, ref } from 'vue';
 
     import { usePortfolio } from '~/composables/usePortfolio';
+    import { useUser } from '~/composables/useUser';
     import { useRelationships } from '~/composables/useRelationships';
     import type { GraphNode } from '~/composables/useRelationships';
 
-    const { activePortfolio: active, scanning } = usePortfolio();
+    const { activeUserId } = useUser();
+    const {
+        activePortfolio: active,
+        scanning,
+        hasAnyScored,
+        scanActiveUserPortfolios,
+    } = usePortfolio(activeUserId);
     const { loading, error, graph, companies, people, instruments, locations, galaxyEnabled } =
         useRelationships(active, scanning);
     const router = useRouter();

@@ -36,6 +36,9 @@
 
     .toolbar-title {
         color: var(--dynamic-text-primary) !important;
+        white-space: normal !important;
+        overflow: visible !important;
+        text-overflow: unset !important;
     }
 
     :deep(.v-toolbar__content) {

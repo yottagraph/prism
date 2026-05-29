@@ -74,7 +74,15 @@
                         </div>
 
                         <!-- Headline verdict -->
-                        <div v-if="aggressiveBuckets > 0" class="headline-verdict mb-3">
+                        <div v-if="!anyAnalyzed" class="headline-verdict mb-3">
+                            <span class="text-h5 font-weight-bold text-medium-emphasis">
+                                Analysis needed
+                            </span>
+                            <div class="text-body-2 text-medium-emphasis mt-1">
+                                Analyze your goals to see if they're built for your timeline.
+                            </div>
+                        </div>
+                        <div v-else-if="aggressiveBuckets > 0" class="headline-verdict mb-3">
                             <span class="text-h5 font-weight-bold text-error">
                                 {{ aggressiveBuckets }}
                                 {{ aggressiveBuckets === 1 ? 'bucket' : 'buckets' }}
@@ -97,24 +105,30 @@
                         </div>
 
                         <div class="d-flex align-center" style="gap: 16px">
-                            <div class="text-center">
-                                <div class="text-h6 font-weight-bold">{{ appropriateBuckets }}</div>
-                                <div class="text-caption text-medium-emphasis">On track</div>
-                            </div>
-                            <div v-if="aggressiveBuckets > 0" class="text-center">
-                                <div class="text-h6 font-weight-bold text-error">
-                                    {{ aggressiveBuckets }}
+                            <template v-if="anyAnalyzed">
+                                <div class="text-center">
+                                    <div class="text-h6 font-weight-bold">
+                                        {{ appropriateBuckets }}
+                                    </div>
+                                    <div class="text-caption text-medium-emphasis">On track</div>
                                 </div>
-                                <div class="text-caption text-medium-emphasis">Too aggressive</div>
-                            </div>
-                            <div v-if="conservativeBuckets > 0" class="text-center">
-                                <div class="text-h6 font-weight-bold text-warning">
-                                    {{ conservativeBuckets }}
+                                <div v-if="aggressiveBuckets > 0" class="text-center">
+                                    <div class="text-h6 font-weight-bold text-error">
+                                        {{ aggressiveBuckets }}
+                                    </div>
+                                    <div class="text-caption text-medium-emphasis">
+                                        Too aggressive
+                                    </div>
                                 </div>
-                                <div class="text-caption text-medium-emphasis">
-                                    Too conservative
+                                <div v-if="conservativeBuckets > 0" class="text-center">
+                                    <div class="text-h6 font-weight-bold text-warning">
+                                        {{ conservativeBuckets }}
+                                    </div>
+                                    <div class="text-caption text-medium-emphasis">
+                                        Too conservative
+                                    </div>
                                 </div>
-                            </div>
+                            </template>
                             <v-spacer />
                             <div class="text-right">
                                 <div class="text-caption text-medium-emphasis">
@@ -150,7 +164,7 @@
                         >
                             <v-icon size="20" color="medium-emphasis">mdi-radar</v-icon>
                             <span class="text-body-2 text-medium-emphasis">
-                                Open a bucket and run a scan to assess holdings.
+                                Use the Analyze button to assess holdings.
                             </span>
                         </div>
 
@@ -203,7 +217,7 @@
 
                         <p class="text-caption text-medium-emphasis mt-3 mb-0">
                             Powered by multi-source fusion: SEC filings · news pressure · market
-                            signals · sanctions screening.
+                            signals · ownership screening.
                         </p>
                     </v-card>
                 </v-col>
@@ -330,6 +344,7 @@
     const enrichedBuckets = computed(() => {
         if (!activeUser.value) return [];
         return buckets.value.map((bucket) => {
+            const analyzed = bucket.entities.some((e) => e.scores != null);
             const holdingVols = bucket.entities.map(
                 (e) => (e.monitor?.stockVolatility30d ?? null) as number | null
             );
@@ -342,7 +357,7 @@
             }));
             const profile = bucketRiskProfile(inputs);
             const fit: HorizonFit | null =
-                bucket.goal && activeUser.value
+                analyzed && bucket.goal && activeUser.value
                     ? horizonFit(
                           profile,
                           bucket.goal.horizonYears,
@@ -358,15 +373,20 @@
                 goal: bucket.goal ?? null,
                 entityCount: bucket.entities.length,
                 priority: bucket.goal?.priority ?? null,
+                analyzed,
                 fit,
-                fitLabel: fit
-                    ? fit.verdict === 'appropriate'
-                        ? 'On track'
-                        : fit.verdict === 'too_aggressive'
-                          ? 'Too aggressive'
-                          : 'Too conservative'
-                    : null,
-                fitColor: fit ? VERDICT_COLORS[fit.verdict] : 'default',
+                fitLabel: !analyzed
+                    ? bucket.goal
+                        ? 'Not analyzed'
+                        : null
+                    : fit
+                      ? fit.verdict === 'appropriate'
+                          ? 'On track'
+                          : fit.verdict === 'too_aggressive'
+                            ? 'Too aggressive'
+                            : 'Too conservative'
+                      : null,
+                fitColor: !analyzed ? 'default' : fit ? VERDICT_COLORS[fit.verdict] : 'default',
                 overlappingNames: [] as string[],
                 avgRiskScore: profile.avgScore,
                 health,
@@ -412,24 +432,31 @@
     const hhHealth = computed(() => householdHoldingsHealth(buckets.value));
 
     // Hero band — Dimension A stats
+    const analyzedBuckets = computed(() => enrichedBuckets.value.filter((c) => c.analyzed));
+    const notAnalyzedCount = computed(
+        () => enrichedBuckets.value.filter((c) => !c.analyzed && c.goal).length
+    );
     const appropriateBuckets = computed(
-        () => enrichedBuckets.value.filter((c) => c.fit?.verdict === 'appropriate').length
+        () => analyzedBuckets.value.filter((c) => c.fit?.verdict === 'appropriate').length
     );
     const aggressiveBuckets = computed(
-        () => enrichedBuckets.value.filter((c) => c.fit?.verdict === 'too_aggressive').length
+        () => analyzedBuckets.value.filter((c) => c.fit?.verdict === 'too_aggressive').length
     );
     const conservativeBuckets = computed(
-        () => enrichedBuckets.value.filter((c) => c.fit?.verdict === 'too_conservative').length
+        () => analyzedBuckets.value.filter((c) => c.fit?.verdict === 'too_conservative').length
     );
     const totalHoldings = computed(() => buckets.value.reduce((s, b) => s + b.entities.length, 0));
 
-    const summaryFitColor = computed(() =>
-        aggressiveBuckets.value > 0
+    const anyAnalyzed = computed(() => analyzedBuckets.value.length > 0);
+
+    const summaryFitColor = computed(() => {
+        if (!anyAnalyzed.value) return 'default';
+        return aggressiveBuckets.value > 0
             ? 'error'
             : conservativeBuckets.value > 0
               ? 'warning'
-              : 'success'
-    );
+              : 'success';
+    });
 
     // Hero band — Dimension B color
     const healthPanelColor = computed(() => {

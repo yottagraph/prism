@@ -8,6 +8,21 @@
 
         <v-spacer></v-spacer>
 
+        <!-- Persistent Analyze action -->
+        <v-btn
+            v-if="showAnalyzeBtn"
+            :loading="scanningAll || scanning"
+            :prepend-icon="analyzeIcon"
+            :disabled="scanningAll || scanning"
+            variant="tonal"
+            color="primary"
+            size="small"
+            class="mr-2 analyze-btn"
+            @click="onAnalyze"
+        >
+            {{ analyzeLabel }}
+        </v-btn>
+
         <!-- Theme Picker -->
         <v-menu :close-on-content-click="false" location="bottom end">
             <template v-slot:activator="{ props: menuProps }">
@@ -85,14 +100,15 @@
 </template>
 
 <script setup lang="ts">
-    import { mergeProps, watch } from 'vue';
+    import { computed, mergeProps, watch } from 'vue';
 
     import { useBrandLogo } from '~/composables/useBrandLogo';
     import { useLovelaceTheme } from '~/composables/useLovelaceTheme';
     import { useUserState } from '~/composables/useUserState';
     import { useProxiedAvatar } from '~/composables/useProxiedAvatar';
+    import { usePortfolio } from '~/composables/usePortfolio';
+    import { useUser } from '~/composables/useUser';
     import ThemePresetPicker from '~/components/ThemePresetPicker.vue';
-
     import { state } from '~/utils/appState';
 
     const { isDark } = useLovelaceTheme();
@@ -100,12 +116,55 @@
     const { clearUser, userPicture, userName } = useUserState();
     const { appName } = useAppInfo();
     const router = useRouter();
+    const route = useRoute();
+
+    const { activeUserId } = useUser();
+    const {
+        activePortfolio,
+        scanning,
+        scanningAll,
+        scanAllProgress,
+        hasAnyScored,
+        scanPortfolio,
+        scanActiveUserPortfolios,
+    } = usePortfolio(activeUserId);
 
     const { proxiedUrl: avatarUrl } = useProxiedAvatar(userPicture);
 
     const buildString = ref(useRuntimeConfig().public.versionString);
-
     const avatarHasError = ref(false);
+
+    const isBucketRoute = computed(() => route.path === '/');
+
+    /** Only show on routes where scanning makes sense. */
+    const showAnalyzeBtn = computed(() =>
+        ['/', '/household', '/agents', '/relationships', '/scoring'].includes(route.path)
+    );
+
+    const allAnalyzed = computed(() => hasAnyScored.value && !scanning.value && !scanningAll.value);
+
+    const analyzeLabel = computed(() => {
+        if (scanningAll.value) {
+            const { doneBuckets, totalBuckets } = scanAllProgress.value;
+            return `Analyzing ${doneBuckets}/${totalBuckets}`;
+        }
+        if (scanning.value) return 'Analyzing…';
+        if (isBucketRoute.value) return allAnalyzed.value ? 'Re-analyze bucket' : 'Analyze bucket';
+        return allAnalyzed.value ? 'Re-analyze all goals' : 'Analyze all goals';
+    });
+
+    const analyzeIcon = computed(() => {
+        if (scanning.value || scanningAll.value) return undefined;
+        return 'mdi-play-circle-outline';
+    });
+
+    function onAnalyze() {
+        if (isBucketRoute.value && activePortfolio.value) {
+            scanPortfolio(activePortfolio.value.id, { force: true });
+        } else {
+            scanActiveUserPortfolios({ force: true });
+        }
+    }
 
     const handleLogout = () => {
         router.push('/logout');
@@ -127,12 +186,6 @@
     });
 
     const handleImageError = (event: Event) => {
-        console.error('Avatar image failed to load:', {
-            originalUrl: userPicture.value,
-            proxiedUrl: avatarUrl.value,
-            error: event,
-            type: event.type,
-        });
         avatarHasError.value = true;
     };
 

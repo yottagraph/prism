@@ -1,7 +1,7 @@
 <template>
     <div class="d-flex flex-column fill-height">
         <div class="flex-shrink-0 pa-4 page-header">
-            <PageHeader title="Agent Workspace" icon="mdi-robot-outline" />
+            <PageHeader title="Ask" icon="mdi-message-question-outline" />
             <div class="text-caption text-medium-emphasis mt-1">
                 Conversational interface + live pipeline view of the 4-agent Dialogue → History →
                 Query → Composition flow.
@@ -45,6 +45,19 @@
                                 <div class="text-body-2 mb-2">
                                     Ask the agent about your portfolio
                                 </div>
+                                <v-alert
+                                    v-if="!hasAnyScored"
+                                    type="info"
+                                    variant="tonal"
+                                    density="compact"
+                                    icon="mdi-lightbulb-outline"
+                                    class="mb-3 text-left"
+                                >
+                                    <span class="text-caption">
+                                        Tip: analyze your goals first for grounded, evidence-backed
+                                        answers.
+                                    </span>
+                                </v-alert>
                                 <div class="text-caption mb-3">Try one of these:</div>
                                 <div class="d-flex flex-wrap justify-center gap-2">
                                     <v-chip
@@ -170,54 +183,58 @@
                         </v-row>
                     </v-card>
 
-                    <v-card class="pa-3 mb-3">
-                        <div class="d-flex align-center mb-2">
-                            <v-icon size="small" class="mr-2">mdi-tune-variant</v-icon>
-                            <span class="text-subtitle-2">Fusion Weights</span>
-                        </div>
-                        <div class="text-caption text-medium-emphasis mb-2">
-                            Adjust lens weighting; values auto-normalize to sum to 1.0.
-                        </div>
-                        <v-slider
-                            v-model="weights.solvency"
-                            min="0"
-                            max="1"
-                            step="0.01"
-                            label="Solvency"
-                            hide-details
-                            class="mb-1"
-                            @change="normalizeWeights"
-                        />
-                        <v-slider
-                            v-model="weights.executive"
-                            min="0"
-                            max="1"
-                            step="0.01"
-                            label="Executive"
-                            hide-details
-                            class="mb-1"
-                            @change="normalizeWeights"
-                        />
-                        <v-slider
-                            v-model="weights.news"
-                            min="0"
-                            max="1"
-                            step="0.01"
-                            label="News"
-                            hide-details
-                            class="mb-1"
-                            @change="normalizeWeights"
-                        />
-                        <v-slider
-                            v-model="weights.market"
-                            min="0"
-                            max="1"
-                            step="0.01"
-                            label="Market"
-                            hide-details
-                            @change="normalizeWeights"
-                        />
-                    </v-card>
+                    <v-expansion-panels variant="accordion" class="mb-3">
+                        <v-expansion-panel>
+                            <v-expansion-panel-title>
+                                <v-icon size="small" class="mr-2">mdi-tune-variant</v-icon>
+                                <span class="text-subtitle-2">Advanced: signal weighting</span>
+                            </v-expansion-panel-title>
+                            <v-expansion-panel-text>
+                                <div class="text-caption text-medium-emphasis mb-2">
+                                    Adjust lens weighting; values auto-normalize to sum to 1.0.
+                                </div>
+                                <v-slider
+                                    v-model="weights.solvency"
+                                    min="0"
+                                    max="1"
+                                    step="0.01"
+                                    label="Financial strength"
+                                    hide-details
+                                    class="mb-1"
+                                    @change="normalizeWeights"
+                                />
+                                <v-slider
+                                    v-model="weights.executive"
+                                    min="0"
+                                    max="1"
+                                    step="0.01"
+                                    label="Leadership"
+                                    hide-details
+                                    class="mb-1"
+                                    @change="normalizeWeights"
+                                />
+                                <v-slider
+                                    v-model="weights.news"
+                                    min="0"
+                                    max="1"
+                                    step="0.01"
+                                    label="Headline risk"
+                                    hide-details
+                                    class="mb-1"
+                                    @change="normalizeWeights"
+                                />
+                                <v-slider
+                                    v-model="weights.market"
+                                    min="0"
+                                    max="1"
+                                    step="0.01"
+                                    label="Price stability"
+                                    hide-details
+                                    @change="normalizeWeights"
+                                />
+                            </v-expansion-panel-text>
+                        </v-expansion-panel>
+                    </v-expansion-panels>
 
                     <AgentActivityFeed :entries="activity" />
                 </v-col>
@@ -303,9 +320,11 @@
     import { useAgentChat } from '~/composables/useAgentChat';
     import { useAgentPipeline } from '~/composables/useAgentPipeline';
     import { usePortfolio } from '~/composables/usePortfolio';
+    import { useUser } from '~/composables/useUser';
     import { useTenantConfig } from '~/composables/useTenantConfig';
 
-    const { activePortfolio: active, weights } = usePortfolio();
+    const { activeUserId } = useUser();
+    const { activePortfolio: active, weights, hasAnyScored } = usePortfolio(activeUserId);
     const {
         startPipeline,
         runPipeline,
