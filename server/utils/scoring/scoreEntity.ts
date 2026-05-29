@@ -7,7 +7,8 @@ import {
     makeEntityRiskScore,
     DEFAULT_WEIGHTS,
 } from './fuse';
-import { computeAcsScore } from './acs';
+import { computeAcsScore, type AcsFociData, type AcsJurisdictionHit } from './acs';
+import type { FhsDistressEventCount } from './fhs';
 import { computeCikVelocity } from './cikVelocity';
 import { getContextPackage } from './contextPackage';
 import { computeExecutiveScore } from './executive';
@@ -188,6 +189,20 @@ export async function scoreEntity(
                 score: 0,
                 hasRealData: false,
                 detail: { metrics: [{ label: 'Status', value: 'timeout' }], findings: [] },
+                leverageLatest: null,
+                leveragePrevious: null,
+                trendDirection: null,
+                distressEventCounts: {
+                    bankruptcy: 0,
+                    delisting: 0,
+                    nonReliance: 0,
+                    triggering: 0,
+                    impairment: 0,
+                    termination: 0,
+                },
+                totalDistressEvents: 0,
+                latestDistressDate: null,
+                freshestFilingDays: null,
             }
         ),
         withTimeout(
@@ -197,6 +212,16 @@ export async function scoreEntity(
                 score: 0,
                 hasRealData: false,
                 detail: { metrics: [{ label: 'Status', value: 'timeout' }], findings: [] },
+                departures12m: 0,
+                departures90d: 0,
+                officerCount: 0,
+                directorCount: 0,
+                cSuiteCount: 0,
+                cSuiteRoles: [],
+                auditorChanges12m: 0,
+                isSystemic: false,
+                governanceFlags: [],
+                keyPersonRisk: 'low',
             }
         ),
         withTimeout(computeNewsPressureScore(event, portfolioId, neid, ctx), 3_000, {
@@ -219,6 +244,16 @@ export async function scoreEntity(
             score: 0,
             hasRealData: false,
             detail: { metrics: [{ label: 'Status', value: 'timeout' }], findings: [] },
+            directMatchCount: 0,
+            pathMatchCount: 0,
+            graphNodesScreened: 0,
+            foci: {
+                foreignOwnershipPct: 0,
+                foreignBoardPct: 0,
+                foreignOfficerPct: 0,
+                overallRisk: 'low' as const,
+            },
+            jurisdictionHits: [],
         }),
         withTimeout(
             computeEventPressureScore(event, portfolioId, neid, ctx, resolvedScoring.events),
@@ -262,6 +297,7 @@ export async function scoreEntity(
             negativeMarkets: 0,
             markets: [],
             hasRealData: false,
+            mcpStatus: 'ok' as const,
             detail: { metrics: [{ label: 'Status', value: 'timeout' }], findings: [] },
         }),
     ]);
@@ -509,6 +545,71 @@ export async function scoreEntity(
                       url: acs.sanctions.sourceUrls[0] ?? null,
                   }
                 : null,
+            fhs: {
+                leverageLatest: solvency.leverageLatest ?? null,
+                leveragePrevious: solvency.leveragePrevious ?? null,
+                trendDirection: solvency.trendDirection ?? null,
+                distressEventCounts: solvency.distressEventCounts ?? {
+                    bankruptcy: 0,
+                    delisting: 0,
+                    nonReliance: 0,
+                    triggering: 0,
+                    impairment: 0,
+                    termination: 0,
+                },
+                totalDistressEvents: solvency.totalDistressEvents ?? 0,
+                latestDistressDate: solvency.latestDistressDate ?? null,
+                freshestFilingDays: solvency.freshestFilingDays ?? null,
+            } as {
+                leverageLatest: number | null;
+                leveragePrevious: number | null;
+                trendDirection: 'worsening' | 'stable' | 'improving' | null;
+                distressEventCounts: FhsDistressEventCount;
+                totalDistressEvents: number;
+                latestDistressDate: string | null;
+                freshestFilingDays: number | null;
+            },
+            ers: {
+                departures12m: executive.departures12m ?? 0,
+                departures90d: executive.departures90d ?? 0,
+                officerCount: executive.officerCount ?? 0,
+                directorCount: executive.directorCount ?? 0,
+                cSuiteCount: executive.cSuiteCount ?? 0,
+                cSuiteRoles: executive.cSuiteRoles ?? [],
+                auditorChanges12m: executive.auditorChanges12m ?? 0,
+                isSystemic: executive.isSystemic ?? false,
+                governanceFlags: executive.governanceFlags ?? [],
+                keyPersonRisk: executive.keyPersonRisk ?? 'low',
+            } as {
+                departures12m: number;
+                departures90d: number;
+                officerCount: number;
+                directorCount: number;
+                cSuiteCount: number;
+                cSuiteRoles: string[];
+                auditorChanges12m: number;
+                isSystemic: boolean;
+                governanceFlags: string[];
+                keyPersonRisk: string;
+            },
+            acsDetail: {
+                directMatchCount: acs.directMatchCount ?? 0,
+                pathMatchCount: acs.pathMatchCount ?? 0,
+                graphNodesScreened: acs.graphNodesScreened ?? 0,
+                foci: acs.foci ?? {
+                    foreignOwnershipPct: 0,
+                    foreignBoardPct: 0,
+                    foreignOfficerPct: 0,
+                    overallRisk: 'low',
+                },
+                jurisdictionHits: acs.jurisdictionHits ?? [],
+            } as {
+                directMatchCount: number;
+                pathMatchCount: number;
+                graphNodesScreened: number;
+                foci: AcsFociData;
+                jurisdictionHits: AcsJurisdictionHit[];
+            },
         },
     };
 }

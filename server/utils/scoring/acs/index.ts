@@ -16,6 +16,20 @@ import { runDirectScreening, type ScreeningListEntry } from './directScreening';
 import { traverseOwnershipGraph } from './graphTraversal';
 import { evaluateFoci, evaluateJurisdictionExposure } from './jurisdiction';
 
+export interface AcsJurisdictionHit {
+    name: string;
+    jurisdiction: string | null;
+    tier: 1 | 2 | 3 | 4;
+    hopDistance: number;
+}
+
+export interface AcsFociData {
+    foreignOwnershipPct: number;
+    foreignBoardPct: number;
+    foreignOfficerPct: number;
+    overallRisk: 'critical' | 'high' | 'medium' | 'low';
+}
+
 export interface AcsResult {
     score: number;
     hasRealData: boolean;
@@ -23,6 +37,11 @@ export interface AcsResult {
     screeningSourceEmpty?: boolean;
     /** Present only when the entity is directly flagged on a sanctions source. */
     sanctions?: SanctionsDetail;
+    directMatchCount: number;
+    pathMatchCount: number;
+    graphNodesScreened: number;
+    foci: AcsFociData;
+    jurisdictionHits: AcsJurisdictionHit[];
 }
 
 let screeningListCache: {
@@ -281,11 +300,27 @@ export async function computeAcsScore(
                     },
                 ];
 
+    // Extract top jurisdiction hits (tier 1 & 2 = high-sensitivity countries)
+    const jurisdictionHits: AcsJurisdictionHit[] = jurisdictionContributions
+        .filter((row) => row.tier <= 2)
+        .slice(0, 10)
+        .map((row) => ({
+            name: row.node.name,
+            jurisdiction: row.node.jurisdiction ?? null,
+            tier: row.tier,
+            hopDistance: row.node.hopDistance,
+        }));
+
     const out: AcsResult = {
         score,
         hasRealData: composite.hasRealData || sanctions.sanctioned,
         screeningSourceEmpty,
         sanctions: sanctions.sanctioned ? sanctions : undefined,
+        directMatchCount: directMatches.length,
+        pathMatchCount: pathMatches.length,
+        graphNodesScreened: traversed.length,
+        foci,
+        jurisdictionHits,
         detail: {
             metrics: [
                 { label: 'Risk level', value: riskLevel },

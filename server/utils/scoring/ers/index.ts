@@ -12,6 +12,16 @@ export interface ErsResult {
     score: number;
     hasRealData: boolean;
     detail: LensDetail;
+    departures12m: number;
+    departures90d: number;
+    officerCount: number;
+    directorCount: number;
+    cSuiteCount: number;
+    cSuiteRoles: string[];
+    auditorChanges12m: number;
+    isSystemic: boolean;
+    governanceFlags: string[];
+    keyPersonRisk: string;
 }
 
 export async function computeErsScore(
@@ -33,9 +43,49 @@ export async function computeErsScore(
         .filter((citation): citation is NonNullable<typeof citation> => Boolean(citation));
     const result = computeErsComposite(snapshot, signals, citations);
 
+    // Derive human-readable governance flags from signals for table display
+    const governanceFlags: string[] = [];
+    for (const signal of result.signals) {
+        switch (signal.signalType) {
+            case 'officer_count':
+                governanceFlags.push('Low officer count');
+                break;
+            case 'c_suite_coverage':
+            case 'c_suite_coverage_ratio':
+                governanceFlags.push('Low C-suite coverage');
+                break;
+            case 'officer_departures':
+                governanceFlags.push(`${result.governanceSummary.departures12m} departures (12m)`);
+                break;
+            case 'auditor_changes':
+                governanceFlags.push('Auditor change');
+                break;
+            case 'cumulative_departure_pattern':
+                governanceFlags.push(
+                    result.governanceSummary.isSystemic
+                        ? 'Systemic departures'
+                        : 'Cumulative departures'
+                );
+                break;
+            case '8k_item_5_02_events':
+                governanceFlags.push('8-K 5.02 events');
+                break;
+        }
+    }
+
     const out: ErsResult = {
         score: result.score,
         hasRealData: result.hasRealData,
+        departures12m: result.governanceSummary.departures12m,
+        departures90d: result.governanceSummary.departures90d,
+        officerCount: result.governanceSummary.officerCount,
+        directorCount: result.governanceSummary.directorCount,
+        cSuiteCount: result.governanceSummary.cSuiteCount,
+        cSuiteRoles: result.governanceSummary.cSuiteRoles,
+        auditorChanges12m: result.governanceSummary.auditorChanges12m,
+        isSystemic: result.governanceSummary.isSystemic,
+        governanceFlags: [...new Set(governanceFlags)],
+        keyPersonRisk: result.keyPersonRisk,
         detail: {
             metrics: [
                 { label: 'Risk level', value: result.riskLevel },

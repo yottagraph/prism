@@ -170,13 +170,28 @@
                     />
                 </v-window-item>
                 <v-window-item value="fhs" style="min-height: 400px">
-                    <MonitorFhsTable v-if="active" :entities="sortedEntities" :loading="scanning" />
+                    <MonitorFhsTable
+                        v-if="active"
+                        :entities="sortedEntities"
+                        :loading="scanning"
+                        @open="(e) => goToEntity(e, 'fhs')"
+                    />
                 </v-window-item>
                 <v-window-item value="ers" style="min-height: 400px">
-                    <MonitorErsTable v-if="active" :entities="sortedEntities" :loading="scanning" />
+                    <MonitorErsTable
+                        v-if="active"
+                        :entities="sortedEntities"
+                        :loading="scanning"
+                        @open="(e) => goToEntity(e, 'ers')"
+                    />
                 </v-window-item>
                 <v-window-item value="acs" style="min-height: 400px">
-                    <MonitorAcsTable v-if="active" :entities="sortedEntities" :loading="scanning" />
+                    <MonitorAcsTable
+                        v-if="active"
+                        :entities="sortedEntities"
+                        :loading="scanning"
+                        @open="(e) => goToEntity(e, 'acs')"
+                    />
                 </v-window-item>
                 <v-window-item value="summary" style="min-height: 600px">
                     <SummaryPortfolioSummaryTab
@@ -518,9 +533,10 @@
         ]);
     }
 
-    function goToEntity(entity: PortfolioEntity) {
+    function goToEntity(entity: PortfolioEntity, tab?: string) {
         if (!entity.neid) return;
-        router.push(`/entity/${entity.neid}`);
+        const query = tab ? { tab } : {};
+        router.push({ path: `/entity/${entity.neid}`, query });
     }
 
     function onAssess(entityRow: any, tier: 'HIGH' | 'MEDIUM' | 'LOW' | 'IGNORE' | null) {

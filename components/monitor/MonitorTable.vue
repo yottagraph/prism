@@ -9,16 +9,22 @@
                 @update:search="search = $event"
                 @update:rows-per-page="rowsPerPage = $event"
             />
-            <div class="d-flex ga-2 mb-2 text-caption text-medium-emphasis">
-                <span>SEC EDGAR</span>
-                <span>•</span>
-                <span>News</span>
-                <span>•</span>
-                <span>Stock</span>
-                <span>•</span>
-                <span>Prediction Markets</span>
-                <span>•</span>
-                <span>Analyst</span>
+            <div class="d-flex flex-wrap ga-2 mb-2">
+                <v-chip size="x-small" color="primary" variant="tonal" label
+                    >SEC EDGAR — FHS · ERS · CIK</v-chip
+                >
+                <v-chip size="x-small" color="info" variant="tonal" label
+                    >News — summary · activity</v-chip
+                >
+                <v-chip size="x-small" color="success" variant="tonal" label
+                    >Stock — $ · 30d · trend</v-chip
+                >
+                <v-chip size="x-small" color="purple" variant="tonal" label
+                    >Prediction Markets</v-chip
+                >
+                <v-chip size="x-small" color="error" variant="tonal" label
+                    >ACS — adversarial capital</v-chip
+                >
             </div>
             <div class="overflow-x-auto">
                 <v-data-table
@@ -71,6 +77,9 @@
                             :summary="item.signalSummary"
                         />
                     </template>
+                    <template #item.acsScore="{ item }">
+                        <RiskLevelChip :value="item.acsLevel" />
+                    </template>
                     <template #item.analyst="{ item }">
                         <AnalystAssessmentSelect
                             :model-value="item.assessmentTier"
@@ -121,15 +130,21 @@
         { title: '#', key: 'rank', sortable: false, width: 50 },
         { title: 'Entity', key: 'name', sortable: true },
         { title: 'Signals', key: 'signalAgreement', sortable: true, width: 120 },
-        { title: 'Solvency', key: 'solvency', sortable: true, width: 110 },
-        { title: 'Executive', key: 'executive', sortable: true, width: 110 },
+        // SEC lens
+        { title: 'Solvency (FHS)', key: 'solvency', sortable: true, width: 120 },
+        { title: 'Executive (ERS)', key: 'executive', sortable: true, width: 130 },
         { title: 'CIK Velocity', key: 'cikVelocity', sortable: true, width: 120 },
+        // News lens
         { title: 'News Summary (24h)', key: 'newsSummary', sortable: false, width: 240 },
         { title: 'News Activity', key: 'newsActivity', sortable: true, width: 120 },
+        // Stock lens
         { title: '$', key: 'stockChangePercent', sortable: true, width: 70 },
         { title: '30d', key: 'stockChange30dPercent', sortable: true, width: 70 },
         { title: 'Trend', key: 'stockTrend', sortable: true, width: 90 },
+        // Polymarket lens
         { title: 'Markets', key: 'polymarket', sortable: true, width: 140 },
+        // ACS lens
+        { title: 'ACS', key: 'acsScore', sortable: true, width: 90 },
         { title: 'Analyst', key: 'analyst', sortable: false, width: 130 },
         { title: '', key: 'actions', sortable: false, width: 40 },
     ];
@@ -155,6 +170,8 @@
             stockTrendSignal: entity.monitor?.stockTrendSignal ?? null,
             polymarketOutlook: entity.monitor?.polymarketOutlook ?? null,
             polymarketCount: entity.monitor?.polymarketCount ?? null,
+            acsLevel:
+                entity.scores?.compliance != null ? scoreToLabel(entity.scores.compliance) : null,
             assessmentTier: entity.assessment?.tier
                 ? (entity.assessment.tier.toUpperCase() as 'HIGH' | 'MEDIUM' | 'LOW' | 'IGNORE')
                 : null,

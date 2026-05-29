@@ -10,10 +10,26 @@ import { computeTier3Behavioral } from './tier3Behavioral';
 import { computeTier4Stakes } from './tier4Stakes';
 import { computeTier5Instruments } from './tier5Instruments';
 
+export interface FhsDistressEventCount {
+    bankruptcy: number;
+    delisting: number;
+    nonReliance: number;
+    triggering: number;
+    impairment: number;
+    termination: number;
+}
+
 export interface FhsResult {
     score: number;
     hasRealData: boolean;
     detail: LensDetail;
+    leverageLatest: number | null;
+    leveragePrevious: number | null;
+    trendDirection: 'worsening' | 'stable' | 'improving' | null;
+    distressEventCounts: FhsDistressEventCount;
+    totalDistressEvents: number;
+    latestDistressDate: string | null;
+    freshestFilingDays: number | null;
 }
 
 export async function computeFhsScore(
@@ -46,9 +62,51 @@ export async function computeFhsScore(
 
     const riskPrefix =
         composite.riskLevel.charAt(0).toUpperCase() + composite.riskLevel.slice(1).toLowerCase();
+
+    // Derive distress event counts from tier2 signals by signal type
+    const distressSignals = tier2.signals;
+    const distressEventCounts: FhsDistressEventCount = {
+        bankruptcy: distressSignals.filter((s) => s.signalType === 'BANKRUPTCY_EVENT').length,
+        delisting: distressSignals.filter((s) => s.signalType === 'DELISTING_EVENT').length,
+        nonReliance: distressSignals.filter((s) => s.signalType === 'NON_RELIANCE_EVENT').length,
+        triggering: distressSignals.filter((s) => s.signalType === 'TRIGGERING_EVENT').length,
+        impairment: distressSignals.filter((s) => s.signalType === 'IMPAIRMENT_EVENT').length,
+        termination: distressSignals.filter((s) => s.signalType === 'TERMINATION_EVENT').length,
+    };
+    const totalDistressEvents = distressSignals.length;
+
+    // Latest distress event date from tier2 findings
+    const latestDistressDate =
+        tier2.findings
+            .map((f) => f.date)
+            .filter((d): d is string => !!d)
+            .sort()
+            .pop() ?? null;
+
+    // Map composite trendDirection to simplified worsening/stable/improving
+    let trendDirection: FhsResult['trendDirection'];
+    switch (composite.trendDirection) {
+        case 'rapid_deterioration':
+        case 'deteriorating':
+            trendDirection = 'worsening';
+            break;
+        case 'improving':
+            trendDirection = 'improving';
+            break;
+        default:
+            trendDirection = 'stable';
+    }
+
     const result: FhsResult = {
         score: composite.score,
         hasRealData: composite.hasRealData,
+        leverageLatest: tier1.leverageLatest,
+        leveragePrevious: tier1.leveragePrevious,
+        trendDirection,
+        distressEventCounts,
+        totalDistressEvents,
+        latestDistressDate,
+        freshestFilingDays: tier1.freshestFilingDays,
         detail: {
             metrics: [
                 { label: 'Risk level', value: riskPrefix },

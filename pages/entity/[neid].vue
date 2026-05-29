@@ -52,26 +52,54 @@
                     class="mr-2"
                 />
                 {{ activeTab === 'stock' ? stockStatusMessage : overviewStatusMessage }}
-                <span v-if="entityElapsedText" class="ml-2 font-mono"
-                    >· {{ entityElapsedText }}</span
-                >
+                <span v-if="entityElapsedText" class="ml-2 font-mono">
+                    · {{ entityElapsedText }}
+                </span>
             </div>
         </div>
 
         <div class="flex-grow-1 overflow-y-auto pa-4">
             <v-tabs v-model="activeTab" class="mb-3">
                 <v-tab value="overview">Overview</v-tab>
-                <v-tab value="stock">Stock Entity</v-tab>
+                <v-tab value="fhs">
+                    <v-chip
+                        v-if="data?.scores?.solvency != null"
+                        :color="scoreLabelColor(data.scores.solvency)"
+                        size="x-small"
+                        label
+                        class="mr-1"
+                        >{{ scoreToLabel(data.scores.solvency).charAt(0).toUpperCase() }}</v-chip
+                    >
+                    FHS
+                </v-tab>
+                <v-tab value="ers">
+                    <v-chip
+                        v-if="data?.scores?.executive != null"
+                        :color="scoreLabelColor(data.scores.executive)"
+                        size="x-small"
+                        label
+                        class="mr-1"
+                        >{{ scoreToLabel(data.scores.executive).charAt(0).toUpperCase() }}</v-chip
+                    >
+                    ERS
+                </v-tab>
+                <v-tab value="acs">
+                    <v-chip
+                        v-if="data?.scores?.compliance != null"
+                        :color="scoreLabelColor(data.scores.compliance)"
+                        size="x-small"
+                        label
+                        class="mr-1"
+                        >{{ scoreToLabel(data.scores.compliance).charAt(0).toUpperCase() }}</v-chip
+                    >
+                    ACS
+                </v-tab>
+                <v-tab value="events">Events</v-tab>
+                <v-tab value="stock">Stock</v-tab>
             </v-tabs>
 
-            <v-progress-linear
-                v-if="loading && activeTab === 'overview'"
-                indeterminate
-                class="mb-4"
-            />
-            <v-alert v-if="error" type="error" variant="tonal" class="mb-3">
-                {{ error }}
-            </v-alert>
+            <v-progress-linear v-if="loading" indeterminate class="mb-4" />
+            <v-alert v-if="error" type="error" variant="tonal" class="mb-3">{{ error }}</v-alert>
             <v-alert
                 v-if="stockError && activeTab === 'stock'"
                 type="warning"
@@ -82,6 +110,7 @@
             </v-alert>
 
             <v-window v-model="activeTab">
+                <!-- ===== OVERVIEW TAB ===== -->
                 <v-window-item value="overview">
                     <v-alert
                         v-if="!loading && !data && !error"
@@ -92,6 +121,9 @@
                         text="No profile data available for this entity. Run a scan to populate scores."
                     />
                     <template v-if="data">
+                        <!-- Descriptive card -->
+                        <EntityDescriptiveCard :data="data" />
+
                         <v-row dense>
                             <v-col cols="12" md="5">
                                 <v-card class="pa-4 mb-3">
@@ -115,13 +147,40 @@
                             </v-col>
 
                             <v-col cols="12" md="7">
-                                <v-card class="pa-4 mb-3">
-                                    <div class="text-subtitle-2 mb-3">Lens Detail</div>
-                                    <LensDetailPanel
-                                        :scores="data.scores"
-                                        :lens-details="data.lensDetails"
-                                    />
-                                </v-card>
+                                <!-- Lens snapshot cards -->
+                                <div class="text-subtitle-2 mb-2">Lens Highlights</div>
+                                <v-row dense class="mb-3">
+                                    <v-col cols="12" sm="4">
+                                        <EntityLensSnapshot
+                                            title="Financial Health"
+                                            source-tag="FHS"
+                                            chip-color="primary"
+                                            :score="data.scores?.solvency"
+                                            :highlights="fhsHighlights"
+                                            @navigate="activeTab = 'fhs'"
+                                        />
+                                    </v-col>
+                                    <v-col cols="12" sm="4">
+                                        <EntityLensSnapshot
+                                            title="Executive Risk"
+                                            source-tag="ERS"
+                                            chip-color="secondary"
+                                            :score="data.scores?.executive"
+                                            :highlights="ersHighlights"
+                                            @navigate="activeTab = 'ers'"
+                                        />
+                                    </v-col>
+                                    <v-col cols="12" sm="4">
+                                        <EntityLensSnapshot
+                                            title="Adversarial Capital"
+                                            source-tag="ACS"
+                                            chip-color="error"
+                                            :score="data.scores?.compliance"
+                                            :highlights="acsHighlights"
+                                            @navigate="activeTab = 'acs'"
+                                        />
+                                    </v-col>
+                                </v-row>
 
                                 <v-card class="pa-4 mb-3">
                                     <div class="text-subtitle-2 mb-3">Macro Context</div>
@@ -197,49 +256,82 @@
                                         </v-col>
                                     </v-row>
                                 </v-card>
-
-                                <v-card class="pa-4">
-                                    <div class="text-subtitle-2 mb-3">Events Timeline</div>
-                                    <div class="timeline">
-                                        <div
-                                            v-for="ev in data.events"
-                                            :key="ev.date + ev.title"
-                                            class="timeline-row"
-                                        >
-                                            <span
-                                                class="ts font-mono text-caption text-medium-emphasis"
-                                            >
-                                                {{ ev.date }}
-                                            </span>
-                                            <v-chip
-                                                size="x-small"
-                                                :color="severityColor(ev.severity)"
-                                                variant="tonal"
-                                                label
-                                            >
-                                                {{ ev.category }}
-                                            </v-chip>
-                                            <span class="title-text text-body-2">{{
-                                                ev.title
-                                            }}</span>
-                                            <div
-                                                v-if="ev.citations?.length"
-                                                class="timeline-citations"
-                                            >
-                                                <CitationChip
-                                                    v-for="(citation, idx) in ev.citations"
-                                                    :key="`${ev.date}-${ev.title}-${idx}`"
-                                                    :citation="citation"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </v-card>
                             </v-col>
                         </v-row>
                     </template>
                 </v-window-item>
 
+                <!-- ===== FHS TAB ===== -->
+                <v-window-item value="fhs">
+                    <v-alert
+                        v-if="!loading && !data"
+                        type="info"
+                        variant="tonal"
+                        density="compact"
+                        class="mb-3"
+                        text="Run a scan to populate FHS data."
+                    />
+                    <EntityFhsSection
+                        v-if="data"
+                        :scores="data.scores"
+                        :lens-details="data.lensDetails"
+                        :fhs-monitor="
+                            (data as any).monitor?.fhs ?? entityFromPortfolio?.monitor?.fhs
+                        "
+                    />
+                </v-window-item>
+
+                <!-- ===== ERS TAB ===== -->
+                <v-window-item value="ers">
+                    <v-alert
+                        v-if="!loading && !data"
+                        type="info"
+                        variant="tonal"
+                        density="compact"
+                        class="mb-3"
+                        text="Run a scan to populate ERS data."
+                    />
+                    <EntityErsSection
+                        v-if="data"
+                        :scores="data.scores"
+                        :lens-details="data.lensDetails"
+                        :ers-monitor="
+                            (data as any).monitor?.ers ?? entityFromPortfolio?.monitor?.ers
+                        "
+                    />
+                </v-window-item>
+
+                <!-- ===== ACS TAB ===== -->
+                <v-window-item value="acs">
+                    <v-alert
+                        v-if="!loading && !data"
+                        type="info"
+                        variant="tonal"
+                        density="compact"
+                        class="mb-3"
+                        text="Run a scan to populate ACS data."
+                    />
+                    <EntityAcsSection
+                        v-if="data"
+                        :scores="data.scores"
+                        :lens-details="data.lensDetails"
+                        :sanction-data="
+                            (data as any).monitor?.sanctions ??
+                            entityFromPortfolio?.monitor?.sanctions
+                        "
+                        :acs-detail-data="
+                            (data as any).monitor?.acsDetail ??
+                            entityFromPortfolio?.monitor?.acsDetail
+                        "
+                    />
+                </v-window-item>
+
+                <!-- ===== EVENTS TAB ===== -->
+                <v-window-item value="events">
+                    <EntityEventsView :events="profileEvents" :loading="loading" />
+                </v-window-item>
+
+                <!-- ===== STOCK TAB ===== -->
                 <v-window-item value="stock">
                     <StockEntityTab
                         :stock="stockData"
@@ -260,12 +352,24 @@
     import { useEntityProfile } from '~/composables/useEntityProfile';
     import { useEntityStockProfile } from '~/composables/useEntityStockProfile';
     import { usePortfolio } from '~/composables/usePortfolio';
-    import { tierColor, tierLabel } from '~/composables/useFusedScoring';
+    import {
+        tierColor,
+        tierLabel,
+        scoreToLabel,
+        scoreLabelColor,
+    } from '~/composables/useFusedScoring';
     import { useMacroContext } from '~/composables/useRelationships';
     import CitationChip from '~/components/CitationChip.vue';
     import StockEntityTab from '~/components/entity/StockEntityTab.vue';
+    import EntityDescriptiveCard from '~/components/entity/EntityDescriptiveCard.vue';
+    import EntityLensSnapshot from '~/components/entity/EntityLensSnapshot.vue';
+    import EntityFhsSection from '~/components/entity/EntityFhsSection.vue';
+    import EntityErsSection from '~/components/entity/EntityErsSection.vue';
+    import EntityAcsSection from '~/components/entity/EntityAcsSection.vue';
+    import EntityEventsView from '~/components/entity/EntityEventsView.vue';
 
     const route = useRoute();
+    const router = useRouter();
     const neid = computed(() => route.params.neid as string);
 
     const { activePortfolio, weights, saveAssessment } = usePortfolio();
@@ -292,9 +396,24 @@
         clear: clearStockCache,
     } = useEntityStockProfile();
     const { signals: macroSignals } = useMacroContext();
-    const activeTab = ref<'overview' | 'stock'>('overview');
 
-    // Elapsed timer for entity load progress indicator
+    // Sync tab with ?tab= query param
+    const activeTab = ref<'overview' | 'fhs' | 'ers' | 'acs' | 'events' | 'stock'>(
+        (route.query.tab as any) || 'overview'
+    );
+    watch(activeTab, (tab) => {
+        router.replace({ query: { ...route.query, tab: tab === 'overview' ? undefined : tab } });
+    });
+    watch(
+        () => route.query.tab,
+        (tab) => {
+            if (tab && tab !== activeTab.value) {
+                activeTab.value = (tab as any) || 'overview';
+            }
+        }
+    );
+
+    // Elapsed timer
     const nowMs = ref(Date.now());
     const loadStartedAt = ref<number | null>(null);
     const loadEndedAt = ref<number | null>(null);
@@ -342,9 +461,7 @@
     }
 
     watch(activeTab, async (value) => {
-        if (value === 'stock') {
-            await loadStock(false);
-        }
+        if (value === 'stock') await loadStock(false);
     });
 
     watch(neid, () => {
@@ -353,9 +470,91 @@
         if (portfolioId) clearStockCache(portfolioId, neid.value);
     });
 
-    function severityColor(s: 'low' | 'medium' | 'high') {
-        return s === 'high' ? 'error' : s === 'medium' ? 'warning' : 'info';
+    function onSaveAssessment(a: { tier: any; justification: string }) {
+        if (!activePortfolio.value || !neid.value) return;
+        saveAssessment(activePortfolio.value.id, neid.value, a.tier, a.justification);
     }
+
+    async function onRefresh() {
+        if (activeTab.value === 'stock') {
+            await loadStock(true);
+            return;
+        }
+        refresh(weights.value);
+    }
+
+    // Lens highlights for overview snapshot cards (pull from lensDetails findings)
+    const fhsHighlights = computed(() => {
+        const findings = data.value?.lensDetails?.solvency?.findings ?? [];
+        const fhs = (data.value as any)?.monitor?.fhs ?? entityFromPortfolio.value?.monitor?.fhs;
+        const items: string[] = [];
+        if (fhs?.trendDirection === 'worsening') items.push('Leverage trending upward');
+        if (fhs?.totalDistressEvents)
+            items.push(`${fhs.totalDistressEvents} distress event(s) detected`);
+        if (!items.length && findings.length) items.push(findings[0].text.slice(0, 80));
+        return items;
+    });
+
+    const ersHighlights = computed(() => {
+        const ers = (data.value as any)?.monitor?.ers ?? entityFromPortfolio.value?.monitor?.ers;
+        const items: string[] = [];
+        if (ers?.departures12m) items.push(`${ers.departures12m} departure(s) in last 12 months`);
+        if (ers?.auditorChanges12m) items.push(`${ers.auditorChanges12m} auditor change(s)`);
+        if (ers?.isSystemic) items.push('Systemic departure pattern detected');
+        if (!items.length) {
+            const findings = data.value?.lensDetails?.executive?.findings ?? [];
+            if (findings.length) items.push(findings[0].text.slice(0, 80));
+        }
+        return items;
+    });
+
+    const acsHighlights = computed(() => {
+        const sanctions =
+            (data.value as any)?.monitor?.sanctions ??
+            entityFromPortfolio.value?.monitor?.sanctions;
+        const acsD =
+            (data.value as any)?.monitor?.acsDetail ??
+            entityFromPortfolio.value?.monitor?.acsDetail;
+        const items: string[] = [];
+        if (sanctions?.listed)
+            items.push(
+                `Sanctions listed${sanctions.authority ? ` by ${sanctions.authority}` : ''}`
+            );
+        if (acsD?.pathMatchCount) items.push(`${acsD.pathMatchCount} ownership-path match(es)`);
+        if (acsD?.jurisdictionHits?.length)
+            items.push(`${acsD.jurisdictionHits.length} high-risk jurisdiction(s)`);
+        if (!items.length) {
+            const findings = data.value?.lensDetails?.compliance?.findings ?? [];
+            if (findings.length) items.push(findings[0].text.slice(0, 80));
+        }
+        return items;
+    });
+
+    // Events tab — annotate events with source tag
+    const profileEvents = computed(() => {
+        const raw = data.value?.events ?? [];
+        return raw.map((ev) => ({
+            ...ev,
+            source: inferSource(ev.category),
+        }));
+    });
+
+    function inferSource(category: string): string {
+        const upper = (category || '').toUpperCase();
+        if (
+            upper.includes('STOCK') ||
+            upper.includes('PRICE') ||
+            upper.includes('MARKET') ||
+            upper.includes('TRADING')
+        )
+            return 'STOCK';
+        if (upper.includes('NEWS') || upper.includes('PRESS') || upper.includes('MEDIA'))
+            return 'NEWS';
+        if (upper.includes('POLYMARKET') || upper.includes('PREDICTION')) return 'POLY';
+        // Default — SEC/EDGAR covers most corporate events
+        return 'SEC';
+    }
+
     function relationIcon(k: string) {
         switch (k) {
             case 'companies':
@@ -370,6 +569,7 @@
                 return 'mdi-link-variant';
         }
     }
+
     function relationColor(k: string) {
         switch (k) {
             case 'companies':
@@ -384,19 +584,6 @@
                 return 'grey';
         }
     }
-
-    function onSaveAssessment(a: { tier: any; justification: string }) {
-        if (!activePortfolio.value || !neid.value) return;
-        saveAssessment(activePortfolio.value.id, neid.value, a.tier, a.justification);
-    }
-
-    async function onRefresh() {
-        if (activeTab.value === 'stock') {
-            await loadStock(true);
-            return;
-        }
-        refresh(weights.value);
-    }
 </script>
 
 <style scoped>
@@ -404,45 +591,19 @@
         border-bottom: 1px solid rgba(var(--dynamic-fg-rgb), 0.05);
         background: rgba(var(--dynamic-bg-rgb), 0.3);
     }
-
     .relation-card {
         background: rgba(var(--dynamic-fg-rgb), 0.02);
         border: 1px solid rgba(var(--dynamic-fg-rgb), 0.04);
     }
-
     .rel-list {
         list-style: none;
         padding-left: 0;
         margin: 0;
     }
-
     .rel-list li {
         padding: 2px 0;
         font-size: 0.875rem;
     }
-
-    .timeline {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    .timeline-row {
-        display: grid;
-        grid-template-columns: 100px 130px 1fr auto;
-        gap: 12px;
-        align-items: center;
-        padding: 6px 0;
-        border-bottom: 1px dashed rgba(var(--dynamic-fg-rgb), 0.04);
-    }
-
-    .timeline-citations {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        justify-content: flex-end;
-    }
-
     .font-mono {
         font-family: var(--font-mono, ui-monospace, monospace);
     }

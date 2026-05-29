@@ -335,6 +335,72 @@ export interface MonitorEntitySectorSummary {
     sector?: string | null;
 }
 
+export interface MonitorEntityFhsSummary {
+    fhs?: {
+        leverageLatest: number | null;
+        leveragePrevious: number | null;
+        trendDirection: 'worsening' | 'stable' | 'improving' | null;
+        distressEventCounts: {
+            bankruptcy: number;
+            delisting: number;
+            nonReliance: number;
+            triggering: number;
+            impairment: number;
+            termination: number;
+        };
+        totalDistressEvents: number;
+        latestDistressDate: string | null;
+        freshestFilingDays: number | null;
+    } | null;
+}
+
+export interface MonitorEntityErsSummary {
+    ers?: {
+        departures12m: number;
+        departures90d: number;
+        officerCount: number;
+        directorCount: number;
+        cSuiteCount: number;
+        cSuiteRoles: string[];
+        auditorChanges12m: number;
+        isSystemic: boolean;
+        governanceFlags: string[];
+        keyPersonRisk: string;
+    } | null;
+}
+
+export interface MonitorEntityAcsSummary {
+    acsDetail?: {
+        directMatchCount: number;
+        pathMatchCount: number;
+        graphNodesScreened: number;
+        foci: {
+            foreignOwnershipPct: number;
+            foreignBoardPct: number;
+            foreignOfficerPct: number;
+            overallRisk: 'critical' | 'high' | 'medium' | 'low';
+        };
+        jurisdictionHits: Array<{
+            name: string;
+            jurisdiction: string | null;
+            tier: 1 | 2 | 3 | 4;
+            hopDistance: number;
+        }>;
+    } | null;
+}
+
+export interface MonitorEntitySanctionsSummary {
+    sanctions?: {
+        listed: boolean;
+        authority: string | null;
+        sector: string | null;
+        topic: string | null;
+        since: string | null;
+        listId: string | null;
+        url: string | null;
+    } | null;
+}
+
 export interface SourceCoverageDetail {
     sec: { filings: number; earliest: string | null; latest: string | null };
     news: { articles: number; events: number; earliest: string | null; latest: string | null };
@@ -397,7 +463,11 @@ export interface ScoreComputationResult {
         MonitorEntityStockSummary &
         MonitorEntityVelocitySummary &
         MonitorEntityPolymarketSummary &
-        MonitorEntitySectorSummary & {
+        MonitorEntitySectorSummary &
+        MonitorEntitySanctionsSummary &
+        MonitorEntityFhsSummary &
+        MonitorEntityErsSummary &
+        MonitorEntityAcsSummary & {
             riskCategory?: 'HIGH' | 'MEDIUM' | 'LOW' | 'IGNORE';
         };
 }

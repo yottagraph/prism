@@ -422,4 +422,52 @@ export interface MonitorEntity {
         listId: string | null;
         url: string | null;
     } | null;
+    /** Structured FHS lens data for lens table columns. */
+    fhs?: {
+        leverageLatest: number | null;
+        leveragePrevious: number | null;
+        trendDirection: 'worsening' | 'stable' | 'improving' | null;
+        distressEventCounts: {
+            bankruptcy: number;
+            delisting: number;
+            nonReliance: number;
+            triggering: number;
+            impairment: number;
+            termination: number;
+        };
+        totalDistressEvents: number;
+        latestDistressDate: string | null;
+        freshestFilingDays: number | null;
+    } | null;
+    /** Structured ERS lens data for lens table columns. */
+    ers?: {
+        departures12m: number;
+        departures90d: number;
+        officerCount: number;
+        directorCount: number;
+        cSuiteCount: number;
+        cSuiteRoles: string[];
+        auditorChanges12m: number;
+        isSystemic: boolean;
+        governanceFlags: string[];
+        keyPersonRisk: string;
+    } | null;
+    /** Structured ACS lens data for lens table columns. */
+    acsDetail?: {
+        directMatchCount: number;
+        pathMatchCount: number;
+        graphNodesScreened: number;
+        foci: {
+            foreignOwnershipPct: number;
+            foreignBoardPct: number;
+            foreignOfficerPct: number;
+            overallRisk: 'critical' | 'high' | 'medium' | 'low';
+        };
+        jurisdictionHits: Array<{
+            name: string;
+            jurisdiction: string | null;
+            tier: 1 | 2 | 3 | 4;
+            hopDistance: number;
+        }>;
+    } | null;
 }

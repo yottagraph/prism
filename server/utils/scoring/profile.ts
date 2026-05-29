@@ -77,18 +77,74 @@ async function getRelationships(event: H3Event, neid: string) {
     return links;
 }
 
+/**
+ * Map an Elemental event_type/category string to a display source tag.
+ * Most corporate events originate from SEC filings; override for news, stocks, Polymarket.
+ */
+function inferEventSource(category: string, title: string): string {
+    const upper = (category + ' ' + title).toUpperCase();
+    if (
+        upper.includes('NEWS') ||
+        upper.includes('PRESS') ||
+        upper.includes('MEDIA') ||
+        upper.includes('ARTICLE') ||
+        upper.includes('COVERAGE')
+    )
+        return 'NEWS';
+    if (
+        upper.includes('STOCK') ||
+        upper.includes('PRICE') ||
+        upper.includes('TRADING') ||
+        upper.includes('MARKET_CAP') ||
+        upper.includes('EARNINGS_SURPRISE')
+    )
+        return 'STOCK';
+    if (upper.includes('POLYMARKET') || upper.includes('PREDICTION_MARKET')) return 'POLY';
+    return 'SEC';
+}
+
+/**
+ * Build a one-line status summary from the scored entity for the Overview card.
+ */
+function buildStatusSummary(scored: any, name: string): string | null {
+    if (!scored?.scores) return null;
+    const tier: string = scored.scores.tier ?? 'low';
+    const tierLabel = tier.charAt(0).toUpperCase() + tier.slice(1);
+    const parts: string[] = [`${name} is assessed as ${tierLabel} risk.`];
+    if (scored.scores.solvency >= 65) parts.push('Financial health is stressed.');
+    if (scored.scores.executive >= 65) parts.push('Governance instability detected.');
+    if (scored.monitor?.sanctions?.listed) parts.push('Direct sanctions listing present.');
+    if (scored.monitor?.fhs?.totalDistressEvents)
+        parts.push(`${scored.monitor.fhs.totalDistressEvents} distress event(s) on record.`);
+    return parts.join(' ');
+}
+
 export async function getEntityProfile(event: H3Event, portfolioId: string, neid: string) {
     const cacheKey = makeCacheKey(portfolioId, neid, 'profile');
     const cached = await readScoringCache<any>(event, cacheKey);
     if (cached) return cached;
 
     const name = await getEntityName(neid, event).catch(() => neid);
+
+    // Fetch entity snapshot + descriptive properties
     const entitySnapshot = await callMcpTool(
         'elemental',
         'elemental_get_entity',
         {
             entity_id: { id_type: 'neid', id: neid },
-            properties: ['ticker_symbol', 'company_cik', 'industry'],
+            properties: [
+                'ticker_symbol',
+                'company_cik',
+                'industry',
+                'address',
+                'headquarters',
+                'founded_date',
+                'inception_date',
+                'num_employees',
+                'total_employees',
+                'market_cap',
+                'market_capitalization',
+            ],
         },
         event
     ).catch(() => null);
@@ -99,12 +155,53 @@ export async function getEntityProfile(event: H3Event, portfolioId: string, neid
         };
     }>(entitySnapshot);
 
+    const props = entityData?.entity?.properties ?? {};
+    const strProp = (key: string): string | null => {
+        const v = props[key]?.value;
+        return typeof v === 'string' && v.trim() ? v.trim() : null;
+    };
+
+    // Descriptive fields — try multiple aliases per concept
+    const headquartersRaw = strProp('headquarters') ?? strProp('address') ?? null;
+    const foundedRaw = strProp('founded_date') ?? strProp('inception_date') ?? null;
+    const employeesRaw =
+        strProp('num_employees') ??
+        strProp('total_employees') ??
+        (props['num_employees']?.value != null ? String(props['num_employees'].value) : null) ??
+        null;
+    const marketCapRaw = strProp('market_cap') ?? strProp('market_capitalization') ?? null;
+
+    // Location fallback from relationships (locations bucket)
+    let headquartersFromRelationships: string | null = null;
+    if (!headquartersRaw) {
+        try {
+            const relResult = await callMcpTool(
+                'elemental',
+                'elemental_get_related',
+                {
+                    entity_id: { id_type: 'neid', id: neid },
+                    related_flavor: 'location',
+                    relationship_types: ['is_located_at', 'headquartered_at'],
+                    direction: 'outgoing',
+                    limit: 1,
+                },
+                event
+            );
+            const relData = extractMcpStructuredContent<{
+                relationships?: Array<{ name?: string }>;
+            }>(relResult);
+            headquartersFromRelationships = relData?.relationships?.[0]?.name ?? null;
+        } catch {
+            // Location lookup is best-effort
+        }
+    }
+
     const eventsResult = await callMcpTool(
         'elemental',
         'elemental_get_events',
         {
             entity_id: { id_type: 'neid', id: neid },
-            limit: 25,
+            limit: 100,
             include_participants: false,
         },
         event
@@ -131,6 +228,8 @@ export async function getEntityProfile(event: H3Event, portfolioId: string, neid
     }));
     const scored = await scoreEntity(event, portfolioId, neid).catch(() => null);
 
+    const headquarters = headquartersRaw ?? headquartersFromRelationships;
+
     const profile = {
         neid,
         name,
@@ -143,34 +242,60 @@ export async function getEntityProfile(event: H3Event, portfolioId: string, neid
         sector:
             (entityData?.entity?.properties?.industry?.value as string | null | undefined) ?? null,
         entityType: (entityData?.entity?.flavor as string | null | undefined) ?? null,
+        descriptive: {
+            headquarters,
+            founded: foundedRaw,
+            employees: employeesRaw,
+            marketCap: marketCapRaw,
+        },
+        statusSummary: buildStatusSummary(scored, name),
         properties: [] as Array<{ pid: string; name: string; value: string | number | null }>,
         relationships,
-        events: eventRows.slice(0, 25).map((eventRow) => {
-            const category = String(eventRow?.properties?.category?.value || 'Event');
-            const date = String(eventRow?.properties?.date?.value || '');
-            const title = String(
-                eventRow?.properties?.description?.value || eventRow?.name || category || 'Event'
-            );
-            const refs = Object.values(eventRow?.properties || {})
-                .map((property) => property?.ref)
-                .filter((ref): ref is string => typeof ref === 'string');
-            const citations = refs
-                .map((ref) => eventCitationMap.get(ref))
-                .filter((citation): citation is NonNullable<typeof citation> => !!citation);
-            return {
-                date,
-                category,
-                title,
-                severity: /bankrupt|default|fraud|regulator|litig/i.test(title)
-                    ? ('high' as const)
-                    : ('medium' as const),
-                citations,
-            };
-        }) as Array<{
+        // Include scored monitor data so the entity page can read lens sub-objects
+        monitor: scored?.monitor ?? null,
+        events: eventRows
+            .slice(0, 100)
+            .map((eventRow) => {
+                const category = String(eventRow?.properties?.category?.value || 'Event');
+                const date = String(eventRow?.properties?.date?.value || '');
+                const title = String(
+                    eventRow?.properties?.description?.value ||
+                        eventRow?.name ||
+                        category ||
+                        'Event'
+                );
+                const refs = Object.values(eventRow?.properties || {})
+                    .map((property) => property?.ref)
+                    .filter((ref): ref is string => typeof ref === 'string');
+                const citations = refs
+                    .map((ref) => eventCitationMap.get(ref))
+                    .filter((citation): citation is NonNullable<typeof citation> => !!citation);
+                return {
+                    date,
+                    category,
+                    title,
+                    severity: /bankrupt|default|fraud|regulator|litig|delist|non.relian/i.test(
+                        title
+                    )
+                        ? ('high' as const)
+                        : /departure|officer|director|auditor|impair|trigger/i.test(title)
+                          ? ('medium' as const)
+                          : ('low' as const),
+                    source: inferEventSource(category, title),
+                    citations,
+                };
+            })
+            .sort((a, b) => {
+                if (!a.date && !b.date) return 0;
+                if (!a.date) return 1;
+                if (!b.date) return -1;
+                return b.date.localeCompare(a.date);
+            }) as Array<{
             date: string;
             category: string;
             title: string;
             severity: 'low' | 'medium' | 'high';
+            source: string;
             citations: Array<{
                 ref?: string;
                 url?: string;

@@ -22,6 +22,13 @@ export interface RelatedEntityRef {
     relationship: string;
 }
 
+export interface EntityDescriptiveData {
+    headquarters?: string | null;
+    founded?: string | null;
+    employees?: string | null;
+    marketCap?: string | null;
+}
+
 export interface EntityProfileData {
     neid: string;
     name: string;
@@ -30,6 +37,8 @@ export interface EntityProfileData {
     sector?: string | null;
     entityType?: string | null;
     properties: EntityProperty[];
+    descriptive?: EntityDescriptiveData;
+    statusSummary?: string | null;
     relationships: {
         companies: RelatedEntityRef[];
         people: RelatedEntityRef[];
@@ -41,6 +50,8 @@ export interface EntityProfileData {
         category: string;
         title: string;
         severity: 'low' | 'medium' | 'high';
+        /** Data source tag derived from event_type/category mapping */
+        source?: string;
         citations?: Array<{
             ref?: string;
             url?: string;
