@@ -128,11 +128,13 @@
                         :total="active?.entities.length ?? 0"
                         :coverage="coverage"
                         :coverage-detail="coverageDetail"
+                        :fred-macro="fredMacroCoverage"
                         :scanning="scanning"
                         class="flex-grow-1"
                     />
                     <RiskDistribution
                         :counts="tierCounts"
+                        :details="tierDrivers"
                         :scanning="scanning"
                         class="flex-grow-1"
                     />
@@ -206,6 +208,7 @@
     import type { RiskTier } from '~/composables/useFusedScoring';
     import { usePortfolio } from '~/composables/usePortfolio';
     import { useAgentPipeline } from '~/composables/useAgentPipeline';
+    import { useFredMacroContext } from '~/composables/useRelationships';
 
     const router = useRouter();
 
@@ -228,6 +231,24 @@
     } = usePortfolio();
 
     const { runPipeline, activity, pushActivity } = useAgentPipeline();
+
+    // FRED is portfolio-wide macro context (GDP, inflation, rates), not a
+    // per-entity source — surface its live curated series in the coverage panel.
+    const { signals: fredMacroSignals } = useFredMacroContext({ autoRefresh: false });
+    const fredMacroCoverage = computed(() => {
+        const sig = fredMacroSignals.value;
+        const latest = sig
+            .map((s) => s.historyEnd)
+            .filter((d): d is string => !!d)
+            .sort()
+            .pop();
+        return {
+            live: sig.length,
+            total: Math.max(sig.length, 5),
+            earliest: null,
+            latest: latest ?? null,
+        };
+    });
 
     const lastScanError = ref('');
     const monitorTab = ref<'monitor' | 'fhs' | 'ers' | 'acs'>('monitor');
@@ -268,6 +289,44 @@
             if (e.scores?.tier) counts[e.scores.tier]++;
         });
         return counts;
+    });
+
+    const DRIVER_LENS_LABEL: Record<string, string> = {
+        solvency: 'Solvency',
+        executive: 'Leadership',
+        news: 'News',
+        market: 'Market',
+        eventPressure: 'Events',
+        compliance: 'Sanctions',
+    };
+
+    // Per-tier "what's driving this priority": tally each entity's top driver
+    // lenses, then surface the most common ones for the tier.
+    const tierDrivers = computed<Partial<Record<RiskTier, string>>>(() => {
+        const tally: Record<RiskTier, Map<string, number>> = {
+            critical: new Map(),
+            high: new Map(),
+            medium: new Map(),
+            low: new Map(),
+        };
+        for (const e of active.value?.entities ?? []) {
+            const tier = e.scores?.tier;
+            if (!tier) continue;
+            const topDrivers = [...(e.drivers ?? [])].sort((a, b) => b.score - a.score).slice(0, 2);
+            for (const d of topDrivers) {
+                const label = DRIVER_LENS_LABEL[d.lens] ?? d.lens;
+                tally[tier].set(label, (tally[tier].get(label) ?? 0) + 1);
+            }
+        }
+        const out: Partial<Record<RiskTier, string>> = {};
+        (Object.keys(tally) as RiskTier[]).forEach((t) => {
+            const ranked = [...tally[t].entries()]
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 3)
+                .map(([label]) => label);
+            if (ranked.length) out[t] = ranked.join(' · ');
+        });
+        return out;
     });
 
     const coverage = computed(() => {
@@ -319,6 +378,9 @@
             acs: 0,
             eventPressure: 0,
             velocity: 0,
+            sanctions: 0,
+            ownership: { entities: 0, links: 0 },
+            fdic: 0,
         };
         if (!active.value) return empty;
 
@@ -364,6 +426,12 @@
             if (cd.acs) agg.acs++;
             if (cd.eventPressure) agg.eventPressure++;
             if (cd.velocity) agg.velocity++;
+            if (cd.sanctions) agg.sanctions++;
+            if (cd.ownership > 0) {
+                agg.ownership.entities++;
+                agg.ownership.links += cd.ownership;
+            }
+            if (cd.fdic) agg.fdic++;
         }
 
         if (!anyDetail) return lastScanCoverageDetail.value;

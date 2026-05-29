@@ -44,49 +44,31 @@
     import { computed } from 'vue';
     import type { RiskTier } from '~/composables/useFusedScoring';
     import { tierColor, tierLabel } from '~/composables/useFusedScoring';
-    import { useScoringSettings } from '~/composables/useScoringSettings';
 
     const props = withDefaults(
         defineProps<{
             counts: Record<RiskTier, number>;
+            /** Per-tier key drivers/events summary (e.g. "Solvency · News"). */
+            details?: Partial<Record<RiskTier, string>>;
             scanning?: boolean;
         }>(),
         { scanning: false }
     );
 
-    const { scoring } = useScoringSettings();
-
-    const TIER_MEANING: Record<RiskTier, string> = {
-        critical: 'immediate review',
-        high: 'elevated concern',
-        medium: 'watch closely',
-        low: 'stable',
-    };
-
-    /** Per-tier descriptor: the fused-score band that lands an entity here. */
-    function tierDetail(tier: RiskTier): string {
-        const { critical, high, medium } = scoring.value.tiers;
-        const band =
-            tier === 'critical'
-                ? `Fused ≥ ${critical}`
-                : tier === 'high'
-                  ? `Fused ${high}–${critical - 1}`
-                  : tier === 'medium'
-                    ? `Fused ${medium}–${high - 1}`
-                    : `Fused < ${medium}`;
-        return `${band} · ${TIER_MEANING[tier]}`;
-    }
-
     const tiers: RiskTier[] = ['critical', 'high', 'medium', 'low'];
     const total = computed(() => tiers.reduce((s, t) => s + (props.counts[t] || 0), 0));
     const rows = computed(() =>
-        tiers.map((t) => ({
-            tier: t,
-            label: tierLabel(t),
-            color: tierColor(t),
-            count: props.counts[t] || 0,
-            detail: tierDetail(t),
-        }))
+        tiers.map((t) => {
+            const count = props.counts[t] || 0;
+            const drivers = props.details?.[t]?.trim();
+            return {
+                tier: t,
+                label: tierLabel(t),
+                color: tierColor(t),
+                count,
+                detail: count === 0 ? 'No entities' : drivers || '—',
+            };
+        })
     );
 </script>
 

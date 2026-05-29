@@ -98,6 +98,47 @@ async function fetchEntityIndustry(event: H3Event, neid: string): Promise<string
     }
 }
 
+/**
+ * Detect per-entity coverage from sources that aren't part of the core lens
+ * fetches: OpenSanctions screening and FDIC bank data. Both write
+ * source-specific properties onto the `organization` flavor, so a single
+ * property-value read tells us whether the entity is present in each dataset.
+ *   • Sanctions — `sanctions_topic` / `sanctioned` only appear on listed
+ *     entities (OpenSanctions / OFAC / CSL), so any fact means a screening hit.
+ *   • FDIC — `fdic_certificate_number` and the call-report metrics are
+ *     bank-only markers (depository institutions).
+ */
+async function fetchAuxiliaryCoverage(
+    event: H3Event,
+    neid: string
+): Promise<{ sanctions: boolean; fdic: boolean }> {
+    try {
+        const schema = await getSchema(event);
+        const pid = normalizePidMap(schema);
+        const sanctionsPids = ['sanctions_topic', 'sanctioned', 'sanctions_id']
+            .map((n) => pid[n])
+            .filter((p): p is string => typeof p === 'string' && p.length > 0);
+        const fdicPids = [
+            'fdic_certificate_number',
+            'total_deposits',
+            'net_interest_margin',
+            'insured_deposits',
+            'failure_date',
+        ]
+            .map((n) => pid[n])
+            .filter((p): p is string => typeof p === 'string' && p.length > 0);
+        const allPids = [...new Set([...sanctionsPids, ...fdicPids])];
+        if (allPids.length === 0) return { sanctions: false, fdic: false };
+
+        const values = await getPropertyValues([neid], allPids, true, event);
+        const sanctions = sanctionsPids.some((p) => extractPropertyFacts(values, p).length > 0);
+        const fdic = fdicPids.some((p) => extractPropertyFacts(values, p).length > 0);
+        return { sanctions, fdic };
+    } catch {
+        return { sanctions: false, fdic: false };
+    }
+}
+
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> {
     return new Promise((resolve) => {
         const timer = setTimeout(() => resolve(fallback), timeoutMs);
@@ -225,10 +266,19 @@ export async function scoreEntity(
         }),
     ]);
 
-    const [fredSeriesCount, entityIndustry] = await Promise.all([
+    const [fredSeriesCount, entityIndustry, auxCoverage] = await Promise.all([
         withTimeout(queryFredSeriesCount(event, neid), 3_000, 0),
         withTimeout(fetchEntityIndustry(event, neid), 3_000, null),
+        withTimeout(fetchAuxiliaryCoverage(event, neid), 3_000, {
+            sanctions: false,
+            fdic: false,
+        }),
     ]);
+
+    // Ownership / GLEIF graph depth: beneficial owners, subsidiaries, plus the
+    // governance links (officers, directors) that ownership-path screening walks.
+    const ownershipLinks =
+        ctx.ownership.length + ctx.subsidiaries.length + ctx.officers.length + ctx.directors.length;
 
     const previous = readPreviousScore(portfolioId, neid);
     const subs = {
@@ -349,6 +399,9 @@ export async function scoreEntity(
         acs: acs.hasRealData,
         eventPressure: eventPressure.hasRealData,
         velocity: cikVelocity.hasRealData,
+        sanctions: auxCoverage.sanctions,
+        ownership: ownershipLinks,
+        fdic: auxCoverage.fdic,
     };
 
     return {
@@ -371,6 +424,9 @@ export async function scoreEntity(
             eventPressure: eventPressure.hasRealData,
             velocity: cikVelocity.hasRealData,
             polymarket: polymarket.hasRealData,
+            sanctions: auxCoverage.sanctions,
+            ownership: ownershipLinks > 0,
+            fdic: auxCoverage.fdic,
         },
         lensDetails,
         monitor: {

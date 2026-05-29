@@ -1,15 +1,10 @@
 <template>
-    <div class="mt-3 pt-3" style="border-top: 1px solid rgba(var(--v-border-color), 0.15)">
-        <div class="d-flex align-center mb-2" style="gap: 8px">
-            <v-icon size="small">mdi-briefcase-outline</v-icon>
-            <span class="text-subtitle-2">Portfolio Alignment</span>
-        </div>
-
+    <div v-if="regime.sectorTilt.length || regime.portfolioImplication">
         <!-- Sector tilt chips -->
         <div
             v-if="regime.sectorTilt.length"
-            class="d-flex flex-wrap align-center mb-2"
-            style="gap: 6px"
+            class="d-flex flex-wrap align-center"
+            style="gap: 6px; row-gap: 4px"
         >
             <v-chip
                 v-for="tilt in visibleTilt"
@@ -31,7 +26,7 @@
         </div>
 
         <!-- Portfolio implication -->
-        <div class="text-caption" :class="implicationColor">
+        <div v-if="regime.portfolioImplication" class="text-caption mt-1" :class="implicationColor">
             <v-icon size="x-small" class="mr-1">{{ implicationIcon }}</v-icon>
             {{ regime.portfolioImplication }}
         </div>

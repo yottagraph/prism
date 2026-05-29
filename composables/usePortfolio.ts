@@ -35,6 +35,9 @@ export interface SourceCoverageDetail {
     acs: boolean;
     eventPressure: boolean;
     velocity: boolean;
+    sanctions: boolean;
+    ownership: number;
+    fdic: boolean;
 }
 
 export interface PortfolioCoverageDetail {
@@ -58,6 +61,9 @@ export interface PortfolioCoverageDetail {
     acs: number;
     eventPressure: number;
     velocity: number;
+    sanctions: number;
+    ownership: { entities: number; links: number };
+    fdic: number;
 }
 
 export interface PortfolioEntity extends Pick<MonitorEntity, 'signalAgreement' | 'signalSummary'> {
@@ -94,6 +100,9 @@ export interface PortfolioEntity extends Pick<MonitorEntity, 'signalAgreement' |
         eventPressure?: boolean;
         velocity?: boolean;
         polymarket?: boolean;
+        sanctions?: boolean;
+        ownership?: boolean;
+        fdic?: boolean;
     };
     coverageDetail?: SourceCoverageDetail;
     drivers?: Array<{
@@ -300,6 +309,9 @@ const lastScanCoverageDetail = ref<PortfolioCoverageDetail>({
     acs: 0,
     eventPressure: 0,
     velocity: 0,
+    sanctions: 0,
+    ownership: { entities: 0, links: 0 },
+    fdic: 0,
 });
 
 interface AgentStreamEvent {

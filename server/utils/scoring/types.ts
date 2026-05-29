@@ -275,6 +275,9 @@ export interface SourceCoverage {
     eventPressure?: boolean;
     velocity?: boolean;
     polymarket?: boolean;
+    sanctions?: boolean;
+    ownership?: boolean;
+    fdic?: boolean;
 }
 
 export interface MonitorEntitySignalsSummary {
@@ -346,6 +349,12 @@ export interface SourceCoverageDetail {
     acs: boolean;
     eventPressure: boolean;
     velocity: boolean;
+    /** OpenSanctions / OFAC / CSL screening hit on this entity. */
+    sanctions: boolean;
+    /** GLEIF / ownership graph link count (owners, subsidiaries, officers, directors). */
+    ownership: number;
+    /** FDIC depository-institution data present (call reports / failures). */
+    fdic: boolean;
 }
 
 export interface PortfolioCoverageDetail {
@@ -369,6 +378,9 @@ export interface PortfolioCoverageDetail {
     acs: number;
     eventPressure: number;
     velocity: number;
+    sanctions: number;
+    ownership: { entities: number; links: number };
+    fdic: number;
 }
 
 export interface ScoreComputationResult {

@@ -159,7 +159,15 @@ export interface MacroSignal {
     historyEnd?: string | null;
 }
 
-function useMacroSignals(stateKey: string, endpoint: string) {
+interface MacroSignalsOptions {
+    /**
+     * Fetch on first use. Defaults to true. The portfolio dashboard passes
+     * false so macro context only loads once a scan has been initiated.
+     */
+    autoRefresh?: boolean;
+}
+
+function useMacroSignals(stateKey: string, endpoint: string, options?: MacroSignalsOptions) {
     const signals = useState<MacroSignal[]>(stateKey, () => []);
     const loading = ref(false);
 
@@ -175,7 +183,7 @@ function useMacroSignals(stateKey: string, endpoint: string) {
         }
     }
 
-    if (!signals.value.length && !loading.value) {
+    if ((options?.autoRefresh ?? true) && !signals.value.length && !loading.value) {
         void refresh();
     }
 
@@ -186,12 +194,12 @@ function useMacroSignals(stateKey: string, endpoint: string) {
     };
 }
 
-export function useMacroContext() {
-    return useMacroSignals('macro-context-signals-polymarket', '/api/macro/polymarket');
+export function useMacroContext(options?: MacroSignalsOptions) {
+    return useMacroSignals('macro-context-signals-polymarket', '/api/macro/polymarket', options);
 }
 
-export function useFredMacroContext() {
-    return useMacroSignals('macro-context-signals-fred', '/api/macro/fred');
+export function useFredMacroContext(options?: MacroSignalsOptions) {
+    return useMacroSignals('macro-context-signals-fred', '/api/macro/fred', options);
 }
 
 export function getMacroContext(): MacroSignal[] {

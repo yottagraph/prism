@@ -11,7 +11,7 @@
                 {{ regime.synthesis }}
             </span>
         </div>
-        <div class="mt-2">
+        <div class="d-flex flex-wrap align-start mt-2" style="gap: 12px">
             <v-chip
                 v-if="regime.ready"
                 :color="regime.color"
@@ -21,7 +21,15 @@
             >
                 {{ regime.label }}
             </v-chip>
-            <v-chip v-else size="small" variant="tonal" color="default"> Loading… </v-chip>
+            <v-chip v-else size="small" variant="tonal" color="default">
+                {{ loading ? 'Loading…' : 'Awaiting scan' }}
+            </v-chip>
+            <MacroPortfolioOverlay
+                v-if="regime.ready"
+                :regime="regime"
+                class="flex-grow-1"
+                style="min-width: 0"
+            />
         </div>
     </div>
 </template>
@@ -29,7 +37,11 @@
 <script setup lang="ts">
     import type { MacroRegime } from '~/composables/useMacroRegime';
 
-    defineProps<{
-        regime: MacroRegime;
-    }>();
+    withDefaults(
+        defineProps<{
+            regime: MacroRegime;
+            loading?: boolean;
+        }>(),
+        { loading: false }
+    );
 </script>

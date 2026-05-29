@@ -28,11 +28,11 @@
                                     <span class="text-body-2">{{ src.label }}</span>
                                 </div>
                                 <span class="text-body-2 text-medium-emphasis coverage-count">
-                                    <AnimatedNumber :value="src.coverage" />/{{ total }}
+                                    <AnimatedNumber :value="src.coverage" />/{{ src.denom }}
                                 </span>
                             </div>
                             <v-progress-linear
-                                :model-value="(src.coverage / Math.max(1, total)) * 100"
+                                :model-value="(src.coverage / Math.max(1, src.denom)) * 100"
                                 :color="src.color"
                                 height="4"
                                 rounded
@@ -84,6 +84,17 @@
             total: number;
             coverage: { sec: number; news: number; stock: number; poly: number };
             coverageDetail: PortfolioCoverageDetail;
+            /**
+             * Portfolio-level FRED macro coverage. FRED series describe the macro
+             * economy (GDP, CPI, rates), not individual issuers, so coverage is
+             * measured as live curated series rather than entities.
+             */
+            fredMacro?: {
+                live: number;
+                total: number;
+                earliest: string | null;
+                latest: string | null;
+            };
             scanning?: boolean;
         }>(),
         { scanning: false }
@@ -94,7 +105,11 @@
         news: 'No news articles found for any portfolio entity in the last 90 days.',
         stock: 'No stock instruments linked to any portfolio entity in the knowledge graph.',
         poly: 'No active prediction markets found for any portfolio entity on Polymarket. Polymarket markets cluster on politics, geopolitics, and crypto — credit / FHS portfolios rarely overlap.',
-        fred: 'FRED macro context is not yet wired into per-entity scoring. Portfolio-level macro signals appear separately when available.',
+        fred: 'FRED macro signals are temporarily unavailable. These are portfolio-wide indicators (GDP, inflation, rates) shown in the Macro Regime panel.',
+        fdic: 'No FDIC-insured depository institutions in this portfolio. FDIC supplies quarterly call-report financials and bank-failure data for banks.',
+        ownership:
+            'No ownership, subsidiary, or officer/director links found in the GLEIF / Elemental graph for any entity.',
+        sanctions: 'No portfolio entities matched OpenSanctions / OFAC / CSL screening lists.',
     };
 
     function formatCount(n: number): string {
@@ -119,13 +134,23 @@
         return e ?? l ?? null;
     }
 
-    type SourceKey = 'sec' | 'news' | 'stock' | 'poly' | 'fred';
+    type SourceKey =
+        | 'sec'
+        | 'news'
+        | 'stock'
+        | 'poly'
+        | 'fred'
+        | 'fdic'
+        | 'ownership'
+        | 'sanctions';
 
     interface SourceRow {
         key: SourceKey;
         label: string;
         icon: string;
         coverage: number;
+        /** Denominator for the coverage fraction (entity total, or series total for FRED). */
+        denom: number;
         color: string;
         tooltip?: string;
         detail: string[];
@@ -149,8 +174,20 @@
             label: 'SEC',
             icon: 'mdi-file-document-outline',
             coverage: props.coverage.sec,
+            denom: props.total,
             color: 'primary',
             detail: secDetail,
+        });
+
+        // FDIC — bank call-report financials + failures (depository institutions)
+        rows.push({
+            key: 'fdic',
+            label: 'FDIC',
+            icon: 'mdi-bank',
+            coverage: cd.fdic,
+            denom: props.total,
+            color: 'cyan',
+            detail: cd.fdic > 0 ? ['bank financials'] : [],
         });
 
         // News
@@ -167,6 +204,7 @@
             label: 'News',
             icon: 'mdi-newspaper-variant-outline',
             coverage: props.coverage.news,
+            denom: props.total,
             color: 'info',
             detail: newsDetail,
         });
@@ -187,6 +225,7 @@
             label: 'Stock',
             icon: 'mdi-chart-line',
             coverage: props.coverage.stock,
+            denom: props.total,
             color: 'success',
             detail: stockDetail,
         });
@@ -202,24 +241,56 @@
             label: 'Polymarket',
             icon: 'mdi-crystal-ball',
             coverage: props.coverage.poly,
+            denom: props.total,
             color: 'warning',
             detail: polyDetail,
         });
 
-        // FRED
+        // FRED — portfolio-level macro context (not per-entity). Coverage is the
+        // number of curated macro series currently live.
+        const fred = props.fredMacro;
+        const fredLive = fred?.live ?? 0;
+        const fredTotal = fred && fred.total > 0 ? fred.total : 5;
         const fredDetail: string[] = [];
-        if (cd.fred.series > 0) {
-            fredDetail.push(`${cd.fred.series} series`);
-            const fredSpan = dateSpan(cd.fred.earliest, cd.fred.latest);
+        if (fredLive > 0) {
+            fredDetail.push('portfolio macro');
+            const fredSpan = dateSpan(fred?.earliest ?? null, fred?.latest ?? null);
             if (fredSpan) fredDetail.push(fredSpan);
         }
         rows.push({
             key: 'fred',
             label: 'FRED',
             icon: 'mdi-bank-outline',
-            coverage: cd.fred.entities,
-            color: 'grey',
+            coverage: fredLive,
+            denom: fredTotal,
+            color: 'blue-grey',
             detail: fredDetail,
+        });
+
+        // Ownership — GLEIF / Elemental ownership + governance graph
+        const ownDetail: string[] = [];
+        if (cd.ownership.entities > 0) {
+            ownDetail.push(`${formatCount(cd.ownership.links)} links`);
+        }
+        rows.push({
+            key: 'ownership',
+            label: 'Ownership',
+            icon: 'mdi-sitemap-outline',
+            coverage: cd.ownership.entities,
+            denom: props.total,
+            color: 'indigo',
+            detail: ownDetail,
+        });
+
+        // Sanctions — OpenSanctions / OFAC / CSL screening hits
+        rows.push({
+            key: 'sanctions',
+            label: 'Sanctions',
+            icon: 'mdi-shield-alert-outline',
+            coverage: cd.sanctions,
+            denom: props.total,
+            color: 'red',
+            detail: cd.sanctions > 0 ? ['flagged'] : [],
         });
 
         return rows.map((src) => {

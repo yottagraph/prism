@@ -55,9 +55,12 @@
             <template v-else>
                 <div v-for="m in signals" :key="m.label" class="macro-row">
                     <div class="d-flex align-center mb-1">
-                        <span class="text-body-2 flex-grow-1 macro-metric-label">{{
-                            m.label
-                        }}</span>
+                        <span
+                            class="text-body-2 flex-grow-1 macro-metric-label"
+                            :title="m.note || m.label"
+                        >
+                            {{ m.note || m.label }}
+                        </span>
                         <span class="d-flex align-center" style="gap: 3px">
                             <strong class="text-body-2">{{
                                 m.displayValue ?? `${m.value}%`
@@ -83,7 +86,7 @@
                         <span>0%</span>
                         <span>100%</span>
                     </div>
-                    <div class="macro-note text-caption text-medium-emphasis">{{ m.note }}</div>
+                    <div class="macro-note text-caption text-medium-emphasis">{{ m.label }}</div>
                 </div>
             </template>
         </div>

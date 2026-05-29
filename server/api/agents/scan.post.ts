@@ -74,6 +74,9 @@ function emptyPortfolioCoverageDetail(): PortfolioCoverageDetail {
         acs: 0,
         eventPressure: 0,
         velocity: 0,
+        sanctions: 0,
+        ownership: { entities: 0, links: 0 },
+        fdic: 0,
     };
 }
 
@@ -466,6 +469,12 @@ export default defineEventHandler(async (event) => {
                                     if (cd.acs) coverageDetail.acs++;
                                     if (cd.eventPressure) coverageDetail.eventPressure++;
                                     if (cd.velocity) coverageDetail.velocity++;
+                                    if (cd.sanctions) coverageDetail.sanctions++;
+                                    if (cd.ownership > 0) {
+                                        coverageDetail.ownership.entities++;
+                                        coverageDetail.ownership.links += cd.ownership;
+                                    }
+                                    if (cd.fdic) coverageDetail.fdic++;
                                 }
                                 output[idx] = result;
                                 emit('entity', { index: idx, entity: result });
