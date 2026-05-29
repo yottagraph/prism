@@ -71,6 +71,7 @@
 
 <script setup lang="ts">
     import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
+    import 'leaflet/dist/leaflet.css';
     import Graph from 'graphology';
     import Sigma from 'sigma';
     import forceAtlas2 from 'graphology-layout-forceatlas2';
@@ -345,9 +346,7 @@
             if (found) emit('select-node', found);
         });
 
-        // Dynamically import leaflet layer to avoid CSS load order issues
         const { default: bindLeafletLayer } = await import('@sigma/layer-leaflet');
-        await import('leaflet/dist/leaflet.css');
 
         leafletLayer = bindLeafletLayer(sigmaInstance, {
             tileLayer: {

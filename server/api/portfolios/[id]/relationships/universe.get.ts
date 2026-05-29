@@ -17,7 +17,7 @@ function parseEntities(raw: unknown): Array<{ neid: string; name: string }> {
 // In-process cache: key = sorted NEID list hash, value = { result, expiresAt }
 // Increment CACHE_VER when the response shape or filtering logic changes.
 const CACHE_TTL_MS = 10 * 60_000; // 10 minutes
-const CACHE_VER = 3;
+const CACHE_VER = 4;
 const universeCache = new Map<string, { result: unknown; expiresAt: number }>();
 
 function cacheKey(entities: Array<{ neid: string }>): string {
@@ -61,38 +61,71 @@ export default defineEventHandler(async (event) => {
         return ids.map((id) => portfolioNameMap.get(id) ?? id);
     }
 
-    // Build a lookup from node id → relationship label using the edges
-    const edgeRelByTarget = new Map<string, string>();
+    // Build a lookup: node id → all relationship labels on edges pointing to it
+    const edgeRelsByTarget = new Map<string, Set<string>>();
     for (const edge of universe.edges) {
-        if (!edgeRelByTarget.has(edge.target)) {
-            edgeRelByTarget.set(edge.target, edge.relationship);
-        }
+        const set = edgeRelsByTarget.get(edge.target) ?? new Set<string>();
+        set.add(edge.relationship);
+        edgeRelsByTarget.set(edge.target, set);
     }
 
     const companies = universe.companies.map((node) => ({
         neid: node.neid ?? node.id.replace(/^co-/, ''),
         name: node.label,
-        connectionType: edgeRelByTarget.get(node.id) ?? 'related',
+        connectionType: [...(edgeRelsByTarget.get(node.id) ?? [])][0] ?? 'related',
         connectedTo: resolvePortfolioNames(node.connectsTo),
         relationshipCount: node.connectsTo.length,
     }));
 
+    function rolesFromRelationships(nodeId: string): string[] {
+        const rels = [...(edgeRelsByTarget.get(nodeId) ?? [])];
+        if (!rels.length) return ['Officer'];
+        return rels.map((r) => {
+            const p = r.toLowerCase();
+            if (p.includes('director') || p.includes('board')) return 'Director';
+            if (p.includes('officer') || p.includes('executive')) return 'Officer';
+            if (p.includes('president') || p.includes('ceo')) return 'President/CEO';
+            if (p.includes('trustee')) return 'Trustee';
+            if (p.includes('employ')) return 'Employee';
+            // Capitalise unknown labels as-is
+            return r
+                .split('_')
+                .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+                .join(' ');
+        });
+    }
+
+    function instrumentTypeFromRelationships(nodeId: string): string {
+        const rels = [...(edgeRelsByTarget.get(nodeId) ?? [])];
+        if (!rels.length) return 'Instrument';
+        const p = rels[0].toLowerCase();
+        if (p.includes('bond')) return 'Bond';
+        if (p.includes('loan') || p.includes('credit')) return 'Loan / Credit';
+        if (p.includes('lender')) return 'Credit Facility';
+        if (p.includes('issued')) return 'Issued Security';
+        if (p.includes('trust')) return 'Trust';
+        return rels[0]
+            .split('_')
+            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+            .join(' ');
+    }
+
     const people = universe.people.map((node) => ({
         name: node.label,
-        roles: node.connectsTo.length > 1 ? ['Director', 'Officer'] : ['Officer'],
+        roles: rolesFromRelationships(node.id),
         companiesServed: resolvePortfolioNames(node.connectsTo),
-        tenure: `${1 + (node.connectsTo.length % 8)} years`,
-        departed: node.connectsTo.length % 5 === 0,
+        tenure: '—',
+        departed: false,
     }));
 
     const instruments = universe.instruments.map((node) => ({
         neid: node.neid ?? node.id.replace(/^ix-/, ''),
         name: node.label,
-        type: 'Credit Facility',
-        issuer: resolvePortfolioNames(node.connectsTo)[0] ?? 'Unknown',
-        amount: `$${50 + node.connectsTo.length * 40}M`,
-        maturity: `${new Date().getFullYear() + 3 + (node.connectsTo.length % 5)}`,
-        lender: node.label,
+        type: instrumentTypeFromRelationships(node.id),
+        issuer: resolvePortfolioNames(node.connectsTo)[0] ?? '—',
+        amount: '—',
+        maturity: '—',
+        lender: '—',
     }));
 
     const locations = universe.locations.map((node) => ({

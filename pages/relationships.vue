@@ -192,7 +192,7 @@
                     </v-window-item>
 
                     <!-- Network -->
-                    <v-window-item value="network" eager>
+                    <v-window-item value="network">
                         <div class="pa-3">
                             <RelationshipNetwork
                                 :nodes="graph.nodes"
