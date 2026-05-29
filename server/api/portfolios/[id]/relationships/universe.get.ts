@@ -15,11 +15,13 @@ function parseEntities(raw: unknown): Array<{ neid: string; name: string }> {
 }
 
 // In-process cache: key = sorted NEID list hash, value = { result, expiresAt }
+// Increment CACHE_VER when the response shape or filtering logic changes.
 const CACHE_TTL_MS = 10 * 60_000; // 10 minutes
+const CACHE_VER = 2;
 const universeCache = new Map<string, { result: unknown; expiresAt: number }>();
 
 function cacheKey(entities: Array<{ neid: string }>): string {
-    return entities
+    return `v${CACHE_VER}:` + entities
         .map((e) => e.neid)
         .sort()
         .join(',');

@@ -48,6 +48,49 @@ function flavorToKind(flavor: string): NodeKind | null {
     return null;
 }
 
+/**
+ * Classify a Galaxy quad property as a meaningful 1st-degree relationship kind,
+ * or return null to discard the quad. This prevents stock exchanges (traded_on),
+ * industries, indices, and article appearances from showing up as "related entities."
+ */
+function propertyToKind(property: string): NodeKind | null {
+    const p = property.toLowerCase();
+
+    // People — governance / employment
+    if (
+        p.includes('officer') || p.includes('director') || p.includes('board') ||
+        p.includes('executive') || p.includes('president') || p.includes('ceo') ||
+        p.includes('employ') || p.includes('manages') || p.includes('member_of') ||
+        p.includes('trustee') || p.includes('appointed')
+    ) return 'person';
+
+    // Companies — ownership / corporate structure
+    if (
+        p.includes('subsidiary') || p.includes('parent_of') || p.includes('owned_by') ||
+        p.includes('beneficial_owner') || p.includes('affiliated') ||
+        p.includes('acqui') || p.includes('merger') || p.includes('controls') ||
+        p.includes('stakeholder') || p.includes('shareholder') ||
+        p.includes('investor_in') || p.includes('owns')
+    ) return 'company';
+
+    // Financial instruments — capital / debt
+    if (
+        p.includes('issued_by') || p.includes('lender') || p.includes('borrower') ||
+        p.includes('holds_instrument') || p.includes('has_instrument') ||
+        p.includes('bond') || p.includes('loan') || p.includes('credit') ||
+        p.includes('debt') || p.includes('collateral') || p.includes('guarantor')
+    ) return 'instrument';
+
+    // Locations — physical presence
+    if (
+        p.includes('located_at') || p.includes('location') || p.includes('headquarter') ||
+        p.includes('registered_in') || p.includes('office_in') || p.includes('operates_in') ||
+        p.includes('address')
+    ) return 'location';
+
+    return null; // discard: exchanges, indices, industries, articles, etc.
+}
+
 function kindPrefix(kind: NodeKind): string {
     switch (kind) {
         case 'company':
@@ -93,12 +136,15 @@ async function buildFromGalaxy(
     );
 
     for (const { entity, quads } of quadsPerEntity) {
-        const relational = quads.filter((q) => q.dest_type === 'relational');
         const portfolioNodeId = `p-${entity.neid}`;
 
-        for (const quad of relational) {
+        for (const quad of quads) {
+            if (quad.dest_type !== 'relational') continue;
+            // Only keep quads whose property name indicates a meaningful 1st-degree relationship.
+            // This excludes stock exchanges (traded_on), indices, industries, articles, etc.
+            if (!propertyToKind(quad.property)) continue;
+
             const destNeid = quad.destination;
-            // Skip self-references and other portfolio entities
             if (destNeid === entity.neid || portfolioNeidSet.has(destNeid)) continue;
 
             const existing = neighbourPortfolios.get(destNeid);
@@ -140,12 +186,15 @@ async function buildFromGalaxy(
         const info = infoResults[i];
         if (!info) continue;
 
-        const kind = flavorToKind(info.flavor);
+        // Use flavor as primary classifier; fall back to property-name hint when
+        // the flavor is unknown (e.g. a person entity whose flavor isn't recognised).
+        const rels = neighbourPortfolios.get(neid)!.relationships;
+        const propertyHint = propertyToKind(rels[0] ?? '');
+        const kind = flavorToKind(info.flavor) ?? propertyHint;
         if (!kind) continue;
 
         const id = `${kindPrefix(kind)}-${neid}`;
         const portIds = neighbourPortfolios.get(neid)!.portfolioIds;
-        const rels = neighbourPortfolios.get(neid)!.relationships;
         const relLabel = rels[0] ?? kind;
 
         const targetMap = {
