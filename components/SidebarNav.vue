@@ -43,12 +43,6 @@
             subtitle: 'Ranked entities + scores',
         },
         {
-            to: '/scoring',
-            icon: 'mdi-tune-vertical',
-            title: 'Scoring',
-            subtitle: 'Thresholds + weights',
-        },
-        {
             to: '/relationships',
             icon: 'mdi-graph-outline',
             title: 'Relationships',
@@ -59,6 +53,12 @@
             icon: 'mdi-robot-outline',
             title: 'Agents',
             subtitle: 'Pipeline + chat',
+        },
+        {
+            to: '/scoring',
+            icon: 'mdi-tune-vertical',
+            title: 'Scoring',
+            subtitle: 'Thresholds + weights',
         },
     ];
 </script>
