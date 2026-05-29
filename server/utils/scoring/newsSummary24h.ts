@@ -3,6 +3,7 @@ import type { H3Event } from 'h3';
 import { makeCacheKey, readScoringCache, writeScoringCache } from './cache';
 import type { ContextPackage } from './contextPackage';
 import { callMcpTool, extractMcpStructuredContent } from './mcpGateway';
+import { callGemini, GEMINI_DEFAULT_MODEL } from '../gemini';
 import type { LensDetail } from './types';
 
 type ActivityLabel =
@@ -168,14 +169,38 @@ export async function computeNewsSummary24h(
               : sentimentAvg30d < -0.15
                 ? 'declining'
                 : 'stable';
-    const headlineSummary =
-        hasRealData && mentionCount24h > 0
-            ? `${mentionCount24h} article${mentionCount24h === 1 ? '' : 's'} in the last 24h; 30d sentiment ${
-                  sentimentAvg30d != null ? sentimentAvg30d.toFixed(2) : 'n/a'
-              }; top: ${headlines.slice(0, 2).join(' | ') || 'No headline titles'}.`
-            : hasRealData
-              ? 'No recent news coverage in the last 24 hours.'
-              : null;
+
+    let headlineSummary: string | null = null;
+    if (hasRealData && mentionCount24h > 0 && headlines.length > 0) {
+        try {
+            const sentimentNote =
+                sentimentAvg30d != null
+                    ? ` 30-day sentiment average: ${sentimentAvg30d.toFixed(2)} (${sentimentTrend ?? 'stable'}).`
+                    : '';
+            const headlineList = headlines
+                .slice(0, 8)
+                .map((h, i) => `${i + 1}. ${h}`)
+                .join('\n');
+            const prompt = `You are a financial risk analyst writing a brief for a risk dashboard table cell. Write exactly 2-3 sentences (50-80 words) summarizing the key developments from these ${mentionCount24h} news headlines from the last 24 hours. Be direct and specific — lead with what happened, not with an article count. Do not start with "Based on" or "According to" or "The headlines".${sentimentNote}\n\nHeadlines:\n${headlineList}`;
+            const result = await callGemini({
+                prompt,
+                model: GEMINI_DEFAULT_MODEL,
+                maxTokens: 160,
+                temperature: 0.2,
+                timeoutMs: 12_000,
+            });
+            if (result.text?.trim()) {
+                headlineSummary = result.text.trim().replace(/^["']|["']$/g, '');
+            }
+        } catch (e) {
+            console.warn('[news summary 24h] Gemini summary failed, using fallback', e);
+        }
+        if (!headlineSummary) {
+            headlineSummary = `${mentionCount24h} article${mentionCount24h === 1 ? '' : 's'} in the last 24h. Top: ${headlines.slice(0, 2).join(' | ') || 'no headlines'}.`;
+        }
+    } else if (hasRealData) {
+        headlineSummary = 'No recent news coverage in the last 24 hours.';
+    }
 
     const out: NewsSummary24hResult = {
         headlineSummary,

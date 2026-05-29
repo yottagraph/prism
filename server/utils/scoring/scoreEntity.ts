@@ -243,7 +243,7 @@ export async function scoreEntity(
             hasRealData: false,
             detail: { metrics: [{ label: 'Status', value: 'timeout' }], findings: [] },
         }),
-        withTimeout(computeNewsSummary24h(event, portfolioId, neid, ctx), 3_000, {
+        withTimeout(computeNewsSummary24h(event, portfolioId, neid, ctx), 15_000, {
             headlineSummary: null,
             mentionRatioLabel: 'normal',
             mentionRatioToday: null,

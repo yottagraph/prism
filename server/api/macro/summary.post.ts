@@ -58,9 +58,9 @@ export default defineEventHandler(async (event) => {
     const polyList = formatSignals(body.poly ?? []);
     const tiltList = (body.sectorTilt ?? []).map((t) => `${t.label} (${t.count})`).join(', ');
 
-    const prompt = `You are a macro portfolio analyst writing a TL;DR for a risk dashboard. Write 2-3 sentences (max 75 words total) that summarize the current macro regime and what it means for this portfolio. Lead with the regime read (rates + growth), weave in the most important indicators, and close with the implication for the portfolio's sector tilt. Plain prose only — no bullet points, no headers, no preamble, do not restate the numbers as a list.
+    const prompt = `You are a macro portfolio analyst writing a 2-3 sentence TL;DR for a risk dashboard. Write directly in plain prose — do NOT open with "The macro regime" or repeat the regime label as a phrase. Start immediately with the key rate/growth dynamic or the most important signal, weave in the supporting data points, and close with what it means for this portfolio's sector mix. Max 75 words. No bullet points, no headers, no preamble.
 
-Macro regime: ${body.regimeLabel}
+Current regime classification: ${body.regimeLabel}
 Realized fundamentals (FRED): ${fredList || 'n/a'}
 Forward outlook, market-implied (Polymarket): ${polyList || 'n/a'}
 Portfolio sector mix across ${body.totalEntities} entities: ${tiltList || 'n/a'}`;
