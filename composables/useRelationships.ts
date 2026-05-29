@@ -173,7 +173,17 @@ export interface MacroSignal {
     macroScore?: number; // -1..+1; positive = improving macro
 }
 
-function useMacroSignals(stateKey: string, endpoint: string) {
+export interface MacroContextOptions {
+    /**
+     * Fetch macro signals as soon as the composable is instantiated. Defaults
+     * to `false` — macro context is scan-gated, so callers (e.g. the macro
+     * Panel) trigger `refresh()` explicitly once a scan starts. Auto-fetching
+     * on mount would defeat the "blank until scanned" dashboard behavior.
+     */
+    autoRefresh?: boolean;
+}
+
+function useMacroSignals(stateKey: string, endpoint: string, options: MacroContextOptions = {}) {
     const signals = useState<MacroSignal[]>(stateKey, () => []);
     const loading = ref(false);
 
@@ -189,7 +199,7 @@ function useMacroSignals(stateKey: string, endpoint: string) {
         }
     }
 
-    if (!signals.value.length && !loading.value) {
+    if (options.autoRefresh && !signals.value.length && !loading.value) {
         void refresh();
     }
 
@@ -200,12 +210,12 @@ function useMacroSignals(stateKey: string, endpoint: string) {
     };
 }
 
-export function useMacroContext() {
-    return useMacroSignals('macro-context-signals-polymarket', '/api/macro/polymarket');
+export function useMacroContext(options: MacroContextOptions = {}) {
+    return useMacroSignals('macro-context-signals-polymarket', '/api/macro/polymarket', options);
 }
 
-export function useFredMacroContext() {
-    return useMacroSignals('macro-context-signals-fred', '/api/macro/fred');
+export function useFredMacroContext(options: MacroContextOptions = {}) {
+    return useMacroSignals('macro-context-signals-fred', '/api/macro/fred', options);
 }
 
 export function getMacroContext(): MacroSignal[] {

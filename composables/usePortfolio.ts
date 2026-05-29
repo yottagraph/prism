@@ -389,8 +389,24 @@ export function usePortfolio() {
         },
     });
 
+    // Scan state (and the portfolio-wide FRED/Polymarket macro signals) are
+    // module-global. When the active portfolio changes we must reset them so a
+    // freshly-selected, unscanned portfolio reads as blank instead of showing
+    // the macro context left over from a different portfolio's scan.
+    function resetScanGateAndMacro() {
+        scanStartedAt.value = null;
+        scanCompletedAt.value = null;
+        scanStatusMessage.value = 'Idle';
+        scanStatusHistory.value = [];
+        lastScanError.value = null;
+        useState<unknown[]>('macro-context-signals-fred', () => []).value = [];
+        useState<unknown[]>('macro-context-signals-polymarket', () => []).value = [];
+    }
+
     function setActivePortfolio(id: string) {
+        if (p.activePortfolioId === id) return;
         p.activePortfolioId = id;
+        resetScanGateAndMacro();
     }
 
     function createPortfolio(name: string, names: string[]): PortfolioDoc {
@@ -414,13 +430,16 @@ export function usePortfolio() {
         };
         p.portfolios = [...p.portfolios, portfolio];
         p.activePortfolioId = id;
+        resetScanGateAndMacro();
         return portfolio;
     }
 
     function deletePortfolio(id: string) {
+        const wasActive = p.activePortfolioId === id;
         p.portfolios = p.portfolios.filter((pp) => pp.id !== id);
-        if (p.activePortfolioId === id) {
+        if (wasActive) {
             p.activePortfolioId = p.portfolios[0]?.id ?? null;
+            resetScanGateAndMacro();
         }
     }
 
