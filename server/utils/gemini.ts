@@ -37,9 +37,25 @@ export interface CallGeminiOptions {
 export const GEMINI_DEFAULT_MODEL = process.env.GEMINI_DEFAULT_MODEL ?? 'gemini-2.5-flash';
 export const GEMINI_PRO_MODEL = process.env.GEMINI_PRO_MODEL ?? 'gemini-2.5-pro';
 
-// Approximate cost per 1M tokens (Flash 2.5) — used for display only.
-const COST_PER_1M_INPUT = 0.15;
-const COST_PER_1M_OUTPUT = 0.6;
+// Pricing per 1M tokens (Flash 2.5, Feb 2026) — used for display only.
+const COST_PER_1M_INPUT = 0.3;
+const COST_PER_1M_OUTPUT = 2.5;
+
+/**
+ * Thinking config for Gemini 2.5 Flash.
+ *
+ * Thinking tokens count against maxOutputTokens, so leaving dynamic thinking
+ * on with a small budget truncates responses. We explicitly disable thinking
+ * (thinkingBudget: 0) unless the caller opts in via thinkingMode: true.
+ *
+ * Gemini 2.5 Pro cannot disable thinking — don't send thinkingConfig for it.
+ */
+function buildThinkingConfig(model: string, thinkingMode: boolean): Record<string, any> {
+    if (model.includes('2.5-flash')) {
+        return { thinkingConfig: { thinkingBudget: thinkingMode ? 4096 : 0 } };
+    }
+    return {};
+}
 
 export async function callGemini(opts: CallGeminiOptions): Promise<GeminiResult> {
     const apiKey = process.env.GEMINI_API_KEY;
@@ -48,23 +64,20 @@ export async function callGemini(opts: CallGeminiOptions): Promise<GeminiResult>
     }
 
     const model = opts.model ?? GEMINI_DEFAULT_MODEL;
-    const maxTokens = opts.maxTokens ?? 4000;
+    const maxTokens = opts.maxTokens ?? 800;
     const temperature = opts.temperature ?? 0.3;
-    const timeoutMs = opts.timeoutMs ?? 120_000;
+    const timeoutMs = opts.timeoutMs ?? 90_000;
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
-    const body: any = {
+    const body = {
         contents: [{ role: 'user', parts: [{ text: opts.prompt }] }],
         generationConfig: {
             maxOutputTokens: maxTokens,
             temperature,
+            ...buildThinkingConfig(model, !!opts.thinkingMode),
         },
     };
-
-    if (opts.thinkingMode) {
-        body.generationConfig.thinkingConfig = { thinkingBudget: 8192 };
-    }
 
     const start = Date.now();
     const response = await fetch(url, {
@@ -84,6 +97,13 @@ export async function callGemini(opts: CallGeminiOptions): Promise<GeminiResult>
 
     const candidate = json.candidates?.[0];
     const text = candidate?.content?.parts?.map((p: any) => p.text ?? '').join('') ?? '';
+
+    const finishReason = candidate?.finishReason;
+    if (finishReason && finishReason !== 'STOP') {
+        console.warn(
+            `[gemini] finish_reason=${finishReason} model=${model} maxTokens=${maxTokens}`
+        );
+    }
 
     const promptTokens = json.usageMetadata?.promptTokenCount ?? 0;
     const completionTokens = json.usageMetadata?.candidatesTokenCount ?? 0;
