@@ -34,6 +34,7 @@ const CURATED_SERIES: FredSeriesConfig[] = [
     { seriesId: 'CPIAUCSL', label: 'CPI (All Urban)', unit: 'index', macroDirection: 'rising_bad' },
     { seriesId: 'DFF', label: 'Fed Funds Rate', unit: '%', macroDirection: 'neutral' },
     { seriesId: 'T10Y2Y', label: 'Yield Spread 10Y-2Y', unit: '%', macroDirection: 'rising_good' },
+    { seriesId: 'GS10', label: '10Y Treasury', unit: '%', macroDirection: 'neutral' },
 ];
 
 const HISTORY_LIMIT = 20;
