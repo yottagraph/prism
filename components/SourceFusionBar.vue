@@ -107,8 +107,6 @@
         poly: 'No active prediction markets found for any portfolio entity on Polymarket. Polymarket markets cluster on politics, geopolitics, and crypto — credit / FHS portfolios rarely overlap.',
         fred: 'FRED macro signals are temporarily unavailable. These are portfolio-wide indicators (GDP, inflation, rates) shown in the Macro Regime panel.',
         fdic: 'No FDIC-insured depository institutions in this portfolio. FDIC supplies quarterly call-report financials and bank-failure data for banks.',
-        ownership:
-            'No ownership, subsidiary, or officer/director links found in the GLEIF / Elemental graph for any entity.',
         sanctions: 'No portfolio entities matched OpenSanctions / OFAC / CSL screening lists.',
     };
 
@@ -134,15 +132,7 @@
         return e ?? l ?? null;
     }
 
-    type SourceKey =
-        | 'sec'
-        | 'news'
-        | 'stock'
-        | 'poly'
-        | 'fred'
-        | 'fdic'
-        | 'ownership'
-        | 'sanctions';
+    type SourceKey = 'sec' | 'news' | 'stock' | 'poly' | 'fred' | 'fdic' | 'sanctions';
 
     interface SourceRow {
         key: SourceKey;
@@ -265,21 +255,6 @@
             denom: fredTotal,
             color: 'blue-grey',
             detail: fredDetail,
-        });
-
-        // Ownership — GLEIF / Elemental ownership + governance graph
-        const ownDetail: string[] = [];
-        if (cd.ownership.entities > 0) {
-            ownDetail.push(`${formatCount(cd.ownership.links)} links`);
-        }
-        rows.push({
-            key: 'ownership',
-            label: 'Ownership',
-            icon: 'mdi-sitemap-outline',
-            coverage: cd.ownership.entities,
-            denom: props.total,
-            color: 'indigo',
-            detail: ownDetail,
         });
 
         // Sanctions — OpenSanctions / OFAC / CSL screening hits

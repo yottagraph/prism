@@ -157,14 +157,33 @@ function pickMarket(
     config: IndicatorConfig
 ): MarketSummary | null {
     if (!markets || markets.length === 0) return null;
-    const eligible = markets.filter((m) => m.active && !m.closed);
+
+    const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
+    const cutoffMs = Date.now() - NINETY_DAYS_MS;
+
+    function isEligible(m: MarketSummary): boolean {
+        if (m.active && !m.closed) return true;
+        // Include recently resolved markets (closed within last 90 days)
+        if (m.endDate) {
+            const endMs = Date.parse(m.endDate);
+            if (Number.isFinite(endMs) && endMs >= cutoffMs) return true;
+        }
+        return false;
+    }
+
+    const eligible = markets.filter(isEligible);
     if (eligible.length === 0) return null;
+
+    // Active markets take priority; recently closed are fallback
+    const active = eligible.filter((m) => m.active && !m.closed);
+    const pool = active.length > 0 ? active : eligible;
+
     if (config.marketIncludes) {
         const include = lc(config.marketIncludes);
-        const found = eligible.find((m) => lc(m.question).includes(include));
-        return found ?? null;
+        const found = pool.find((m) => lc(m.question).includes(include));
+        return found ?? pool[0] ?? null;
     }
-    return eligible[0];
+    return pool[0];
 }
 
 async function findCandidateSlug(
