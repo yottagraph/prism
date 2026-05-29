@@ -20,71 +20,75 @@
                 <span>•</span>
                 <span>Analyst</span>
             </div>
-            <v-data-table
-                :headers="headers"
-                :items="filteredRows"
-                :search="search"
-                :loading="loading"
-                :items-per-page="rowsPerPage"
-                density="comfortable"
-                hover
-                @click:row="onRowClick"
-            >
-                <template #item.rank="{ index }">
-                    <span class="text-caption font-mono">#{{ index + 1 }}</span>
-                </template>
+            <div class="overflow-x-auto">
+                <v-data-table
+                    :headers="headers"
+                    :items="filteredRows"
+                    :search="search"
+                    :loading="loading"
+                    :items-per-page="rowsPerPage"
+                    density="comfortable"
+                    hover
+                    style="min-width: 1200px"
+                    @click:row="onRowClick"
+                >
+                    <template #item.rank="{ index }">
+                        <span class="text-caption font-mono">#{{ index + 1 }}</span>
+                    </template>
 
-                <template #item.name="{ item }">
-                    <div class="font-weight-medium">{{ item.resolvedName }}</div>
-                    <div class="text-caption text-medium-emphasis">{{ item.neid || '—' }}</div>
-                </template>
+                    <template #item.name="{ item }">
+                        <div class="font-weight-medium">{{ item.resolvedName }}</div>
+                        <div class="text-caption text-medium-emphasis">{{ item.neid || '—' }}</div>
+                    </template>
 
-                <template #item.solvency="{ item }"
-                    ><RiskLevelChip :value="item.solvencyLevel"
-                /></template>
-                <template #item.executive="{ item }"
-                    ><RiskLevelChip :value="item.executiveLevel"
-                /></template>
-                <template #item.cikVelocity="{ item }"
-                    ><CikVelocityCell :value="item.edgarQoqPct"
-                /></template>
-                <template #item.newsSummary="{ item }"
-                    ><NewsSummaryCell :value="item.headlineSummary"
-                /></template>
-                <template #item.newsActivity="{ item }"
-                    ><NewsActivityChip :value="item.mentionRatioLabel"
-                /></template>
-                <template #item.stockTrend="{ item }"
-                    ><StockTrendChip :value="item.stockTrendSignal"
-                /></template>
-                <template #item.polymarket="{ item }">
-                    <PolymarketOutlookCell
-                        :outlook="item.polymarketOutlook"
-                        :count="item.polymarketCount"
-                    />
-                </template>
-                <template #item.signalAgreement="{ item }">
-                    <SignalAgreementCell
-                        :value="item.signalAgreement"
-                        :summary="item.signalSummary"
-                    />
-                </template>
-                <template #item.analyst="{ item }">
-                    <AnalystAssessmentSelect
-                        :model-value="item.assessmentTier"
-                        @update:model-value="emit('assess', item, $event)"
-                    />
-                </template>
-                <template #item.actions="{ item }">
-                    <v-btn
-                        v-if="item.neid"
-                        icon="mdi-arrow-right"
-                        variant="text"
-                        size="x-small"
-                        @click.stop="emit('open', item.entity)"
-                    />
-                </template>
-            </v-data-table>
+                    <template #item.solvency="{ item }"
+                        ><RiskLevelChip :value="item.solvencyLevel"
+                    /></template>
+                    <template #item.executive="{ item }"
+                        ><RiskLevelChip :value="item.executiveLevel"
+                    /></template>
+                    <template #item.cikVelocity="{ item }"
+                        ><CikVelocityCell :value="item.edgarQoqPct"
+                    /></template>
+                    <template #item.newsSummary="{ item }"
+                        ><NewsSummaryCell :value="item.headlineSummary"
+                    /></template>
+                    <template #item.newsActivity="{ item }"
+                        ><NewsActivityChip :value="item.mentionRatioLabel"
+                    /></template>
+                    <template #item.stockTrend="{ item }"
+                        ><StockTrendChip :value="item.stockTrendSignal"
+                    /></template>
+                    <template #item.polymarket="{ item }">
+                        <PolymarketOutlookCell
+                            :outlook="item.polymarketOutlook"
+                            :count="item.polymarketCount"
+                        />
+                    </template>
+                    <template #item.signalAgreement="{ item }">
+                        <SignalAgreementCell
+                            :value="item.signalAgreement"
+                            :summary="item.signalSummary"
+                        />
+                    </template>
+                    <template #item.analyst="{ item }">
+                        <AnalystAssessmentSelect
+                            :model-value="item.assessmentTier"
+                            @update:model-value="emit('assess', item, $event)"
+                        />
+                    </template>
+                    <template #item.actions="{ item }">
+                        <v-btn
+                            v-if="item.neid"
+                            icon="mdi-arrow-right"
+                            variant="text"
+                            size="x-small"
+                            :aria-label="`Open ${item.resolvedName}`"
+                            @click.stop="emit('open', item.entity)"
+                        />
+                    </template>
+                </v-data-table>
+            </div>
         </v-card-text>
     </v-card>
 </template>

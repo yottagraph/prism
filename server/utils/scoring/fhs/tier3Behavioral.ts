@@ -268,7 +268,7 @@ export async function computeTier3Behavioral(
         console.warn('[fhs:tier3] failed to compute behavioral signals', error);
     }
 
-    const citationMap = await resolveRefs(refs, event);
+    const citationMap = await resolveRefs(refs, event, ctx);
     const citations = refs
         .map((ref) => citationMap.get(ref))
         .filter((citation): citation is NonNullable<typeof citation> => Boolean(citation));

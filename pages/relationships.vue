@@ -17,6 +17,15 @@
         </div>
 
         <div class="flex-grow-1 overflow-y-auto pa-4">
+            <v-alert
+                v-if="error"
+                type="error"
+                variant="tonal"
+                density="compact"
+                class="mb-3"
+                :text="error"
+                closable
+            />
             <v-card>
                 <v-tabs v-model="tab" color="primary" align-tabs="start">
                     <v-tab value="companies">
@@ -80,6 +89,8 @@
                             :loading="loading"
                             density="comfortable"
                             class="rel-table"
+                            :items-per-page="25"
+                            :items-per-page-options="[10, 25, 50, 100]"
                             @click:row="onCompanyRowClick"
                         >
                             <template #item.connectedTo="{ item }">
@@ -101,6 +112,8 @@
                             :loading="loading"
                             density="comfortable"
                             class="rel-table"
+                            :items-per-page="25"
+                            :items-per-page-options="[10, 25, 50, 100]"
                         >
                             <template #item.roles="{ item }">
                                 <v-chip
@@ -152,6 +165,8 @@
                             :loading="loading"
                             density="comfortable"
                             class="rel-table"
+                            :items-per-page="25"
+                            :items-per-page-options="[10, 25, 50, 100]"
                             @click:row="onInstrumentRowClick"
                         >
                             <template #no-data>
@@ -170,6 +185,8 @@
                             :loading="loading"
                             density="comfortable"
                             class="rel-table"
+                            :items-per-page="25"
+                            :items-per-page-options="[10, 25, 50, 100]"
                         >
                             <template #item.entitiesPresent="{ item }">
                                 <strong
@@ -252,7 +269,7 @@
     import type { GraphNode } from '~/composables/useRelationships';
 
     const { activePortfolio: active, scanning } = usePortfolio();
-    const { loading, graph, companies, people, instruments, locations, galaxyEnabled } =
+    const { loading, error, graph, companies, people, instruments, locations, galaxyEnabled } =
         useRelationships(active, scanning);
     const router = useRouter();
 

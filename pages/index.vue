@@ -1,7 +1,7 @@
 <template>
     <div class="d-flex flex-column fill-height">
         <div class="flex-shrink-0 pa-4 page-header">
-            <div class="d-flex align-center">
+            <div class="d-flex align-center flex-wrap" style="gap: 4px 0">
                 <v-icon size="large" color="primary" class="mr-3">
                     mdi-briefcase-variant-outline
                 </v-icon>
@@ -29,6 +29,7 @@
                     icon="mdi-plus"
                     variant="text"
                     class="ml-1"
+                    aria-label="Create new portfolio"
                     @click="newPortfolioOpen = true"
                 />
 
@@ -409,8 +410,8 @@
         return a > b ? a : b;
     }
 
-    const coverageDetail = computed<PortfolioCoverageDetail>(() => {
-        const empty: PortfolioCoverageDetail = {
+    function emptyPortfolioCoverage(): PortfolioCoverageDetail {
+        return {
             sec: { entities: 0, filings: 0, earliest: null, latest: null },
             news: { entities: 0, articles: 0, events: 0, earliest: null, latest: null },
             stock: { entities: 0, readings: 0, earliest: null, latest: null },
@@ -423,10 +424,13 @@
             ownership: { entities: 0, links: 0 },
             fdic: 0,
         };
-        if (!active.value) return empty;
+    }
+
+    const coverageDetail = computed<PortfolioCoverageDetail>(() => {
+        if (!active.value) return emptyPortfolioCoverage();
 
         let anyDetail = false;
-        const agg = structuredClone(empty);
+        const agg = emptyPortfolioCoverage();
 
         for (const entity of active.value.entities) {
             const cd = entity.coverageDetail;

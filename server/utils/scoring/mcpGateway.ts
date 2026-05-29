@@ -449,6 +449,11 @@ export async function callMcpTool(
             }
         }
         recordBreakerResult(serverName, false);
+        // Capture provenance trails from elemental responses for citation resolution.
+        if (serverName === 'elemental' && result && _event) {
+            const trails = extractMcpProvenance(result);
+            if (trails.length) pushProvenanceTrails(_event, trails);
+        }
         return result;
     } catch (error: any) {
         const code = error?.statusCode ?? error?.status;
@@ -501,4 +506,59 @@ export function extractMcpStructuredContent<T = any>(result: any): T | null {
     } catch {
         return null;
     }
+}
+
+export interface ProvenanceTrail {
+    efid: string;
+    record_index: number;
+    atom_index: number;
+}
+
+/**
+ * Extract `_meta['lovelace/provenance']` trails from an MCP tool result.
+ * These structured coordinates can be passed to `elemental_get_citations`
+ * to retrieve rich source details (filing form type, article headline, etc.).
+ */
+export function extractMcpProvenance(result: any): ProvenanceTrail[] {
+    if (!result || typeof result !== 'object') return [];
+    const meta = result._meta ?? result['_meta'];
+    if (!meta || typeof meta !== 'object') return [];
+    const trails = meta['lovelace/provenance'];
+    if (!Array.isArray(trails)) return [];
+    return trails.filter(
+        (t): t is ProvenanceTrail =>
+            t &&
+            typeof t === 'object' &&
+            typeof t.efid === 'string' &&
+            typeof t.record_index === 'number' &&
+            typeof t.atom_index === 'number'
+    );
+}
+
+/**
+ * Request-scoped store for provenance trails collected across all elemental
+ * MCP calls during a single H3 request. Callers accumulate trails here;
+ * `resolveRefs` (citations.ts) drains them to fetch real citations.
+ */
+function getRequestProvenanceStore(event: H3Event): ProvenanceTrail[] {
+    const ctx = event.context as Record<string, unknown>;
+    if (!Array.isArray(ctx.__provenanceTrails)) {
+        ctx.__provenanceTrails = [] as ProvenanceTrail[];
+    }
+    return ctx.__provenanceTrails as ProvenanceTrail[];
+}
+
+export function pushProvenanceTrails(event: H3Event, trails: ProvenanceTrail[]): void {
+    if (!trails.length) return;
+    const store = getRequestProvenanceStore(event);
+    store.push(...trails);
+}
+
+export function drainProvenanceTrails(event: H3Event): ProvenanceTrail[] {
+    const ctx = event.context as Record<string, unknown>;
+    const store = ctx.__provenanceTrails;
+    if (!Array.isArray(store) || store.length === 0) return [];
+    const copy = [...store];
+    (ctx.__provenanceTrails as ProvenanceTrail[]).length = 0;
+    return copy;
 }

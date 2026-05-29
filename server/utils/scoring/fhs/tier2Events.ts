@@ -168,7 +168,7 @@ export async function computeTier2Events(
             processEvents(contextEvents, nowMs, signals, refs, resolvedDistress);
         }
 
-        const citationMap = await resolveRefs(refs, event);
+        const citationMap = await resolveRefs(refs, event, ctx);
         signals.forEach((signal) => {
             const citation = refs.map((ref) => citationMap.get(ref)).find(Boolean);
             if (citation) {

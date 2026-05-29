@@ -160,7 +160,7 @@ export async function computeTier5Instruments(
         console.warn('[fhs:tier5] failed to compute instrument signals', error);
     }
 
-    const citationMap = await resolveRefs(refs, event);
+    const citationMap = await resolveRefs(refs, event, ctx);
     const citations = refs
         .map((ref) => citationMap.get(ref))
         .filter((citation): citation is NonNullable<typeof citation> => Boolean(citation));

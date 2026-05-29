@@ -27,7 +27,7 @@ export async function computeErsScore(
 
     const snapshot = await buildGovernanceSnapshot(event, neid, ctx);
     const signals = computeErsSignals(snapshot, ctx?.events, ersThresholds);
-    const citationMap = await resolveRefs(snapshot.references, event);
+    const citationMap = await resolveRefs(snapshot.references, event, ctx);
     const citations = snapshot.references
         .map((ref) => citationMap.get(ref))
         .filter((citation): citation is NonNullable<typeof citation> => Boolean(citation));

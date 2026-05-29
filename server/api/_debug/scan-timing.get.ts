@@ -1,8 +1,13 @@
 import { scoreEntity } from '~/server/utils/scoring/scoreEntity';
 import { getContextPackage } from '~/server/utils/scoring/contextPackage';
 import { isGalaxyEnabled } from '~/server/utils/scoring/galaxy';
+import { requireAuth } from '~/server/utils/requireAuth';
 
 export default defineEventHandler(async (event) => {
+    if (!import.meta.dev) {
+        throw createError({ statusCode: 404, statusMessage: 'Not found' });
+    }
+    await requireAuth(event);
     const query = getQuery(event);
     const neid = String(query.neid || '');
     const portfolioId = String(query.portfolioId || '_debug');

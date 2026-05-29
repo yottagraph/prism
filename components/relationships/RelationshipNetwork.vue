@@ -154,11 +154,16 @@
         const nodeSet = visibleNodes.value;
         const edgeSet = visibleEdges.value;
 
+        // Precompute degree map in O(edges) to avoid O(nodes × edges) inner loop.
+        const degreeMap = new Map<string, number>();
+        for (const edge of edgeSet) {
+            degreeMap.set(edge.source, (degreeMap.get(edge.source) ?? 0) + 1);
+            degreeMap.set(edge.target, (degreeMap.get(edge.target) ?? 0) + 1);
+        }
+
         for (const node of nodeSet) {
             const isPortfolio = node.kind === 'portfolio';
-            const degree = edgeSet.filter(
-                (e) => e.source === node.id || e.target === node.id
-            ).length;
+            const degree = degreeMap.get(node.id) ?? 0;
             const size = isPortfolio ? 12 : Math.max(5, 5 + Math.log1p(degree) * 2);
 
             graph.addNode(node.id, {

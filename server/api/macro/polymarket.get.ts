@@ -1,4 +1,17 @@
 import { callMcpTool, extractMcpStructuredContent } from '~/server/utils/scoring/mcpGateway';
+import {
+    deriveTrend,
+    computeMacroScore,
+    lc,
+    safeParseJsonArray,
+    pickFirstMatchingResult,
+    pickMarket,
+} from '~/server/utils/macro/polymarketHelpers';
+import type {
+    WebSearchResult,
+    MarketSummary,
+    IndicatorConfig,
+} from '~/server/utils/macro/polymarketHelpers';
 
 interface MacroSignal {
     label: string;
@@ -24,28 +37,10 @@ interface MacroSignal {
  * sub-market directly.
  */
 
-interface WebSearchResult {
-    title?: string;
-    slug?: string;
-    url?: string;
-    probability?: string | number;
-    tags?: string[] | null;
-    end_date?: string;
-}
-
 interface WebSearchPayload {
     results?: WebSearchResult[];
     result_count?: number;
     query?: string;
-}
-
-interface MarketSummary {
-    question?: string;
-    outcomes?: string;
-    outcomePrices?: string;
-    active?: boolean;
-    closed?: boolean;
-    endDate?: string;
 }
 
 interface EventBySlugPayload {
@@ -53,17 +48,6 @@ interface EventBySlugPayload {
     endDate?: string;
     markets?: MarketSummary[];
 }
-
-interface IndicatorConfig {
-    label: string;
-    searchQueries: string[];
-    slugIncludes?: string;
-    slugExcludes?: string[];
-    marketIncludes?: string;
-    scoreDirection: 'higher_is_better' | 'lower_is_better' | 'neutral';
-}
-
-const COMMENT_FRAGMENT = '#commentsinner';
 
 const INDICATORS: IndicatorConfig[] = [
     {
@@ -109,88 +93,6 @@ const INDICATORS: IndicatorConfig[] = [
 
 let cachedSignals: { signals: MacroSignal[]; expiresAt: number } | null = null;
 const CACHE_TTL_MS = 60 * 60 * 1000;
-
-function deriveTrend(probability: number): 'up' | 'down' | 'flat' {
-    if (probability > 0.6) return 'up';
-    if (probability < 0.4) return 'down';
-    return 'flat';
-}
-
-function computeMacroScore(
-    probability: number,
-    direction: IndicatorConfig['scoreDirection']
-): number {
-    if (direction === 'neutral') return 0;
-    const raw = Math.max(-1, Math.min(1, 2 * (probability - 0.5)));
-    return direction === 'lower_is_better' ? -raw : raw;
-}
-
-function lc(s: string | undefined | null): string {
-    return (s ?? '').toLowerCase();
-}
-
-function safeParseJsonArray(raw: string | undefined): unknown[] {
-    if (!raw) return [];
-    try {
-        const parsed = JSON.parse(raw);
-        return Array.isArray(parsed) ? parsed : [];
-    } catch {
-        return [];
-    }
-}
-
-function pickFirstMatchingResult(
-    results: WebSearchResult[],
-    config: IndicatorConfig
-): WebSearchResult | null {
-    const slugIncludes = lc(config.slugIncludes);
-    const excludes = (config.slugExcludes ?? []).map(lc);
-    for (const r of results) {
-        const slug = r.slug ?? '';
-        const lcSlug = lc(slug);
-        if (!slug) continue;
-        if (lc(r.title) === 'competitive') continue;
-        if (lcSlug.includes(COMMENT_FRAGMENT)) continue;
-        if (excludes.some((ex) => lcSlug.includes(ex))) continue;
-        if (slugIncludes && !lcSlug.includes(slugIncludes)) continue;
-        return r;
-    }
-    return null;
-}
-
-function pickMarket(
-    markets: MarketSummary[] | undefined,
-    config: IndicatorConfig
-): MarketSummary | null {
-    if (!markets || markets.length === 0) return null;
-
-    const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
-    const cutoffMs = Date.now() - NINETY_DAYS_MS;
-
-    function isEligible(m: MarketSummary): boolean {
-        if (m.active && !m.closed) return true;
-        // Include recently resolved markets (closed within last 90 days)
-        if (m.endDate) {
-            const endMs = Date.parse(m.endDate);
-            if (Number.isFinite(endMs) && endMs >= cutoffMs) return true;
-        }
-        return false;
-    }
-
-    const eligible = markets.filter(isEligible);
-    if (eligible.length === 0) return null;
-
-    // Active markets take priority; recently closed are fallback
-    const active = eligible.filter((m) => m.active && !m.closed);
-    const pool = active.length > 0 ? active : eligible;
-
-    if (config.marketIncludes) {
-        const include = lc(config.marketIncludes);
-        const found = pool.find((m) => lc(m.question).includes(include));
-        return found ?? pool[0] ?? null;
-    }
-    return pool[0];
-}
 
 async function findCandidateSlug(
     event: any,

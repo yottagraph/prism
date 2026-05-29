@@ -77,12 +77,12 @@ const EMPTY_UNIVERSE: RelationshipUniverse = {
 // fetches when the user navigates away and back.
 const clientCache = new Map<string, RelationshipUniverse>();
 // Track in-flight fetches to avoid duplicate requests for the same portfolio.
-const inflight = new Map<string, Promise<RelationshipUniverse>>();
+const inflight = new Map<string, Promise<{ data: RelationshipUniverse; error: string | null }>>();
 
 async function fetchUniverse(
     portfolioId: string,
     entities: Array<{ neid: string; name: string }>
-): Promise<RelationshipUniverse> {
+): Promise<{ data: RelationshipUniverse; error: string | null }> {
     const existing = inflight.get(portfolioId);
     if (existing) return existing;
 
@@ -93,12 +93,17 @@ async function fetchUniverse(
         .then((res) => {
             clientCache.set(portfolioId, res);
             inflight.delete(portfolioId);
-            return res;
+            return { data: res, error: null };
         })
         .catch((err) => {
             console.warn('[useRelationships] failed to load relationship universe', err);
             inflight.delete(portfolioId);
-            return { ...EMPTY_UNIVERSE };
+            const message =
+                err?.data?.statusMessage ||
+                err?.statusMessage ||
+                err?.message ||
+                'Failed to load relationship universe';
+            return { data: { ...EMPTY_UNIVERSE }, error: message as string };
         });
 
     inflight.set(portfolioId, promise);
@@ -110,6 +115,7 @@ export function useRelationships(
     scanning: import('vue').Ref<boolean>
 ) {
     const loading = ref(false);
+    const error = ref<string | null>(null);
     const universe = ref<RelationshipUniverse>({ ...EMPTY_UNIVERSE });
 
     function getResolvedEntities(value: PortfolioDoc) {
@@ -126,6 +132,7 @@ export function useRelationships(
         async ([value, isScanning]) => {
             if (!value?.id) {
                 universe.value = { ...EMPTY_UNIVERSE };
+                error.value = null;
                 return;
             }
 
@@ -135,6 +142,7 @@ export function useRelationships(
             const entities = getResolvedEntities(value);
             if (!entities.length) {
                 universe.value = { ...EMPTY_UNIVERSE };
+                error.value = null;
                 return;
             }
 
@@ -142,11 +150,15 @@ export function useRelationships(
             const cached = clientCache.get(value.id);
             if (cached) {
                 universe.value = cached;
+                error.value = null;
                 return;
             }
 
             loading.value = true;
-            universe.value = await fetchUniverse(value.id, entities);
+            error.value = null;
+            const result = await fetchUniverse(value.id, entities);
+            universe.value = result.data;
+            error.value = result.error;
             loading.value = false;
         },
         { immediate: true }
@@ -154,6 +166,7 @@ export function useRelationships(
 
     return {
         loading: computed(() => loading.value),
+        error: computed(() => error.value),
         graph: computed(() => ({ nodes: universe.value.nodes, edges: universe.value.edges })),
         companies: computed(() => universe.value.companies),
         people: computed(() => universe.value.people),

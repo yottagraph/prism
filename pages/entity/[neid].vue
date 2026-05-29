@@ -5,6 +5,7 @@
                 <v-btn
                     icon="mdi-arrow-left"
                     variant="text"
+                    aria-label="Back to portfolio"
                     @click="$router.push('/')"
                     class="mr-2"
                 />
@@ -82,6 +83,14 @@
 
             <v-window v-model="activeTab">
                 <v-window-item value="overview">
+                    <v-alert
+                        v-if="!loading && !data && !error"
+                        type="info"
+                        variant="tonal"
+                        density="compact"
+                        class="mb-3"
+                        text="No profile data available for this entity. Run a scan to populate scores."
+                    />
                     <template v-if="data">
                         <v-row dense>
                             <v-col cols="12" md="5">

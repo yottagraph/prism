@@ -282,7 +282,7 @@ export async function computeTier1Financials(
         latestFact(facts.revenue)?.ref,
         latestFact(facts.netIncome)?.ref,
     ].filter((ref): ref is string => Boolean(ref));
-    const citationMap = await resolveRefs(refs, event);
+    const citationMap = await resolveRefs(refs, event, ctx);
     const citations = refs
         .map((ref) => citationMap.get(ref))
         .filter((citation): citation is NonNullable<typeof citation> => Boolean(citation));

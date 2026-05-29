@@ -144,7 +144,7 @@ export async function computeEventPressureScore(
             const topType = weightedEvents.sort((a, b) => b.value - a.value)[0];
             if (topType) metrics.push({ label: 'Top pressure driver', value: topType.eventType });
 
-            const citationMap = await resolveRefs(refs, event);
+            const citationMap = await resolveRefs(refs, event, ctx);
             findings.push(
                 ...weightedEvents.slice(0, 5).map((item) => ({
                     text: `${item.eventType} event${item.date ? ` on ${item.date}` : ''} contributes ${item.value.toFixed(

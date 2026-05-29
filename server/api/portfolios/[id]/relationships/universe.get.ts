@@ -1,5 +1,6 @@
 import { buildRelationshipUniverse } from '~/server/utils/scoring/relationships';
 import { isGalaxyEnabled } from '~/server/utils/scoring/galaxy';
+import { requireAuth } from '~/server/utils/requireAuth';
 
 function parseEntities(raw: unknown): Array<{ neid: string; name: string }> {
     if (typeof raw !== 'string') return [];
@@ -31,6 +32,7 @@ function cacheKey(entities: Array<{ neid: string }>): string {
 }
 
 export default defineEventHandler(async (event) => {
+    await requireAuth(event);
     const query = getQuery(event);
     const entities = parseEntities(query.entities);
     if (!entities.length) {

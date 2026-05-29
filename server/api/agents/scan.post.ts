@@ -4,6 +4,7 @@ import type {
     ScoringSettings,
     SourceFusionWeights,
 } from '~/server/utils/scoring/types';
+import { requireAuth } from '~/server/utils/requireAuth';
 import { DEFAULT_SCORING_SETTINGS } from '~/server/utils/scoring/types';
 import { pushActivity } from '~/server/utils/scoring/activity';
 import { isGalaxyEnabled, getPropertyQuadsForEntities } from '~/server/utils/scoring/galaxy';
@@ -182,6 +183,7 @@ async function resolveEntity(
 }
 
 export default defineEventHandler(async (event) => {
+    await requireAuth(event);
     const body = await readBody<ScanRequest>(event);
     if (!body?.portfolioId || !Array.isArray(body.entities)) {
         throw createError({

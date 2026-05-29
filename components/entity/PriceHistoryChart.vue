@@ -44,6 +44,8 @@
                 :height="height"
                 preserveAspectRatio="none"
                 class="chart-svg"
+                role="img"
+                :aria-label="`${ticker || 'Price'} history chart`"
                 @pointermove="onPointerMove"
                 @pointerdown="onPointerMove"
             >

@@ -14,6 +14,8 @@
         "preview": "nuxt preview",
         "format": "prettier --write \"**/*.{js,ts,vue,json,md}\" --ignore-path .gitignore --ignore-path .prettierignore",
         "format:check": "prettier --check \"**/*.{js,ts,vue,json,md}\" --ignore-path .gitignore --ignore-path .prettierignore",
+        "test": "vitest run",
+        "typecheck": "nuxi typecheck",
         "postinstall": "npx nuxi prepare",
         "prepare": "husky"
     },
@@ -58,6 +60,7 @@
         "@types/leaflet": "^1.9.21",
         "@types/node": "^22.13.4",
         "@vitejs/plugin-vue": "^5.2.1",
+        "@vitest/coverage-v8": "^4.1.7",
         "dotenv": "^17.2.1",
         "husky": "^9.1.7",
         "lint-staged": "^16.1.6",
@@ -66,6 +69,7 @@
         "sass": "^1.84.0",
         "typescript": "^5.7.3",
         "vercel": "^50.13.2",
+        "vitest": "^4.1.7",
         "vue": "^3.5.14",
         "vue-router": "^4.5.1",
         "vuetify-nuxt-module": "^0.18.6"
