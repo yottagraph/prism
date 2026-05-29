@@ -31,12 +31,6 @@ import { computeSolvencyScore } from './solvency';
 import { readPreviousScore, writeLatestScore } from './state';
 import type { ScoringSettings, ScoreComputationResult, SourceCoverageDetail } from './types';
 import { DEFAULT_SCORING_SETTINGS } from './types';
-import {
-    isEquityCandidate,
-    parseInstrumentName,
-    rankInstrumentCandidates,
-    tickerMatchScore,
-} from './instruments';
 
 async function queryFredSeriesCount(event: H3Event, neid: string): Promise<number> {
     try {
@@ -387,7 +381,7 @@ export async function scoreEntity(
 
     const [fredSeriesCount, entityIndustry, auxCoverage] = await Promise.all([
         withTimeout(queryFredSeriesCount(event, neid), 3_000, 0),
-        withTimeout(fetchEntityIndustry(event, neid, ctx), 3_000, null),
+        withTimeout(fetchEntityIndustry(event, neid, ctx, market.ticker), 3_000, null),
         withTimeout(fetchAuxiliaryCoverage(event, neid), 3_000, {
             sanctions: false,
             fdic: false,
