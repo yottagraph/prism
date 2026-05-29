@@ -38,7 +38,7 @@ const SECTOR_RULES: Array<{ pattern: RegExp; bucket: MacroFactorBucket }> = [
     // Growth / technology
     {
         pattern:
-            /\b(tech|software|semiconductor|hardware|internet|cloud|saas|ai|data|digital|cyber|platform)/i,
+            /\b(tech|software|semiconductor|hardware|computer|electronic|internet|cloud|saas|ai|data|digital|cyber|platform)/i,
         bucket: 'growth_tech',
     },
     {
@@ -48,7 +48,8 @@ const SECTOR_RULES: Array<{ pattern: RegExp; bucket: MacroFactorBucket }> = [
 
     // Defensive
     {
-        pattern: /\b(healthcare|health care|pharmaceutical|pharma|biotech|medical|hospital|drug)/i,
+        pattern:
+            /\b(healthcare|health care|pharmaceutical|pharma|biotech|biolog|medical|hospital|drug)/i,
         bucket: 'defensive',
     },
     {
@@ -66,7 +67,7 @@ const SECTOR_RULES: Array<{ pattern: RegExp; bucket: MacroFactorBucket }> = [
     // Cyclical
     {
         pattern:
-            /\b(industrial|manufactur|aerospace|defense|transport|logistic|shipping|airline|rail|construction|chemical|material|packaging|auto|vehicle|retail|discretionary|hotel|restaurant|leisure|travel)/i,
+            /\b(industrial|manufactur|aerospace|defense|transport|trucking|logistic|shipping|airline|rail|construction|chemical|material|machinery|equipment|steel|apparel|textile|paper|furniture|packaging|auto|vehicle|retail|discretionary|hotel|restaurant|leisure|travel)/i,
         bucket: 'cyclical',
     },
 

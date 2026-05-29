@@ -14,11 +14,15 @@
         </div>
         <div class="dist-grid">
             <div v-for="row in rows" :key="row.tier" class="dist-row">
-                <div class="d-flex justify-space-between align-center mb-1">
-                    <v-chip :color="row.color" size="x-small" variant="tonal" label>
-                        {{ row.label }}
-                    </v-chip>
-                    <span class="text-caption text-medium-emphasis">
+                <div class="dist-header">
+                    <div class="d-flex align-center dist-label">
+                        <span
+                            class="dist-dot mr-2"
+                            :style="{ backgroundColor: `rgb(var(--v-theme-${row.color}))` }"
+                        />
+                        <span class="text-body-2">{{ row.label }}</span>
+                    </div>
+                    <span class="text-body-2 text-medium-emphasis dist-count">
                         <AnimatedNumber :value="row.count" />
                     </span>
                 </div>
@@ -27,9 +31,10 @@
                     :color="row.color"
                     height="6"
                     rounded
-                    class="dist-bar"
+                    class="dist-bar mb-1"
                     :class="{ 'dist-bar--live': scanning && row.count > 0 }"
                 />
+                <div class="text-caption text-medium-emphasis dist-detail">{{ row.detail }}</div>
             </div>
         </div>
     </v-card>
@@ -39,6 +44,7 @@
     import { computed } from 'vue';
     import type { RiskTier } from '~/composables/useFusedScoring';
     import { tierColor, tierLabel } from '~/composables/useFusedScoring';
+    import { useScoringSettings } from '~/composables/useScoringSettings';
 
     const props = withDefaults(
         defineProps<{
@@ -48,6 +54,29 @@
         { scanning: false }
     );
 
+    const { scoring } = useScoringSettings();
+
+    const TIER_MEANING: Record<RiskTier, string> = {
+        critical: 'immediate review',
+        high: 'elevated concern',
+        medium: 'watch closely',
+        low: 'stable',
+    };
+
+    /** Per-tier descriptor: the fused-score band that lands an entity here. */
+    function tierDetail(tier: RiskTier): string {
+        const { critical, high, medium } = scoring.value.tiers;
+        const band =
+            tier === 'critical'
+                ? `Fused ≥ ${critical}`
+                : tier === 'high'
+                  ? `Fused ${high}–${critical - 1}`
+                  : tier === 'medium'
+                    ? `Fused ${medium}–${high - 1}`
+                    : `Fused < ${medium}`;
+        return `${band} · ${TIER_MEANING[tier]}`;
+    }
+
     const tiers: RiskTier[] = ['critical', 'high', 'medium', 'low'];
     const total = computed(() => tiers.reduce((s, t) => s + (props.counts[t] || 0), 0));
     const rows = computed(() =>
@@ -56,6 +85,7 @@
             label: tierLabel(t),
             color: tierColor(t),
             count: props.counts[t] || 0,
+            detail: tierDetail(t),
         }))
     );
 </script>
@@ -64,7 +94,31 @@
     .dist-grid {
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 12px;
+    }
+
+    .dist-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 3px;
+    }
+
+    .dist-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    .dist-count {
+        font-variant-numeric: tabular-nums;
+        text-align: right;
+    }
+
+    .dist-detail {
+        line-height: 1.3;
+        min-height: 16px;
     }
 
     /* Smooth eased fill so tier counts animate as entities are scored. */

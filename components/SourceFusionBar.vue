@@ -22,12 +22,12 @@
                         <div v-bind="tooltipProps" class="source-row-inner">
                             <div class="source-header">
                                 <div class="d-flex align-center source-label">
-                                    <v-icon :color="src.color" size="16" class="mr-1">{{
+                                    <v-icon :color="src.color" size="18" class="mr-2">{{
                                         src.icon
                                     }}</v-icon>
-                                    <span class="type-label">{{ src.label }}</span>
+                                    <span class="text-body-2">{{ src.label }}</span>
                                 </div>
-                                <span class="text-caption text-medium-emphasis coverage-count">
+                                <span class="text-body-2 text-medium-emphasis coverage-count">
                                     <AnimatedNumber :value="src.coverage" />/{{ total }}
                                 </span>
                             </div>

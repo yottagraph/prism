@@ -129,8 +129,13 @@
                         :coverage="coverage"
                         :coverage-detail="coverageDetail"
                         :scanning="scanning"
+                        class="flex-grow-1"
                     />
-                    <RiskDistribution :counts="tierCounts" :scanning="scanning" />
+                    <RiskDistribution
+                        :counts="tierCounts"
+                        :scanning="scanning"
+                        class="flex-grow-1"
+                    />
                 </v-col>
                 <v-col cols="12" md="9" class="d-flex flex-column">
                     <MacroPanel class="flex-grow-1" />

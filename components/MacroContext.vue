@@ -45,7 +45,9 @@
                         <span>{{ formatAxisDate(m.historyStart) }}</span>
                         <span>{{ formatAxisDate(m.historyEnd) }}</span>
                     </div>
-                    <div class="macro-note text-caption text-medium-emphasis">{{ m.note }}</div>
+                    <div class="macro-note text-center text-caption text-medium-emphasis">
+                        {{ m.note }}
+                    </div>
                 </div>
             </template>
 

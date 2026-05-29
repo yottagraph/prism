@@ -17,7 +17,13 @@ import { computeNewsPressureScore } from './newsPressure';
 import { computeNewsSummary24h } from './newsSummary24h';
 import { computePolymarketOutlook } from './polymarketOutlook';
 import { callMcpTool, extractMcpStructuredContent } from './mcpGateway';
-import { getSchema, normalizePidMap } from './elemental';
+import {
+    getSchema,
+    normalizePidMap,
+    getPropertyValues,
+    extractPropertyFacts,
+    type ElementalPropertyFact,
+} from './elemental';
 import { computeSignalAgreement } from './signalAgreement';
 import { computeSolvencyScore } from './solvency';
 import { readPreviousScore, writeLatestScore } from './state';
@@ -45,27 +51,48 @@ async function queryFredSeriesCount(event: H3Event, neid: string): Promise<numbe
     }
 }
 
+function latestStringFact(facts: ElementalPropertyFact[]): string | null {
+    if (!facts.length) return null;
+    const sorted = [...facts].sort((a, b) => {
+        const ad = a.date ? Date.parse(a.date) : 0;
+        const bd = b.date ? Date.parse(b.date) : 0;
+        return bd - ad;
+    });
+    const v = sorted[0]?.value;
+    return typeof v === 'string' && v.trim() ? v.trim() : null;
+}
+
+/**
+ * Resolve an entity's industry/sector string for the macro-regime overlay.
+ *
+ * Industry data lives in different datasets depending on coverage:
+ *   • `sic_description` — EDGAR, a string on the `organization` flavor. Present
+ *     for any SEC-registered issuer, so this is the broadest source for credit
+ *     portfolios.
+ *   • `sector` / `industry` — NASDAQ-screener strings on the linked
+ *     `financial_instrument`; only present when stock data resolved.
+ *
+ * The previous implementation queried only the `industry` property (which is a
+ * NASDAQ-screener field that is empty unless stock data is present), so books
+ * without market coverage classified every entity as "unclassified". We now
+ * prefer `sic_description` and fall back to the stock fields. Reads go through
+ * the same PID-based property endpoint the rest of scoring uses.
+ */
 async function fetchEntityIndustry(event: H3Event, neid: string): Promise<string | null> {
     try {
         const schema = await getSchema(event);
         const pid = normalizePidMap(schema);
-        const industryPid = pid.industry;
-        if (!industryPid) return null;
-
-        const result = await callMcpTool(
-            'elemental',
-            'elemental_get_entity',
-            {
-                entity_id: { id_type: 'neid', id: neid },
-                properties: [industryPid],
-            },
-            event
+        const pids = [pid.sic_description, pid.sector, pid.industry].filter(
+            (p): p is string => typeof p === 'string' && p.length > 0
         );
-        const data = extractMcpStructuredContent<{
-            entity?: { properties?: Record<string, { value?: unknown }> };
-        }>(result);
-        const val = data?.entity?.properties?.[industryPid]?.value;
-        return typeof val === 'string' && val.length > 0 ? val : null;
+        if (pids.length === 0) return null;
+
+        const values = await getPropertyValues([neid], pids, true, event);
+        for (const p of pids) {
+            const resolved = latestStringFact(extractPropertyFacts(values, p));
+            if (resolved) return resolved;
+        }
+        return null;
     } catch {
         return null;
     }
