@@ -149,6 +149,7 @@
                 <v-tab value="fhs">FHS</v-tab>
                 <v-tab value="ers">ERS</v-tab>
                 <v-tab value="acs">ACS</v-tab>
+                <v-tab value="summary">Summary</v-tab>
             </v-tabs>
             <v-window v-model="monitorTab">
                 <v-window-item value="monitor">
@@ -168,6 +169,25 @@
                 </v-window-item>
                 <v-window-item value="acs">
                     <AcsTable v-if="active" :entities="sortedEntities" :loading="scanning" />
+                </v-window-item>
+                <v-window-item value="summary" style="min-height: 600px">
+                    <PortfolioSummaryTab
+                        v-if="active"
+                        :entities="sortedEntities"
+                        :portfolio-id="active.id"
+                        :portfolio-name="active.name"
+                        :macro="{
+                            regime: regime.label,
+                            synthesis: regime.synthesis,
+                            sectorTilt: regime.sectorTilt?.map((s) => s.label).join(', '),
+                            portfolioImplication: regime.portfolioImplication,
+                        }"
+                        :coverage-detail="coverageDetail"
+                        @request-scan="onScan"
+                    />
+                    <div v-else class="pa-6 text-center text-medium-emphasis">
+                        Select a portfolio to view the summary.
+                    </div>
                 </v-window-item>
             </v-window>
 
@@ -209,6 +229,7 @@
     import { usePortfolio } from '~/composables/usePortfolio';
     import { useAgentPipeline } from '~/composables/useAgentPipeline';
     import { useFredMacroContext, useRelationships } from '~/composables/useRelationships';
+    import { useMacroRegime } from '~/composables/useMacroRegime';
 
     const router = useRouter();
 
@@ -254,7 +275,8 @@
     });
 
     const lastScanError = ref('');
-    const monitorTab = ref<'monitor' | 'fhs' | 'ers' | 'acs'>('monitor');
+    const monitorTab = ref<'monitor' | 'fhs' | 'ers' | 'acs' | 'summary'>('monitor');
+    const { regime } = useMacroRegime();
     watch(scanError, (e) => {
         if (e) lastScanError.value = e;
     });

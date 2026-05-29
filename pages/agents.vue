@@ -130,22 +130,26 @@
                                 />
                             </v-col>
                             <v-col cols="6">
-                                <CostMetric
-                                    label="Cache hit rate"
-                                    :value="cacheHitRate"
-                                    suffix="%"
-                                />
+                                <CostMetric label="Tool responses" :value="cacheHitRate" />
                             </v-col>
                             <v-col cols="6">
                                 <CostMetric
                                     label="LLM tokens"
-                                    :value="costSummary.llmTokens.toLocaleString()"
+                                    :value="
+                                        costSummary.llmTokens != null
+                                            ? costSummary.llmTokens.toLocaleString()
+                                            : '—'
+                                    "
                                 />
                             </v-col>
                             <v-col cols="6">
                                 <CostMetric
                                     label="Est. cost"
-                                    :value="`$${costSummary.estimatedCostUsd.toFixed(2)}`"
+                                    :value="
+                                        costSummary.estimatedCostUsd != null
+                                            ? `$${costSummary.estimatedCostUsd.toFixed(2)}`
+                                            : '—'
+                                    "
                                 />
                             </v-col>
                             <v-col cols="12">
@@ -292,8 +296,15 @@
     import { usePortfolio } from '~/composables/usePortfolio';
 
     const { activePortfolio: active, weights } = usePortfolio();
-    const { runPipeline, currentPipeline, sessions, activity, costSummary, pushActivity } =
-        useAgentPipeline();
+    const {
+        startPipeline,
+        runPipeline,
+        currentPipeline,
+        sessions,
+        activity,
+        costSummary,
+        pushActivity,
+    } = useAgentPipeline();
     const {
         messages,
         loading,
@@ -327,11 +338,19 @@
         selectAgent('prism');
     });
 
+    // Pipeline updater bound to the current send — replaced on each new message.
+    let _pipelineUpdater: ReturnType<typeof startPipeline> | null = null;
+
     watch(
         streamEvents,
         (events) => {
             const latest = events[events.length - 1];
             if (!latest) return;
+
+            // Forward to real pipeline updater.
+            _pipelineUpdater?.onEvent(latest);
+
+            // Activity feed entries.
             if (latest.event === 'function_call') {
                 pushActivity(
                     'History Agent',
@@ -350,6 +369,12 @@
                     active.value?.name ?? 'portfolio',
                     'Narrative updated'
                 );
+            } else if (latest.event === 'done') {
+                _pipelineUpdater?.onDone(false);
+                _pipelineUpdater = null;
+            } else if (latest.event === 'error') {
+                _pipelineUpdater?.onDone(true);
+                _pipelineUpdater = null;
             }
         },
         { deep: true }
@@ -358,11 +383,18 @@
     async function sendChat(text: string) {
         if (!text.trim() || loading.value) return;
         draft.value = '';
-        void runPipeline({
+        _pipelineUpdater = startPipeline({
             trigger: active.value?.name ?? 'portfolio',
             entityCount: active.value?.entities.length ?? 1,
         });
         await sendMessage(text);
+        // If done/error events didn't fire, close the session now.
+        if (_pipelineUpdater) {
+            _pipelineUpdater.onDone(
+                !chat.value.length || chat.value[chat.value.length - 1]?.error === true
+            );
+            _pipelineUpdater = null;
+        }
         scrollToBottom();
     }
 
@@ -390,9 +422,10 @@
     ];
 
     const cacheHitRate = computed(() => {
-        const total = costSummary.value.elementalCalls + costSummary.value.cacheHits;
-        if (!total) return 0;
-        return Math.round((costSummary.value.cacheHits / total) * 100);
+        const calls = costSummary.value.elementalCalls;
+        if (!calls) return '—';
+        // Cache hits aren't tracked in the ADK stream; show call count only.
+        return calls;
     });
 
     function normalizeWeights() {

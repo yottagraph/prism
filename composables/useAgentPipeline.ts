@@ -2,15 +2,20 @@
  * Agent pipeline state composable.
  *
  * Tracks the 4-step pipeline (Dialogue → History → Query → Composition) for
- * the Agent Workspace UI. Each step has progress + status; sessions are
- * recorded in module state so the Session History table has data.
+ * the Agent Workspace UI. Each step has status and timing; sessions are
+ * recorded so the Session History table has data.
  *
- * The pipeline runner here is a UI animation that mirrors what the real ADK
- * pipeline would do — useful for the demo while live agents are still being
- * deployed.
+ * Pipeline steps are driven by real ADK stream events from useAgentChat:
+ *   - function_call  → History Agent working / Query Agent working
+ *   - function_response → Query Agent completed (increments elementalCalls)
+ *   - text / done    → Composition Agent completed
+ *
+ * Tokens and cost are NOT available in the ADK SSE stream and are shown as
+ * unavailable rather than fabricated.
  */
 
 import { computed, ref } from 'vue';
+import type { AgentStreamEvent } from './useAgentChat';
 
 export type PipelineStep = 'dialogue' | 'history' | 'query' | 'composition';
 export type PipelineStatus = 'pending' | 'working' | 'completed' | 'error';
@@ -75,11 +80,15 @@ const currentPipeline = ref<PipelineStepState[]>(emptyPipeline());
 const currentSessionId = ref<string | null>(null);
 const sessions = ref<AgentSession[]>([]);
 const activity = ref<ActivityFeedEntry[]>([]);
+
+// Real counters — only what the ADK SSE stream actually provides.
 const costSummary = ref({
     elementalCalls: 0,
     cacheHits: 0,
-    llmTokens: 0,
-    estimatedCostUsd: 0,
+    /** LLM tokens are not available in the ADK SSE stream. */
+    llmTokens: null as number | null,
+    /** Cost is not available in the ADK SSE stream. */
+    estimatedCostUsd: null as number | null,
     totalDurationMs: 0,
 });
 
@@ -100,64 +109,105 @@ export function useAgentPipeline() {
     }
 
     /**
-     * Run a simulated agent pipeline for a trigger — used by the Agent
-     * Workspace chat and the Portfolio Overview "scan" button to give the
-     * Agent Activity Feed and Pipeline Viewer something to animate.
+     * Start a new pipeline session driven by real agent stream events.
+     * Returns an updater that agents.vue calls for each new stream event.
      */
-    async function runPipeline(opts: { trigger: string; entityCount: number }) {
+    function startPipeline(opts: { trigger: string; entityCount: number }): {
+        onEvent: (event: AgentStreamEvent) => void;
+        onDone: (error?: boolean) => void;
+    } {
         resetPipeline();
         const sessionId = crypto.randomUUID();
         currentSessionId.value = sessionId;
+        const sessionStart = Date.now();
+
         const session: AgentSession = {
             id: sessionId,
             trigger: opts.trigger,
             status: 'running',
             entityCount: opts.entityCount,
             duration: 0,
-            timestamp: Date.now(),
+            timestamp: sessionStart,
             steps: currentPipeline.value,
         };
         sessions.value.unshift(session);
 
-        const start = Date.now();
-        const steps: PipelineStep[] = ['dialogue', 'history', 'query', 'composition'];
-        const detailTemplates: Record<PipelineStep, (e: string) => string> = {
-            dialogue: (e) => `${e} resolved → portfolio + time window inferred`,
-            history: (e) =>
-                `${e} multi-source pull: ${4 + Math.floor(Math.random() * 12)} relationships, ${3 + Math.floor(Math.random() * 6)} events`,
-            query: (e) =>
-                `${e} scored across 4 lenses; ${Math.random() > 0.5 ? 'conflict flagged' : 'sources agree'}`,
-            composition: (e) => `${e} response composed with cited evidence`,
-        };
+        // Mark Dialogue as immediately completed (intent is resolved before streaming starts).
+        _markStep('dialogue', 'completed', Date.now(), undefined);
 
-        for (let i = 0; i < steps.length; i++) {
-            const step = steps[i];
-            currentPipeline.value[i].status = 'working';
-            currentPipeline.value[i].startedAt = Date.now();
-            await sleep(400 + Math.random() * 600);
-            currentPipeline.value[i].status = 'completed';
-            currentPipeline.value[i].completedAt = Date.now();
-            currentPipeline.value[i].evidenceCount = 3 + Math.floor(Math.random() * 8);
-            pushActivity(
-                STEP_LABELS[step].label,
-                opts.trigger,
-                detailTemplates[step](opts.trigger)
-            );
+        // Track query step: how many tool calls / responses seen.
+        let toolCallCount = 0;
+        let queryStartedAt: number | undefined;
+        let historyStartedAt: number | undefined;
+        let compositionStartedAt: number | undefined;
+
+        function onEvent(ev: AgentStreamEvent) {
+            if (ev.event === 'function_call') {
+                toolCallCount++;
+
+                if (!historyStartedAt) {
+                    historyStartedAt = Date.now();
+                    _markStep('history', 'working', historyStartedAt, undefined);
+                }
+                if (toolCallCount > 1 && !queryStartedAt) {
+                    queryStartedAt = Date.now();
+                    _markStep('query', 'working', queryStartedAt, undefined);
+                }
+            } else if (ev.event === 'function_response') {
+                // Each response is one real Elemental (or tool) call completing.
+                costSummary.value.elementalCalls++;
+
+                if (historyStartedAt && currentPipeline.value[1].status === 'working') {
+                    _markStep('history', 'completed', undefined, Date.now());
+                    const prev = currentPipeline.value[1].evidenceCount ?? 0;
+                    currentPipeline.value[1].evidenceCount = prev + 1;
+                }
+                if (queryStartedAt && currentPipeline.value[2].status === 'working') {
+                    const prev = currentPipeline.value[2].evidenceCount ?? 0;
+                    currentPipeline.value[2].evidenceCount = prev + 1;
+                }
+            } else if (ev.event === 'text') {
+                if (!queryStartedAt) {
+                    // Agent answered without tool calls — skip history/query.
+                    _markStep('history', 'completed', Date.now(), Date.now());
+                    _markStep('query', 'completed', Date.now(), Date.now());
+                } else if (currentPipeline.value[2].status !== 'completed') {
+                    _markStep('query', 'completed', undefined, Date.now());
+                }
+                if (!compositionStartedAt) {
+                    compositionStartedAt = Date.now();
+                    _markStep('composition', 'working', compositionStartedAt, undefined);
+                }
+            }
         }
-        const duration = Date.now() - start;
-        session.status = 'completed';
-        session.duration = duration;
 
-        costSummary.value = {
-            elementalCalls: costSummary.value.elementalCalls + opts.entityCount * 4,
-            cacheHits: costSummary.value.cacheHits + Math.floor(opts.entityCount * 0.6),
-            llmTokens: costSummary.value.llmTokens + 8000 + Math.floor(Math.random() * 4000),
-            estimatedCostUsd:
-                Math.round(
-                    (costSummary.value.estimatedCostUsd + 0.08 + Math.random() * 0.12) * 100
-                ) / 100,
-            totalDurationMs: costSummary.value.totalDurationMs + duration,
-        };
+        function onDone(error = false) {
+            const now = Date.now();
+            // Ensure all steps are resolved.
+            if (currentPipeline.value[1].status !== 'completed')
+                _markStep('history', 'completed', undefined, now);
+            if (currentPipeline.value[2].status !== 'completed')
+                _markStep('query', 'completed', undefined, now);
+            _markStep('composition', error ? 'error' : 'completed', compositionStartedAt, now);
+
+            const duration = now - sessionStart;
+            session.status = error ? 'failed' : 'completed';
+            session.duration = duration;
+            costSummary.value.totalDurationMs += duration;
+        }
+
+        return { onEvent, onDone };
+    }
+
+    /**
+     * Legacy helper kept for callers that want a fire-and-forget pipeline
+     * animation (e.g. scan button). Uses real timing but no real events.
+     */
+    async function runPipeline(opts: { trigger: string; entityCount: number }) {
+        const { onDone } = startPipeline(opts);
+        // Mark all steps complete after a short delay so the UI shows activity.
+        await new Promise((r) => setTimeout(r, 500));
+        onDone();
     }
 
     return {
@@ -166,12 +216,23 @@ export function useAgentPipeline() {
         sessions: computed(() => sessions.value),
         activity: computed(() => activity.value),
         costSummary: computed(() => costSummary.value),
+        startPipeline,
         runPipeline,
         pushActivity,
         resetPipeline,
     };
 }
 
-function sleep(ms: number) {
-    return new Promise((res) => setTimeout(res, ms));
+function _markStep(
+    name: PipelineStep,
+    status: PipelineStatus,
+    startedAt: number | undefined,
+    completedAt: number | undefined
+) {
+    const idx = (['dialogue', 'history', 'query', 'composition'] as PipelineStep[]).indexOf(name);
+    if (idx === -1) return;
+    const step = currentPipeline.value[idx];
+    step.status = status;
+    if (startedAt != null) step.startedAt = startedAt;
+    if (completedAt != null) step.completedAt = completedAt;
 }
