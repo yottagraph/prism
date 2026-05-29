@@ -1,87 +1,96 @@
 <template>
     <div class="regime-visuals">
-        <!-- Tiles: 2-row grid, consistent sizing -->
-        <div v-if="statTiles.length" class="signal-tiles mb-4">
-            <template v-for="tile in statTiles" :key="tile.label">
-                <v-tooltip location="top" max-width="320" theme="dark" :open-delay="200">
-                    <template #activator="{ props: tp }">
-                        <div
-                            v-bind="tp"
-                            class="signal-tile"
-                            :class="{ 'poly-tile': tile.source === 'polymarket' }"
-                        >
-                            <!-- Row 1: label only -->
-                            <div class="tile-header">
-                                <span class="tile-label">{{ tile.label }}</span>
-                            </div>
-
-                            <!-- Row 2: value (left) + trend icon (right) — baseline-aligned -->
-                            <div class="tile-value-row">
-                                <span class="tile-value" :class="tile.colorClass">{{
-                                    tile.display
-                                }}</span>
-                                <v-icon
-                                    v-if="tile.trend === 'up'"
-                                    size="13"
-                                    class="tile-trend"
-                                    :class="tile.colorClass"
-                                    >mdi-trending-up</v-icon
-                                >
-                                <v-icon
-                                    v-else-if="tile.trend === 'down'"
-                                    size="13"
-                                    class="tile-trend"
-                                    :class="tile.colorClass"
-                                    >mdi-trending-down</v-icon
-                                >
-                                <span v-else class="tile-trend-placeholder" />
-                            </div>
-
-                            <!-- Row 3: probability bar (PM) or sparkline (FRED) -->
-                            <div class="tile-bottom">
-                                <!-- PM probability bar -->
-                                <div v-if="tile.pct != null" class="tile-bar">
-                                    <div
-                                        class="tile-bar-fill"
-                                        :class="tile.colorClass"
-                                        :style="{ width: `${tile.pct}%` }"
-                                    />
+        <!-- Tiles grouped by source: Polymarket on one row, FRED on the next -->
+        <div v-if="statTiles.length" class="tile-groups mb-4">
+            <div
+                v-for="group in tileGroups"
+                :key="group.source"
+                class="signal-tiles"
+                :class="{ 'poly-row': group.source === 'polymarket' }"
+            >
+                <template v-for="tile in group.tiles" :key="tile.label">
+                    <v-tooltip location="top" max-width="320" theme="dark" :open-delay="200">
+                        <template #activator="{ props: tp }">
+                            <div
+                                v-bind="tp"
+                                class="signal-tile"
+                                :class="{ 'poly-tile': tile.source === 'polymarket' }"
+                            >
+                                <!-- Row 1: label only -->
+                                <div class="tile-header">
+                                    <span class="tile-label">{{ tile.label }}</span>
                                 </div>
-                                <!-- FRED sparkline -->
-                                <svg
-                                    v-else-if="tile.sparkline"
-                                    class="sparkline"
-                                    :viewBox="`0 0 ${SPARK_W} ${SPARK_H}`"
-                                    preserveAspectRatio="none"
-                                >
-                                    <polyline
-                                        :points="tile.sparkline"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        stroke-width="1.5"
-                                        stroke-linejoin="round"
-                                        stroke-linecap="round"
+
+                                <!-- Row 2: value (left) + trend icon (right) — baseline-aligned -->
+                                <div class="tile-value-row">
+                                    <span class="tile-value" :class="tile.colorClass">{{
+                                        tile.display
+                                    }}</span>
+                                    <v-icon
+                                        v-if="tile.trend === 'up'"
+                                        size="13"
+                                        class="tile-trend"
                                         :class="tile.colorClass"
-                                        style="opacity: 0.65"
-                                    />
-                                </svg>
-                                <div v-else class="tile-bar-placeholder" />
+                                        >mdi-trending-up</v-icon
+                                    >
+                                    <v-icon
+                                        v-else-if="tile.trend === 'down'"
+                                        size="13"
+                                        class="tile-trend"
+                                        :class="tile.colorClass"
+                                        >mdi-trending-down</v-icon
+                                    >
+                                    <span v-else class="tile-trend-placeholder" />
+                                </div>
+
+                                <!-- Row 3: probability bar (PM) or sparkline (FRED) -->
+                                <div class="tile-bottom">
+                                    <!-- PM probability bar -->
+                                    <div v-if="tile.pct != null" class="tile-bar">
+                                        <div
+                                            class="tile-bar-fill"
+                                            :class="tile.colorClass"
+                                            :style="{ width: `${tile.pct}%` }"
+                                        />
+                                    </div>
+                                    <!-- FRED sparkline -->
+                                    <svg
+                                        v-else-if="tile.sparkline"
+                                        class="sparkline"
+                                        :viewBox="`0 0 ${SPARK_W} ${SPARK_H}`"
+                                        preserveAspectRatio="none"
+                                    >
+                                        <polyline
+                                            :points="tile.sparkline"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="1.5"
+                                            stroke-linejoin="round"
+                                            stroke-linecap="round"
+                                            :class="tile.colorClass"
+                                            style="opacity: 0.65"
+                                        />
+                                    </svg>
+                                    <div v-else class="tile-bar-placeholder" />
+                                </div>
+                                <!-- PM badge — absolutely anchored bottom-right -->
+                                <span v-if="tile.source === 'polymarket'" class="poly-badge"
+                                    >PM</span
+                                >
                             </div>
-                            <!-- PM badge — absolutely anchored bottom-right -->
-                            <span v-if="tile.source === 'polymarket'" class="poly-badge">PM</span>
+                        </template>
+                        <!-- Tooltip content -->
+                        <div class="tooltip-inner">
+                            <div class="font-weight-medium mb-1" style="font-size: 0.78rem">
+                                {{ tile.tooltipTitle }}
+                            </div>
+                            <div v-if="tile.tooltipDetail" style="font-size: 0.73rem; opacity: 0.8">
+                                {{ tile.tooltipDetail }}
+                            </div>
                         </div>
-                    </template>
-                    <!-- Tooltip content -->
-                    <div class="tooltip-inner">
-                        <div class="font-weight-medium mb-1" style="font-size: 0.78rem">
-                            {{ tile.tooltipTitle }}
-                        </div>
-                        <div v-if="tile.tooltipDetail" style="font-size: 0.73rem; opacity: 0.8">
-                            {{ tile.tooltipDetail }}
-                        </div>
-                    </div>
-                </v-tooltip>
-            </template>
+                    </v-tooltip>
+                </template>
+            </div>
         </div>
 
         <!-- Sector mix stacked bar -->
@@ -357,6 +366,16 @@
         return tiles;
     });
 
+    /** Group tiles by source so Polymarket and FRED each get their own row. */
+    const tileGroups = computed<{ source: Tile['source']; tiles: Tile[] }[]>(() => {
+        const poly = statTiles.value.filter((t) => t.source === 'polymarket');
+        const fred = statTiles.value.filter((t) => t.source === 'fred');
+        return [
+            { source: 'polymarket' as const, tiles: poly },
+            { source: 'fred' as const, tiles: fred },
+        ].filter((g) => g.tiles.length > 0);
+    });
+
     const totalEntities = computed(() =>
         (props.regime.sectorTilt ?? []).reduce((s, t) => s + t.count, 0)
     );
@@ -372,6 +391,12 @@
     }
 
     /* ── Signal tiles ────────────────────────────────── */
+    .tile-groups {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
     .signal-tiles {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
