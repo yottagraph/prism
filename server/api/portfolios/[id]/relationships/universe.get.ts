@@ -17,14 +17,17 @@ function parseEntities(raw: unknown): Array<{ neid: string; name: string }> {
 // In-process cache: key = sorted NEID list hash, value = { result, expiresAt }
 // Increment CACHE_VER when the response shape or filtering logic changes.
 const CACHE_TTL_MS = 10 * 60_000; // 10 minutes
-const CACHE_VER = 2;
+const CACHE_VER = 3;
 const universeCache = new Map<string, { result: unknown; expiresAt: number }>();
 
 function cacheKey(entities: Array<{ neid: string }>): string {
-    return `v${CACHE_VER}:` + entities
-        .map((e) => e.neid)
-        .sort()
-        .join(',');
+    return (
+        `v${CACHE_VER}:` +
+        entities
+            .map((e) => e.neid)
+            .sort()
+            .join(',')
+    );
 }
 
 export default defineEventHandler(async (event) => {
@@ -58,10 +61,18 @@ export default defineEventHandler(async (event) => {
         return ids.map((id) => portfolioNameMap.get(id) ?? id);
     }
 
+    // Build a lookup from node id → relationship label using the edges
+    const edgeRelByTarget = new Map<string, string>();
+    for (const edge of universe.edges) {
+        if (!edgeRelByTarget.has(edge.target)) {
+            edgeRelByTarget.set(edge.target, edge.relationship);
+        }
+    }
+
     const companies = universe.companies.map((node) => ({
         neid: node.neid ?? node.id.replace(/^co-/, ''),
         name: node.label,
-        connectionType: node.id.startsWith('co-') ? 'subsidiary_of' : 'related',
+        connectionType: edgeRelByTarget.get(node.id) ?? 'related',
         connectedTo: resolvePortfolioNames(node.connectsTo),
         relationshipCount: node.connectsTo.length,
     }));
