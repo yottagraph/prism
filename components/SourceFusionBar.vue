@@ -2,7 +2,7 @@
     <v-card class="pa-4">
         <div class="d-flex align-center mb-3">
             <v-icon size="small" class="mr-2">mdi-layers-triple-outline</v-icon>
-            <span class="text-subtitle-2">Source Fusion Coverage</span>
+            <span class="text-subtitle-2">Data Source Coverage</span>
             <v-spacer />
             <span v-if="scanning" class="d-inline-flex align-center scan-live">
                 <span class="scan-live-dot mr-1" />

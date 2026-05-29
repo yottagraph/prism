@@ -51,6 +51,9 @@
                     class="mr-2"
                 />
                 {{ activeTab === 'stock' ? stockStatusMessage : overviewStatusMessage }}
+                <span v-if="entityElapsedText" class="ml-2 font-mono"
+                    >· {{ entityElapsedText }}</span
+                >
             </div>
         </div>
 
@@ -243,7 +246,7 @@
 </template>
 
 <script setup lang="ts">
-    import { computed, ref } from 'vue';
+    import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
     import { useEntityProfile } from '~/composables/useEntityProfile';
     import { useEntityStockProfile } from '~/composables/useEntityStockProfile';
@@ -281,6 +284,42 @@
     } = useEntityStockProfile();
     const { signals: macroSignals } = useMacroContext();
     const activeTab = ref<'overview' | 'stock'>('overview');
+
+    // Elapsed timer for entity load progress indicator
+    const nowMs = ref(Date.now());
+    const loadStartedAt = ref<number | null>(null);
+    const loadEndedAt = ref<number | null>(null);
+    let clockTimer: ReturnType<typeof setInterval> | null = null;
+
+    onMounted(() => {
+        clockTimer = setInterval(() => {
+            nowMs.value = Date.now();
+        }, 1000);
+    });
+    onUnmounted(() => {
+        if (clockTimer) clearInterval(clockTimer);
+        clockTimer = null;
+    });
+
+    const isLoading = computed(() => loading.value || stockLoading.value);
+    watch(isLoading, (val) => {
+        if (val) {
+            loadStartedAt.value = Date.now();
+            loadEndedAt.value = null;
+        } else {
+            loadEndedAt.value = Date.now();
+        }
+    });
+
+    const entityElapsedText = computed(() => {
+        const start = loadStartedAt.value;
+        if (!start) return null;
+        const end = isLoading.value ? nowMs.value : (loadEndedAt.value ?? nowMs.value);
+        const elapsedSec = Math.max(0, Math.floor((end - start) / 1000));
+        const minutes = Math.floor(elapsedSec / 60);
+        const seconds = elapsedSec % 60;
+        return `${minutes}:${String(seconds).padStart(2, '0')}`;
+    });
 
     async function loadStock(force = false) {
         const portfolioId = activePortfolio.value?.id;

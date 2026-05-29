@@ -99,6 +99,12 @@ const INDICATORS: IndicatorConfig[] = [
         marketIncludes: 'greater than 2.5%',
         scoreDirection: 'higher_is_better',
     },
+    {
+        label: 'Unemployment',
+        searchQueries: ['US unemployment rate 2026', 'unemployment rate above'],
+        slugIncludes: 'unemployment',
+        scoreDirection: 'lower_is_better',
+    },
 ];
 
 let cachedSignals: { signals: MacroSignal[]; expiresAt: number } | null = null;

@@ -84,20 +84,42 @@
             </template>
         </div>
 
-        <!-- Sector tilt bars -->
+        <!-- Sector mix stacked bar -->
         <div v-if="props.regime.sectorTilt?.length" class="sector-tilt">
-            <div class="text-caption text-medium-emphasis mb-1">Portfolio sector mix</div>
-            <div
-                v-for="tilt in props.regime.sectorTilt"
-                :key="tilt.bucket"
-                class="tilt-row d-flex align-center mb-1"
-            >
-                <v-icon size="13" class="mr-1 text-medium-emphasis">{{ tilt.icon }}</v-icon>
-                <span class="tilt-label text-caption">{{ tilt.label }}</span>
-                <div class="tilt-track flex-grow-1 mx-2">
-                    <div class="tilt-fill" :style="{ width: `${tiltPct(tilt.count)}%` }" />
+            <div class="text-caption text-medium-emphasis mb-2">Portfolio sector mix</div>
+            <!-- Stacked bar -->
+            <div class="stacked-bar mb-2">
+                <v-tooltip
+                    v-for="tilt in props.regime.sectorTilt"
+                    :key="tilt.bucket"
+                    location="top"
+                    theme="dark"
+                >
+                    <template #activator="{ props: tp }">
+                        <div
+                            v-bind="tp"
+                            class="stacked-segment"
+                            :style="{
+                                width: `${tiltPct(tilt.count)}%`,
+                                background: BUCKET_COLOR[tilt.bucket],
+                            }"
+                        />
+                    </template>
+                    <span>{{ tilt.label }}: {{ tilt.count }} ({{ tiltPct(tilt.count) }}%)</span>
+                </v-tooltip>
+            </div>
+            <!-- Legend -->
+            <div class="stacked-legend">
+                <div v-for="tilt in props.regime.sectorTilt" :key="tilt.bucket" class="legend-item">
+                    <span
+                        class="legend-swatch"
+                        :style="{ background: BUCKET_COLOR[tilt.bucket] }"
+                    />
+                    <span class="legend-label text-caption">{{ tilt.label }}</span>
+                    <span class="legend-pct text-caption text-medium-emphasis"
+                        >{{ tiltPct(tilt.count) }}%</span
+                    >
                 </div>
-                <span class="tilt-count text-caption text-medium-emphasis">{{ tilt.count }}</span>
             </div>
         </div>
     </div>
@@ -108,6 +130,16 @@
 
     import type { MacroRegime } from '~/composables/useMacroRegime';
     import type { MacroSignal } from '~/composables/useRelationships';
+    import type { MacroFactorBucket } from '~/utils/macro/sectorFactors';
+
+    const BUCKET_COLOR: Record<MacroFactorBucket, string> = {
+        rate_sensitive: '#5C6BC0', // indigo-400
+        defensive: '#42A5F5', // blue-400
+        cyclical: '#26A69A', // teal-400
+        growth_tech: '#AB47BC', // purple-400
+        energy: '#FFA726', // orange-400
+        unclassified: '#78909C', // blue-grey-400
+    };
 
     const props = defineProps<{
         fred: MacroSignal[];
@@ -441,35 +473,49 @@
         padding: 2px 0;
     }
 
-    /* ── Sector tilt ─────────────────────────────────── */
-    .tilt-row {
-        font-size: 0.78rem;
-    }
-
-    .tilt-label {
-        min-width: 88px;
-        white-space: nowrap;
+    /* ── Sector mix stacked bar ──────────────────────── */
+    .stacked-bar {
+        display: flex;
+        height: 8px;
+        border-radius: 4px;
         overflow: hidden;
-        text-overflow: ellipsis;
+        background: rgba(var(--v-border-color), 0.2);
+        gap: 1px;
     }
 
-    .tilt-track {
-        height: 5px;
-        border-radius: 3px;
-        background: rgba(var(--v-border-color), 0.3);
-        overflow: hidden;
-        max-width: 120px;
-    }
-
-    .tilt-fill {
+    .stacked-segment {
         height: 100%;
-        border-radius: 3px;
-        background: rgba(var(--dynamic-primary-rgb), 0.7);
         transition: width 0.4s ease;
+        cursor: default;
+        min-width: 2px;
     }
 
-    .tilt-count {
-        min-width: 18px;
-        text-align: right;
+    .stacked-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 12px;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.72rem;
+    }
+
+    .legend-swatch {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 2px;
+        flex-shrink: 0;
+    }
+
+    .legend-label {
+        white-space: nowrap;
+    }
+
+    .legend-pct {
+        font-size: 0.68rem;
     }
 </style>

@@ -123,7 +123,7 @@
             </v-expansion-panels>
 
             <v-row dense class="mb-3 align-stretch">
-                <v-col cols="12" md="3" class="d-flex flex-column">
+                <v-col cols="12" class="d-flex flex-column summary-col summary-col--20">
                     <SourceFusionBar
                         :total="active?.entities.length ?? 0"
                         :coverage="coverage"
@@ -133,7 +133,7 @@
                         class="flex-grow-1"
                     />
                 </v-col>
-                <v-col cols="12" md="3" class="d-flex flex-column">
+                <v-col cols="12" class="d-flex flex-column summary-col summary-col--20">
                     <RiskDistribution
                         :counts="tierCounts"
                         :details="tierDrivers"
@@ -141,7 +141,7 @@
                         class="flex-grow-1"
                     />
                 </v-col>
-                <v-col cols="12" md="6" class="d-flex flex-column">
+                <v-col cols="12" class="d-flex flex-column summary-col summary-col--60">
                     <MacroPanel class="flex-grow-1" />
                 </v-col>
             </v-row>
@@ -582,5 +582,16 @@
 
     .font-mono {
         font-family: var(--font-mono, ui-monospace, monospace);
+    }
+
+    @media (min-width: 960px) {
+        .summary-col--20 {
+            flex: 0 0 20%;
+            max-width: 20%;
+        }
+        .summary-col--60 {
+            flex: 0 0 60%;
+            max-width: 60%;
+        }
     }
 </style>
