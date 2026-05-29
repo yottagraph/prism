@@ -62,74 +62,94 @@ export interface RelationshipUniverse {
     galaxyEnabled: boolean;
 }
 
-export function useRelationships(portfolio: import('vue').Ref<PortfolioDoc | null>) {
-    const loading = ref(false);
-    const universe = ref<RelationshipUniverse>({
-        nodes: [],
-        edges: [],
-        companies: [],
-        people: [],
-        instruments: [],
-        locations: [],
-        galaxyEnabled: false,
-    });
+const EMPTY_UNIVERSE: RelationshipUniverse = {
+    nodes: [],
+    edges: [],
+    companies: [],
+    people: [],
+    instruments: [],
+    locations: [],
+    galaxyEnabled: false,
+};
 
+// Global cache keyed by portfolio ID so the data persists across navigations.
+// The server has its own TTL cache; this client-side cache prevents redundant
+// fetches when the user navigates away and back.
+const clientCache = new Map<string, RelationshipUniverse>();
+// Track in-flight fetches to avoid duplicate requests for the same portfolio.
+const inflight = new Map<string, Promise<RelationshipUniverse>>();
+
+async function fetchUniverse(
+    portfolioId: string,
+    entities: Array<{ neid: string; name: string }>
+): Promise<RelationshipUniverse> {
+    const existing = inflight.get(portfolioId);
+    if (existing) return existing;
+
+    const encoded = encodeURIComponent(JSON.stringify(entities));
+    const url = `/api/portfolios/${portfolioId}/relationships/universe?entities=${encoded}`;
+
+    const promise = $fetch<RelationshipUniverse>(url)
+        .then((res) => {
+            clientCache.set(portfolioId, res);
+            inflight.delete(portfolioId);
+            return res;
+        })
+        .catch((err) => {
+            console.warn('[useRelationships] failed to load relationship universe', err);
+            inflight.delete(portfolioId);
+            return { ...EMPTY_UNIVERSE };
+        });
+
+    inflight.set(portfolioId, promise);
+    return promise;
+}
+
+export function useRelationships(
+    portfolio: import('vue').Ref<PortfolioDoc | null>,
+    scanning: import('vue').Ref<boolean>
+) {
+    const loading = ref(false);
+    const universe = ref<RelationshipUniverse>({ ...EMPTY_UNIVERSE });
+
+    function getResolvedEntities(value: PortfolioDoc) {
+        return value.entities
+            .filter((e) => e.neid)
+            .map((e) => ({ neid: e.neid!, name: e.resolvedName }))
+            .slice(0, 20);
+    }
+
+    // Watch scanning: fire when scanning transitions false→false with resolved entities,
+    // or immediately if we already have entities and are not scanning.
     watch(
-        portfolio,
-        async (value) => {
+        [portfolio, scanning],
+        async ([value, isScanning]) => {
             if (!value?.id) {
-                loading.value = false;
-                universe.value = {
-                    nodes: [],
-                    edges: [],
-                    companies: [],
-                    people: [],
-                    instruments: [],
-                    locations: [],
-                    galaxyEnabled: false,
-                };
+                universe.value = { ...EMPTY_UNIVERSE };
                 return;
             }
-            const entities = value.entities
-                .filter((entity) => entity.neid)
-                .map((entity) => ({ neid: entity.neid!, name: entity.resolvedName }))
-                .slice(0, 20);
+
+            // If a scan is in progress, wait — it will fire again when scanning stops.
+            if (isScanning) return;
+
+            const entities = getResolvedEntities(value);
             if (!entities.length) {
-                loading.value = false;
-                universe.value = {
-                    nodes: [],
-                    edges: [],
-                    companies: [],
-                    people: [],
-                    instruments: [],
-                    locations: [],
-                    galaxyEnabled: false,
-                };
+                universe.value = { ...EMPTY_UNIVERSE };
+                return;
+            }
+
+            // Return cached result immediately if available.
+            const cached = clientCache.get(value.id);
+            if (cached) {
+                universe.value = cached;
                 return;
             }
 
             loading.value = true;
-            const encoded = encodeURIComponent(JSON.stringify(entities));
-            const url = `/api/portfolios/${value.id}/relationships/universe?entities=${encoded}`;
-            try {
-                const res = await $fetch<RelationshipUniverse>(url);
-                universe.value = res;
-            } catch (error) {
-                console.warn('[useRelationships] failed to load relationship universe', error);
-                universe.value = {
-                    nodes: [],
-                    edges: [],
-                    companies: [],
-                    people: [],
-                    instruments: [],
-                    locations: [],
-                    galaxyEnabled: false,
-                };
-            } finally {
-                loading.value = false;
-            }
+            universe.value = await fetchUniverse(value.id, entities);
+            loading.value = false;
         },
-        { immediate: true, deep: true }
+        { immediate: true }
     );
 
     return {
@@ -143,31 +163,17 @@ export function useRelationships(portfolio: import('vue').Ref<PortfolioDoc | nul
     };
 }
 
+// ─── Macro signals (unchanged) ────────────────────────────────────────────────
+
 export interface MacroSignal {
     label: string;
     value: number;
     trend: 'up' | 'down' | 'flat';
     note: string;
     macroScore?: number; // -1..+1; positive = improving macro
-    kind?: 'fundamental' | 'probability';
-    displayValue?: string;
-    unit?: string;
-    history?: number[];
-    /** ISO date of the oldest point in `history` (time-series start). */
-    historyStart?: string | null;
-    /** ISO date of the newest point in `history` (time-series end). */
-    historyEnd?: string | null;
 }
 
-interface MacroSignalsOptions {
-    /**
-     * Fetch on first use. Defaults to true. The portfolio dashboard passes
-     * false so macro context only loads once a scan has been initiated.
-     */
-    autoRefresh?: boolean;
-}
-
-function useMacroSignals(stateKey: string, endpoint: string, options?: MacroSignalsOptions) {
+function useMacroSignals(stateKey: string, endpoint: string) {
     const signals = useState<MacroSignal[]>(stateKey, () => []);
     const loading = ref(false);
 
@@ -183,7 +189,7 @@ function useMacroSignals(stateKey: string, endpoint: string, options?: MacroSign
         }
     }
 
-    if ((options?.autoRefresh ?? true) && !signals.value.length && !loading.value) {
+    if (!signals.value.length && !loading.value) {
         void refresh();
     }
 
@@ -194,12 +200,12 @@ function useMacroSignals(stateKey: string, endpoint: string, options?: MacroSign
     };
 }
 
-export function useMacroContext(options?: MacroSignalsOptions) {
-    return useMacroSignals('macro-context-signals-polymarket', '/api/macro/polymarket', options);
+export function useMacroContext() {
+    return useMacroSignals('macro-context-signals-polymarket', '/api/macro/polymarket');
 }
 
-export function useFredMacroContext(options?: MacroSignalsOptions) {
-    return useMacroSignals('macro-context-signals-fred', '/api/macro/fred', options);
+export function useFredMacroContext() {
+    return useMacroSignals('macro-context-signals-fred', '/api/macro/fred');
 }
 
 export function getMacroContext(): MacroSignal[] {

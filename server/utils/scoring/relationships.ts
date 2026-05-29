@@ -119,10 +119,10 @@ async function buildFromGalaxy(
     }
 
     // Sort neighbours so those shared across more portfolio entities come first,
-    // then cap at 400 to keep getEntityInfo calls bounded.
+    // then cap at 1000 to keep getEntityInfo calls bounded.
     const neighbourNeids = [...neighbourPortfolios.entries()]
         .sort((a, b) => b[1].portfolioIds.length - a[1].portfolioIds.length)
-        .slice(0, 400)
+        .slice(0, 1000)
         .map(([neid]) => neid);
 
     // Resolve all unique neighbour NEIDs in parallel (getEntityInfo is already semaphore-gated)

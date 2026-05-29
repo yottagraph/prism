@@ -14,6 +14,17 @@ function parseEntities(raw: unknown): Array<{ neid: string; name: string }> {
     }
 }
 
+// In-process cache: key = sorted NEID list hash, value = { result, expiresAt }
+const CACHE_TTL_MS = 10 * 60_000; // 10 minutes
+const universeCache = new Map<string, { result: unknown; expiresAt: number }>();
+
+function cacheKey(entities: Array<{ neid: string }>): string {
+    return entities
+        .map((e) => e.neid)
+        .sort()
+        .join(',');
+}
+
 export default defineEventHandler(async (event) => {
     const query = getQuery(event);
     const entities = parseEntities(query.entities);
@@ -27,6 +38,12 @@ export default defineEventHandler(async (event) => {
             locations: [],
             galaxyEnabled: false,
         };
+    }
+
+    const key = cacheKey(entities);
+    const cached = universeCache.get(key);
+    if (cached && cached.expiresAt > Date.now()) {
+        return cached.result;
     }
 
     const [universe, galaxyEnabled] = await Promise.all([
@@ -73,7 +90,7 @@ export default defineEventHandler(async (event) => {
         neid: node.neid ?? node.id.replace(/^lc-/, ''),
     }));
 
-    return {
+    const result = {
         nodes: universe.nodes,
         edges: universe.edges,
         companies,
@@ -82,4 +99,8 @@ export default defineEventHandler(async (event) => {
         locations,
         galaxyEnabled,
     };
+
+    universeCache.set(key, { result, expiresAt: Date.now() + CACHE_TTL_MS });
+
+    return result;
 });

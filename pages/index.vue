@@ -208,7 +208,7 @@
     import type { RiskTier } from '~/composables/useFusedScoring';
     import { usePortfolio } from '~/composables/usePortfolio';
     import { useAgentPipeline } from '~/composables/useAgentPipeline';
-    import { useFredMacroContext } from '~/composables/useRelationships';
+    import { useFredMacroContext, useRelationships } from '~/composables/useRelationships';
 
     const router = useRouter();
 
@@ -231,6 +231,9 @@
     } = usePortfolio();
 
     const { runPipeline, activity, pushActivity } = useAgentPipeline();
+
+    // Pre-warm the relationship universe so /relationships loads instantly after a scan.
+    useRelationships(active, scanning);
 
     // FRED is portfolio-wide macro context (GDP, inflation, rates), not a
     // per-entity source — surface its live curated series in the coverage panel.

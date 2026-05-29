@@ -251,9 +251,9 @@
     import { useRelationships } from '~/composables/useRelationships';
     import type { GraphNode } from '~/composables/useRelationships';
 
-    const { activePortfolio: active } = usePortfolio();
+    const { activePortfolio: active, scanning } = usePortfolio();
     const { loading, graph, companies, people, instruments, locations, galaxyEnabled } =
-        useRelationships(active);
+        useRelationships(active, scanning);
     const router = useRouter();
 
     const tab = ref('companies');
