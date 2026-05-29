@@ -32,6 +32,16 @@ import {
 import { callMcpTool, extractMcpStructuredContent } from './mcpGateway';
 import { buildStockNarrative } from './stockNarrative';
 import type { CitationRef } from './types';
+import {
+    PREFIXED_TICKER_RE,
+    BARE_TICKER_RE,
+    ISIN_RE,
+    parseInstrumentName,
+    isEquityCandidate,
+    rankInstrumentCandidates,
+    tickerMatchScore,
+    type RelatedInstrument,
+} from './instruments';
 
 export interface StockEntityProfile {
     neid: string;
@@ -144,75 +154,6 @@ export interface StockEntityProfile {
     relatedInstruments: Array<{ neid: string; name: string }>;
     dataGaps: string[];
     citations: CitationRef[];
-}
-
-interface RelatedInstrument {
-    neid: string;
-    name: string;
-    flavor?: string;
-}
-
-const PREFIXED_TICKER_RE = /^(NYSE|NASDAQ|AMEX|NYSEARCA|BATS|OTC):\s*([A-Z][A-Z0-9\-\.]*)$/i;
-// Bare US equity tickers: 1-5 uppercase letters, optionally with a class suffix
-// like BRK.B, BRK-B, EXE.O. Excludes pure digits and longer strings (ISINs are
-// always 12 chars with two-letter country prefix, e.g. US693070AD69).
-const BARE_TICKER_RE = /^\$?[A-Z]{1,5}(?:[.\-][A-Z]{1,2})?$/;
-// ISIN/CUSIP detector to explicitly de-prioritise debt instruments.
-const ISIN_RE = /^[A-Z]{2}[A-Z0-9]{9}\d$/;
-
-function parseInstrumentName(name: string): { ticker: string | null; exchange: string | null } {
-    if (!name) return { ticker: null, exchange: null };
-    const prefixed = name.match(PREFIXED_TICKER_RE);
-    if (prefixed) return { exchange: prefixed[1].toUpperCase(), ticker: prefixed[2].toUpperCase() };
-    if (BARE_TICKER_RE.test(name)) {
-        return { exchange: null, ticker: name.replace(/^\$/, '').toUpperCase() };
-    }
-    return { ticker: null, exchange: null };
-}
-
-function isEquityCandidate(name: string): boolean {
-    if (!name) return false;
-    if (ISIN_RE.test(name)) return false;
-    return PREFIXED_TICKER_RE.test(name) || BARE_TICKER_RE.test(name);
-}
-
-function rankInstrumentCandidates(items: RelatedInstrument[]): RelatedInstrument[] {
-    // Equities first, then everything else. Within equities, prefer prefixed
-    // names (NASDAQ:CCL) over bare tickers (CCL) — but we'll later probe both
-    // for actual price data and choose whichever has OHLCV populated.
-    return [...items].sort((a, b) => {
-        const aEq = isEquityCandidate(a.name) ? 0 : 1;
-        const bEq = isEquityCandidate(b.name) ? 0 : 1;
-        if (aEq !== bEq) return aEq - bEq;
-        const aPref = PREFIXED_TICKER_RE.test(a.name) ? 0 : 1;
-        const bPref = PREFIXED_TICKER_RE.test(b.name) ? 0 : 1;
-        return aPref - bPref;
-    });
-}
-
-/**
- * Score how well a ticker symbol matches a company name.
- * Higher = better match. Used to prefer an issuer's own stock (e.g. "F" for
- * Ford Motor Company) over a related-but-different ticker (e.g. "RIVN").
- */
-function tickerMatchScore(ticker: string | null, companyName: string): number {
-    if (!ticker || !companyName) return 0;
-    const t = ticker.toUpperCase().replace(/[^A-Z]/g, '');
-    const words = companyName
-        .toUpperCase()
-        .replace(/[^A-Z\s]/g, '')
-        .split(/\s+/)
-        .filter(Boolean);
-    // Exact word match (e.g. "IBM" appears as a word in the company name)
-    if (words.some((w) => w === t)) return 100;
-    // Ticker is a prefix of a significant word (e.g. "F" prefixes "FORD")
-    if (words.some((w) => w.startsWith(t) && w.length >= t.length)) return 80;
-    // Ticker matches the acronym formed by the first letter of each word
-    const acronym = words.map((w) => w[0]).join('');
-    if (acronym === t || acronym.startsWith(t)) return 60;
-    // Ticker length >= 3 and is a substring of a word
-    if (t.length >= 3 && words.some((w) => w.includes(t))) return 30;
-    return 0;
 }
 
 function pickLatestStringFact(facts: ElementalPropertyFact[]): string | null {

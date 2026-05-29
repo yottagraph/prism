@@ -10,6 +10,13 @@
  *   energy          — commodity-price driven (oil & gas, mining, renewables)
  *   unclassified    — catch-all for anything not matched
  *
+ * Classification is attempted in two passes:
+ *   1. Exact NASDAQ sector map — matches clean GICS-style strings from the
+ *      NASDAQ screener (e.g. "Technology", "Consumer Discretionary") that the
+ *      financial_instrument bridge now returns as the primary signal.
+ *   2. Keyword regex fallback — matches EDGAR sic_description strings and other
+ *      free-text industry labels.
+ *
  * Note: utilities appear in both rate_sensitive and defensive; the primary bucket
  * is rate_sensitive since that's the dominant macro factor relationship.
  */
@@ -22,7 +29,47 @@ export type MacroFactorBucket =
     | 'energy'
     | 'unclassified';
 
-/** Ordered matching rules: first pattern match wins. */
+/**
+ * Exact-match map for clean NASDAQ screener sector strings.
+ * Keys are lowercased for case-insensitive lookup.
+ */
+const NASDAQ_SECTOR_MAP: Record<string, MacroFactorBucket> = {
+    // Growth / tech
+    technology: 'growth_tech',
+    'computer technology': 'growth_tech',
+    telecommunications: 'growth_tech',
+    'consumer electronics': 'growth_tech',
+
+    // Defensive
+    'health care': 'defensive',
+    healthcare: 'defensive',
+    'consumer staples': 'defensive',
+    'consumer non-durables': 'defensive',
+
+    // Cyclical
+    'consumer discretionary': 'cyclical',
+    'consumer durables': 'cyclical',
+    'consumer services': 'cyclical',
+    industrials: 'cyclical',
+    'capital goods': 'cyclical',
+    transportation: 'cyclical',
+    'basic industries': 'cyclical',
+    'basic materials': 'cyclical',
+    materials: 'cyclical',
+    miscellaneous: 'unclassified',
+
+    // Energy
+    energy: 'energy',
+
+    // Rate-sensitive
+    finance: 'rate_sensitive',
+    financials: 'rate_sensitive',
+    'real estate': 'rate_sensitive',
+    'public utilities': 'rate_sensitive',
+    utilities: 'rate_sensitive',
+};
+
+/** Ordered keyword rules: first pattern match wins. */
 const SECTOR_RULES: Array<{ pattern: RegExp; bucket: MacroFactorBucket }> = [
     // Rate-sensitive
     {
@@ -32,6 +79,11 @@ const SECTOR_RULES: Array<{ pattern: RegExp; bucket: MacroFactorBucket }> = [
     },
     {
         pattern: /\b(utility|utilities|electric|water|gas distribution|telecom|telecommunication)/i,
+        bucket: 'rate_sensitive',
+    },
+    // Nonresidential / commercial property (WeWork-style SIC)
+    {
+        pattern: /\b(nonresidential|non-residential|operator.{0,20}building|property manag)/i,
         bucket: 'rate_sensitive',
     },
 
@@ -45,6 +97,8 @@ const SECTOR_RULES: Array<{ pattern: RegExp; bucket: MacroFactorBucket }> = [
         pattern: /\b(communication|media|streaming|social|gaming|entertainment(?! staple))/i,
         bucket: 'growth_tech',
     },
+    // SIC: Services-Motion Picture, theaters, cinema
+    { pattern: /\b(motion picture|cinema|theater|theatre)/i, bucket: 'growth_tech' },
 
     // Defensive
     {
@@ -70,6 +124,10 @@ const SECTOR_RULES: Array<{ pattern: RegExp; bucket: MacroFactorBucket }> = [
             /\b(industrial|manufactur|aerospace|defense|transport|trucking|logistic|shipping|airline|rail|construction|chemical|material|machinery|equipment|steel|apparel|textile|paper|furniture|packaging|auto|vehicle|retail|discretionary|hotel|restaurant|leisure|travel)/i,
         bucket: 'cyclical',
     },
+    // SIC: Sporting/Athletic goods, toys, recreation, rubber/plastics
+    { pattern: /\b(sporting|athletic|toy|recreational|rubber|plastic)/i, bucket: 'cyclical' },
+    // SIC: "Services-Business Services, NEC" (delivery, platform cos)
+    { pattern: /\bservices-business\b/i, bucket: 'cyclical' },
 
     // Broader financial catch (after the first rule already covers banks)
     { pattern: /\bfinancial/i, bucket: 'rate_sensitive' },
@@ -81,7 +139,7 @@ const BUCKET_LABEL: Record<MacroFactorBucket, string> = {
     cyclical: 'Cyclical',
     growth_tech: 'Growth / Tech',
     energy: 'Energy',
-    unclassified: 'Other',
+    unclassified: 'Unclassified',
 };
 
 const BUCKET_ICON: Record<MacroFactorBucket, string> = {
@@ -95,6 +153,10 @@ const BUCKET_ICON: Record<MacroFactorBucket, string> = {
 
 export function classifySector(sector: string | null | undefined): MacroFactorBucket {
     if (!sector) return 'unclassified';
+    // Pass 1: exact NASDAQ sector map (case-insensitive)
+    const key = sector.trim().toLowerCase();
+    if (NASDAQ_SECTOR_MAP[key] !== undefined) return NASDAQ_SECTOR_MAP[key];
+    // Pass 2: keyword regex
     for (const rule of SECTOR_RULES) {
         if (rule.pattern.test(sector)) return rule.bucket;
     }

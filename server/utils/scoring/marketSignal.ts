@@ -19,6 +19,8 @@ export interface MarketResult {
     priceCount: number;
     earliestPriceDate: string | null;
     latestPriceDate: string | null;
+    /** Ticker symbol resolved during market signal computation (Path B or C). */
+    ticker?: string | null;
     detail: LensDetail;
 }
 
@@ -43,6 +45,7 @@ export async function computeMarketSignalScore(
     let priceCount = 0;
     let earliestPriceDate: string | null = null;
     let latestPriceDate: string | null = null;
+    let resolvedTicker: string | null = null;
     const metrics: LensDetail['metrics'] = [];
     const findings: EvidenceItem[] = [];
 
@@ -192,7 +195,8 @@ export async function computeMarketSignalScore(
                 }
                 const firstDate = prices[0]?.date;
                 const lastDate = prices[prices.length - 1]?.date;
-                const ticker = structured?.ticker_info?.ticker;
+                const ticker = structured?.ticker_info?.ticker ?? null;
+                if (ticker) resolvedTicker = ticker;
                 const tickerUrl = ticker ? `https://finance.yahoo.com/quote/${ticker}` : undefined;
                 findings.push({
                     text: `${ticker || companyName} closed at $${last.toFixed(2)}${
@@ -285,6 +289,21 @@ export async function computeMarketSignalScore(
                             (a, b) => b[1] - a[1]
                         )[0]?.[0];
                         const bestInstr = equities.find((r) => r.neid === bestEid);
+                        if (!resolvedTicker && bestInstr?.name) {
+                            // Extract ticker from instrument name (e.g. "NASDAQ:GME" → "GME", "GME" → "GME")
+                            const prefixedMatch = bestInstr.name.match(
+                                /^(?:NYSE|NASDAQ|AMEX|NYSEARCA|BATS|OTC):\s*([A-Z][A-Z0-9\-\.]*)/i
+                            );
+                            const bareMatch = /^\$?([A-Z]{1,5}(?:[.\-][A-Z]{1,2})?)$/.exec(
+                                bestInstr.name
+                            );
+                            const instrTicker = prefixedMatch
+                                ? prefixedMatch[1].toUpperCase()
+                                : bareMatch
+                                  ? bareMatch[1].toUpperCase()
+                                  : null;
+                            if (instrTicker) resolvedTicker = instrTicker;
+                        }
                         metrics.push({
                             label: 'Price rows (Elemental)',
                             value: String(maxCount),
@@ -309,6 +328,7 @@ export async function computeMarketSignalScore(
         priceCount,
         earliestPriceDate,
         latestPriceDate,
+        ticker: resolvedTicker,
         detail: {
             metrics: metrics.length
                 ? metrics

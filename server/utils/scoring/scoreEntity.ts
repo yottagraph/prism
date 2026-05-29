@@ -10,7 +10,7 @@ import {
 import { computeAcsScore, type AcsFociData, type AcsJurisdictionHit } from './acs';
 import type { FhsDistressEventCount } from './fhs';
 import { computeCikVelocity } from './cikVelocity';
-import { getContextPackage } from './contextPackage';
+import { getContextPackage, type ContextPackage } from './contextPackage';
 import { computeExecutiveScore } from './executive';
 import { computeEventPressureScore } from './eventPressure';
 import { computeMarketSignalScore } from './marketSignal';
@@ -23,6 +23,7 @@ import {
     normalizePidMap,
     getPropertyValues,
     extractPropertyFacts,
+    searchEntitiesByName,
     type ElementalPropertyFact,
 } from './elemental';
 import { computeSignalAgreement } from './signalAgreement';
@@ -30,6 +31,12 @@ import { computeSolvencyScore } from './solvency';
 import { readPreviousScore, writeLatestScore } from './state';
 import type { ScoringSettings, ScoreComputationResult, SourceCoverageDetail } from './types';
 import { DEFAULT_SCORING_SETTINGS } from './types';
+import {
+    isEquityCandidate,
+    parseInstrumentName,
+    rankInstrumentCandidates,
+    tickerMatchScore,
+} from './instruments';
 
 async function queryFredSeriesCount(event: H3Event, neid: string): Promise<number> {
     try {
@@ -64,33 +71,109 @@ function latestStringFact(facts: ElementalPropertyFact[]): string | null {
 }
 
 /**
- * Resolve an entity's industry/sector string for the macro-regime overlay.
+ * Look up `sector` / `industry` from the `financial_instrument` entity for a
+ * given ticker symbol. The NASDAQ screener populates these with clean GICS-style
+ * strings (e.g. "Technology", "Consumer Discretionary") on the instrument entity,
+ * not on the org. We search for the instrument by ticker name, take the first hit,
+ * and read its sector/industry properties.
  *
- * Industry data lives in different datasets depending on coverage:
- *   • `sic_description` — EDGAR, a string on the `organization` flavor. Present
- *     for any SEC-registered issuer, so this is the broadest source for credit
- *     portfolios.
- *   • `sector` / `industry` — NASDAQ-screener strings on the linked
- *     `financial_instrument`; only present when stock data resolved.
- *
- * The previous implementation queried only the `industry` property (which is a
- * NASDAQ-screener field that is empty unless stock data is present), so books
- * without market coverage classified every entity as "unclassified". We now
- * prefer `sic_description` and fall back to the stock fields. Reads go through
- * the same PID-based property endpoint the rest of scoring uses.
+ * Returns the first non-empty value from sector → industry, or null.
  */
-async function fetchEntityIndustry(event: H3Event, neid: string): Promise<string | null> {
+async function fetchInstrumentSectorByTicker(
+    event: H3Event,
+    ticker: string
+): Promise<string | null> {
     try {
         const schema = await getSchema(event);
         const pid = normalizePidMap(schema);
-        const pids = [pid.sic_description, pid.sector, pid.industry].filter(
+        const instrPids = [pid.sector, pid.industry].filter(
             (p): p is string => typeof p === 'string' && p.length > 0
         );
-        if (pids.length === 0) return null;
+        if (instrPids.length === 0) return null;
 
-        const values = await getPropertyValues([neid], pids, true, event);
-        for (const p of pids) {
-            const resolved = latestStringFact(extractPropertyFacts(values, p));
+        // Search for the financial_instrument entity whose name is the ticker.
+        // The Alpha Vantage pipeline names instruments by ticker (e.g. "GME" or
+        // "GME stock"), so this reliably returns the right entity.
+        const matches = await searchEntitiesByName(ticker, 3, event);
+        if (!matches.length) return null;
+
+        // Take the first match. For a bare ticker like "GME", the top result is
+        // typically the equity instrument. Read sector/industry from it.
+        const instrNeid = matches[0].neid;
+        const instrValues = await getPropertyValues([instrNeid], instrPids, false, event);
+        for (const p of instrPids) {
+            const resolved = latestStringFact(extractPropertyFacts(instrValues, p));
+            if (resolved) return resolved;
+        }
+        return null;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Resolve an entity's industry/sector string for the macro-regime overlay.
+ *
+ * Resolution order (first non-empty value wins):
+ *   1. `sector` / `industry` on the `financial_instrument` reached via the
+ *      ticker already resolved by the market signal lens — clean GICS-style
+ *      strings from the NASDAQ screener (e.g. "Technology", "Consumer
+ *      Discretionary"). This is the primary signal for public companies.
+ *   2. `sector` / `industry` on instruments linked in the ContextPackage graph
+ *      (for entities where `elemental_get_related` finds the link).
+ *   3. `sic_description` on the `organization` — EDGAR SIC text, present for
+ *      any SEC-registered issuer but absent for news-only org stubs.
+ *   4. `sector` / `industry` directly on the `organization` — rarely populated.
+ */
+async function fetchEntityIndustry(
+    event: H3Event,
+    neid: string,
+    ctx?: ContextPackage,
+    marketTicker?: string | null
+): Promise<string | null> {
+    try {
+        const schema = await getSchema(event);
+        const pid = normalizePidMap(schema);
+
+        // --- 1: ticker-based lookup (primary signal for public companies) ---
+        if (marketTicker) {
+            const instrSector = await fetchInstrumentSectorByTicker(event, marketTicker);
+            if (instrSector) return instrSector;
+        }
+
+        // --- 2: graph-linked instruments from ContextPackage ---
+        if (ctx && ctx.instruments.length > 0) {
+            const instrPids = [pid.sector, pid.industry].filter(
+                (p): p is string => typeof p === 'string' && p.length > 0
+            );
+            if (instrPids.length > 0) {
+                // Try all linked instruments in one batch — all are financial_instruments
+                // per the MCP call that populated ctx.instruments.
+                const instrNeids = ctx.instruments.map((i) => i.neid).filter(Boolean) as string[];
+                if (instrNeids.length > 0) {
+                    const instrValues = await getPropertyValues(
+                        instrNeids,
+                        instrPids,
+                        false,
+                        event
+                    );
+                    for (const p of instrPids) {
+                        const resolved = latestStringFact(extractPropertyFacts(instrValues, p));
+                        if (resolved) return resolved;
+                    }
+                }
+            }
+        }
+
+        // --- 3 & 4: org-level fallback ---
+        const orgPids = [pid.sic_description, pid.sector, pid.industry].filter(
+            (p): p is string => typeof p === 'string' && p.length > 0
+        );
+        if (orgPids.length === 0) return null;
+
+        const orgValues = await getPropertyValues([neid], orgPids, false, event);
+        for (const p of orgPids) {
+            const resolved = latestStringFact(extractPropertyFacts(orgValues, p));
             if (resolved) return resolved;
         }
         return null;
@@ -304,7 +387,7 @@ export async function scoreEntity(
 
     const [fredSeriesCount, entityIndustry, auxCoverage] = await Promise.all([
         withTimeout(queryFredSeriesCount(event, neid), 3_000, 0),
-        withTimeout(fetchEntityIndustry(event, neid), 3_000, null),
+        withTimeout(fetchEntityIndustry(event, neid, ctx), 3_000, null),
         withTimeout(fetchAuxiliaryCoverage(event, neid), 3_000, {
             sanctions: false,
             fdic: false,
