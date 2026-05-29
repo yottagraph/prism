@@ -302,10 +302,10 @@
         }
     }
 
-    async function onFileSelected(files: File[] | null) {
-        if (!files?.length) return;
-        const file = files[0];
-        const text = await file.text();
+    async function onFileSelected(files: File | File[] | null) {
+        const list = Array.isArray(files) ? files : files ? [files] : [];
+        if (!list.length) return;
+        const text = await list[0].text();
         processCsv(text);
     }
 
