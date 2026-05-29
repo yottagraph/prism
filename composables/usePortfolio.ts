@@ -66,6 +66,18 @@ export interface PortfolioCoverageDetail {
     fdic: number;
 }
 
+/**
+ * Pre-resolved entity input for createPortfolioFromEntities / addResolvedEntities.
+ * When neid is provided (e.g. from search results), it is stored directly instead
+ * of being left null until the next scan.
+ */
+export interface ResolvedEntityInput {
+    inputName: string;
+    resolvedName?: string;
+    neid?: string | null;
+    ticker?: string;
+}
+
 export interface PortfolioEntity extends Pick<MonitorEntity, 'signalAgreement' | 'signalSummary'> {
     /** Name as provided by the user (before resolution). */
     inputName: string;
@@ -434,6 +446,63 @@ export function usePortfolio() {
         return portfolio;
     }
 
+    function createPortfolioFromEntities(
+        name: string,
+        entities: ResolvedEntityInput[]
+    ): PortfolioDoc {
+        const now = Date.now();
+        const id = `${slugify(name)}-${now.toString(36)}`;
+        const portfolio: PortfolioDoc = {
+            id,
+            name,
+            description: '',
+            createdAt: now,
+            entities: entities
+                .filter((e) => e.inputName?.trim())
+                .map((e) => ({
+                    inputName: e.inputName.trim(),
+                    resolvedName: e.resolvedName || e.inputName.trim(),
+                    neid: e.neid ?? null,
+                    ticker: e.ticker,
+                    addedAt: now,
+                    scores: null,
+                })),
+        };
+        p.portfolios = [...p.portfolios, portfolio];
+        p.activePortfolioId = id;
+        resetScanGateAndMacro();
+        return portfolio;
+    }
+
+    function addResolvedEntities(portfolioId: string, entities: ResolvedEntityInput[]) {
+        const idx = p.portfolios.findIndex((pp) => pp.id === portfolioId);
+        if (idx < 0) return;
+        const existingNames = new Set(
+            p.portfolios[idx].entities.map((e) => e.inputName.toLowerCase())
+        );
+        const existingNeids = new Set(
+            p.portfolios[idx].entities.map((e) => e.neid).filter(Boolean)
+        );
+        const now = Date.now();
+        const fresh = entities
+            .filter((e) => e.inputName?.trim())
+            .filter((e) => {
+                const name = e.inputName.trim().toLowerCase();
+                if (existingNames.has(name)) return false;
+                if (e.neid && existingNeids.has(e.neid)) return false;
+                return true;
+            })
+            .map<PortfolioEntity>((e) => ({
+                inputName: e.inputName.trim(),
+                resolvedName: e.resolvedName || e.inputName.trim(),
+                neid: e.neid ?? null,
+                ticker: e.ticker,
+                addedAt: now,
+                scores: null,
+            }));
+        p.portfolios[idx].entities = [...p.portfolios[idx].entities, ...fresh];
+    }
+
     function deletePortfolio(id: string) {
         const wasActive = p.activePortfolioId === id;
         p.portfolios = p.portfolios.filter((pp) => pp.id !== id);
@@ -677,8 +746,10 @@ export function usePortfolio() {
         lastScanCoverageDetail: computed(() => lastScanCoverageDetail.value),
         setActivePortfolio,
         createPortfolio,
+        createPortfolioFromEntities,
         deletePortfolio,
         addEntities,
+        addResolvedEntities,
         removeEntity,
         saveAssessment,
         scanPortfolio,

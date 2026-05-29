@@ -32,6 +32,14 @@
                     aria-label="Create new portfolio"
                     @click="newPortfolioOpen = true"
                 />
+                <v-btn
+                    icon="mdi-account-multiple-plus-outline"
+                    variant="text"
+                    class="ml-1"
+                    aria-label="Add entities to portfolio"
+                    :disabled="!active"
+                    @click="addEntitiesOpen = true"
+                />
 
                 <v-spacer />
 
@@ -217,37 +225,24 @@
             </v-window>
         </div>
 
-        <v-dialog v-model="newPortfolioOpen" max-width="540">
-            <v-card class="pa-4">
-                <div class="text-h6 mb-3">New portfolio</div>
-                <v-text-field
-                    v-model="newName"
-                    label="Portfolio name"
-                    density="comfortable"
-                    autofocus
-                />
-                <v-textarea
-                    v-model="newEntities"
-                    label="Entity names (one per line)"
-                    rows="8"
-                    density="comfortable"
-                    placeholder="Ford Motor Company&#10;General Motors&#10;..."
-                />
-                <div class="d-flex justify-end mt-3">
-                    <v-btn variant="text" @click="newPortfolioOpen = false">Cancel</v-btn>
-                    <v-btn color="primary" :disabled="!newName.trim()" @click="createNew">
-                        Create
-                    </v-btn>
-                </div>
-            </v-card>
-        </v-dialog>
+        <PortfolioAddEntitiesDialog
+            v-model="newPortfolioOpen"
+            mode="create"
+            @submit="onCreatePortfolio"
+        />
+
+        <PortfolioAddEntitiesDialog v-model="addEntitiesOpen" mode="add" @submit="onAddEntities" />
     </div>
 </template>
 
 <script setup lang="ts">
     import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
-    import type { PortfolioEntity, PortfolioCoverageDetail } from '~/composables/usePortfolio';
+    import type {
+        PortfolioEntity,
+        PortfolioCoverageDetail,
+        ResolvedEntityInput,
+    } from '~/composables/usePortfolio';
     import type { RiskTier } from '~/composables/useFusedScoring';
     import { usePortfolio } from '~/composables/usePortfolio';
     import { useAgentPipeline } from '~/composables/useAgentPipeline';
@@ -270,7 +265,8 @@
         lastScanError: scanError,
         lastScanCoverage,
         lastScanCoverageDetail,
-        createPortfolio,
+        createPortfolioFromEntities,
+        addResolvedEntities,
         saveAssessment,
     } = usePortfolio();
 
@@ -546,18 +542,16 @@
     }
 
     const newPortfolioOpen = ref(false);
-    const newName = ref('');
-    const newEntities = ref('');
+    const addEntitiesOpen = ref(false);
 
-    function createNew() {
-        const lines = newEntities.value
-            .split(/\r?\n/)
-            .map((s) => s.trim())
-            .filter(Boolean);
-        createPortfolio(newName.value.trim(), lines);
-        newName.value = '';
-        newEntities.value = '';
-        newPortfolioOpen.value = false;
+    function onCreatePortfolio(payload: { name?: string; entities: ResolvedEntityInput[] }) {
+        if (!payload.name?.trim()) return;
+        createPortfolioFromEntities(payload.name.trim(), payload.entities);
+    }
+
+    function onAddEntities(payload: { name?: string; entities: ResolvedEntityInput[] }) {
+        if (!active.value) return;
+        addResolvedEntities(active.value.id, payload.entities);
     }
 </script>
 
