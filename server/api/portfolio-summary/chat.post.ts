@@ -5,7 +5,7 @@
  * Takes the current briefing markdown as context and answers a question.
  */
 import { defineEventHandler, readBody, createError } from 'h3';
-import { callGemini } from '~/server/utils/gemini';
+import { callGemini, GEMINI_DEFAULT_MODEL } from '~/server/utils/gemini';
 
 interface ChatRequest {
     summary: string;
@@ -25,7 +25,7 @@ export default defineEventHandler(async (event) => {
     }
 
     const portfolio = body.portfolioName || 'Portfolio';
-    const model = body.model || 'gemini-2.5-flash';
+    const model = body.model || GEMINI_DEFAULT_MODEL;
 
     const prompt = `You are a portfolio risk analyst assistant. The user is looking at a risk intelligence briefing for "${portfolio}" and has a follow-up question.
 

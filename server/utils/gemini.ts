@@ -29,6 +29,14 @@ export interface CallGeminiOptions {
     thinkingMode?: boolean;
 }
 
+/**
+ * Canonical Gemini model names. Change here to update every call site.
+ * Override at runtime with GEMINI_DEFAULT_MODEL / GEMINI_PRO_MODEL env vars
+ * so a model rotation can be done from the Vercel dashboard without a deploy.
+ */
+export const GEMINI_DEFAULT_MODEL = process.env.GEMINI_DEFAULT_MODEL ?? 'gemini-2.5-flash';
+export const GEMINI_PRO_MODEL = process.env.GEMINI_PRO_MODEL ?? 'gemini-2.5-pro';
+
 // Approximate cost per 1M tokens (Flash 2.5) — used for display only.
 const COST_PER_1M_INPUT = 0.15;
 const COST_PER_1M_OUTPUT = 0.6;
@@ -39,7 +47,7 @@ export async function callGemini(opts: CallGeminiOptions): Promise<GeminiResult>
         throw new Error('GEMINI_API_KEY is not set');
     }
 
-    const model = opts.model ?? 'gemini-2.5-flash';
+    const model = opts.model ?? GEMINI_DEFAULT_MODEL;
     const maxTokens = opts.maxTokens ?? 4000;
     const temperature = opts.temperature ?? 0.3;
     const timeoutMs = opts.timeoutMs ?? 120_000;

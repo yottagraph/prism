@@ -457,6 +457,7 @@
         style: 'standard' as 'brief' | 'standard' | 'detailed',
         focus: 'balanced' as 'balanced' | 'risks' | 'regulatory' | 'market',
         tone: 'formal' as 'formal' | 'conversational' | 'action',
+        // Keep in sync with GEMINI_DEFAULT_MODEL in server/utils/gemini.ts
         model: 'gemini-2.5-flash',
         thinkingMode: false,
         timePeriod: '30' as '7' | '30' | '90',
@@ -471,6 +472,7 @@
     ];
 
     const modelOptions = [
+        // Keep in sync with GEMINI_DEFAULT_MODEL / GEMINI_PRO_MODEL in server/utils/gemini.ts
         { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (fast)' },
         { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (quality)' },
     ];

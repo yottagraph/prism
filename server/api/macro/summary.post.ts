@@ -9,7 +9,7 @@
  * Called lazily once macro regime data is available (regime.ready).
  */
 import { defineEventHandler, readBody, createError } from 'h3';
-import { callGemini } from '~/server/utils/gemini';
+import { callGemini, GEMINI_DEFAULT_MODEL } from '~/server/utils/gemini';
 
 interface SignalInput {
     label: string;
@@ -68,7 +68,7 @@ Portfolio sector mix across ${body.totalEntities} entities: ${tiltList || 'n/a'}
     try {
         const result = await callGemini({
             prompt,
-            model: 'gemini-2.5-flash',
+            model: GEMINI_DEFAULT_MODEL,
             maxTokens: 220,
             temperature: 0.3,
             timeoutMs: 20_000,

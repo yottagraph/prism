@@ -14,7 +14,7 @@
  * Returns { summary, data_sources, usage, agent_steps, generated_at }.
  */
 import { defineEventHandler, readBody, createError } from 'h3';
-import { callGemini, type GeminiUsage } from '~/server/utils/gemini';
+import { callGemini, GEMINI_DEFAULT_MODEL, type GeminiUsage } from '~/server/utils/gemini';
 
 interface CitationRef {
     ref?: string;
@@ -104,7 +104,7 @@ const DEFAULT_CONFIG: ReportConfig = {
     style: 'standard',
     focus: 'balanced',
     tone: 'formal',
-    model: 'gemini-2.5-flash',
+    model: GEMINI_DEFAULT_MODEL,
     thinkingMode: false,
     timePeriod: '30',
 };
@@ -330,7 +330,7 @@ Write the briefing now:`;
     try {
         const result = await callGemini({
             prompt,
-            model: config.model || 'gemini-2.5-flash',
+            model: config.model || GEMINI_DEFAULT_MODEL,
             maxTokens: config.style === 'brief' ? 2000 : config.style === 'detailed' ? 5000 : 3000,
             temperature: 0.3,
             timeoutMs: 120_000,
