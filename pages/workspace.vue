@@ -479,8 +479,8 @@
     const sortedEntities = computed<PortfolioEntity[]>(() => {
         const entities = active.value?.entities ?? [];
         return [...entities].sort((a, b) => {
-            const sa = a.scores?.overall ?? -1;
-            const sb = b.scores?.overall ?? -1;
+            const sa = a.scores?.fused ?? -1;
+            const sb = b.scores?.fused ?? -1;
             return sb - sa;
         });
     });
@@ -504,7 +504,7 @@
         for (const e of entities) {
             if (!e.scores) continue;
             const tier = e.scores.tier ?? 'unknown';
-            const overall = e.scores.overall?.toFixed(0) ?? '–';
+            const overall = e.scores.fused?.toFixed(0) ?? '–';
             const drivers = (e.drivers ?? [])
                 .slice(0, 3)
                 .map((d) => `${d.lens}=${d.score.toFixed(0)}`)
