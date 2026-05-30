@@ -87,6 +87,16 @@
 
                 <v-spacer />
 
+                <v-chip
+                    v-if="active && bucketValue != null"
+                    size="small"
+                    variant="tonal"
+                    color="primary"
+                    class="mr-2"
+                    prepend-icon="mdi-cash-multiple"
+                >
+                    {{ formatUsd(bucketValue) }}
+                </v-chip>
                 <span v-if="active" class="text-body-2 text-medium-emphasis mr-3">
                     <strong>{{ active.entities.length }}</strong> holding{{
                         active.entities.length !== 1 ? 's' : ''
@@ -207,6 +217,12 @@
                         :holding-sectors="
                             sortedEntities.map((e) => (e.monitor?.sector as any) ?? null)
                         "
+                        :holding-weights="
+                            sortedEntities.map(
+                                (e) => e.valuation?.currentValue ?? e.amountInvested ?? null
+                            )
+                        "
+                        :bucket-value="bucketValue"
                         class="fill-height"
                         @edit-goal="goalEditorOpen = true"
                     />
@@ -637,6 +653,29 @@
 
     // ── Dimension B: holdings health for the active bucket ──────────
     const bucketHealth = computed(() => bucketHoldingsHealth(active.value?.entities ?? []));
+
+    /** Total current value of the bucket (live valuation, cost-basis fallback). */
+    const bucketValue = computed<number | null>(() => {
+        const ents = active.value?.entities ?? [];
+        let total = 0;
+        let any = false;
+        for (const e of ents) {
+            const v = e.valuation?.currentValue ?? e.amountInvested ?? null;
+            if (typeof v === 'number' && Number.isFinite(v)) {
+                total += v;
+                any = true;
+            }
+        }
+        return any ? total : null;
+    });
+
+    function formatUsd(value: number): string {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+            maximumFractionDigits: 0,
+        }).format(Math.round(value));
+    }
 
     /** Short recommendation-first verdict for the active bucket. */
     const bucketVerdict = computed(() => {

@@ -136,6 +136,24 @@
             <!-- Reason sentence -->
             <p class="text-body-2 mb-0" :class="verdictTextClass">{{ fit.reason }}</p>
 
+            <!-- Goal progress: current value vs target -->
+            <div v-if="goalProgress" class="mt-3">
+                <div class="d-flex align-center justify-space-between mb-1">
+                    <span class="text-caption text-medium-emphasis">Progress to goal</span>
+                    <span class="text-caption">
+                        <strong>{{ formatUsd(goalProgress.value) }}</strong>
+                        of {{ formatUsd(goalProgress.target) }}
+                        <span class="text-medium-emphasis">({{ goalProgress.pct }}%)</span>
+                    </span>
+                </div>
+                <v-progress-linear
+                    :model-value="goalProgress.pct"
+                    :color="verdictColor"
+                    height="6"
+                    rounded
+                />
+            </div>
+
             <!-- Drawdown warning for too-aggressive -->
             <v-alert
                 v-if="fit.verdict === 'too_aggressive'"
@@ -182,6 +200,10 @@
         user?: DemoUser | null;
         holdingVols?: (number | null | undefined)[];
         holdingSectors?: (MacroFactorBucket | null | undefined)[];
+        /** Per-holding position weight (current value) for value-weighted risk. */
+        holdingWeights?: (number | null | undefined)[];
+        /** Total current value of the bucket, for dollar-consequence framing. */
+        bucketValue?: number | null;
         /** Pass true once at least one entity in the bucket has been scored. */
         analyzed?: boolean;
     }>();
@@ -195,10 +217,12 @@
         if (!props.goal || !props.user) return null;
         const vols = props.holdingVols ?? [];
         const sectors = props.holdingSectors ?? [];
+        const weights = props.holdingWeights ?? [];
         const maxLen = Math.max(vols.length, sectors.length);
         const inputs = Array.from({ length: maxLen }, (_, i) => ({
             annualizedVolPct: vols[i] ?? null,
             sectorBucket: sectors[i] ?? null,
+            weight: weights[i] ?? null,
         }));
         const profile = bucketRiskProfile(inputs);
         return horizonFit(
@@ -207,6 +231,21 @@
             props.user.riskTolerance,
             props.goal.purpose
         );
+    });
+
+    /** Aggressive-weighted fraction of the bucket (0-1), for dollar drawdowns. */
+    const aggressiveFraction = computed((): number => {
+        if (!props.analyzed || !props.goal || !props.user) return 0;
+        const vols = props.holdingVols ?? [];
+        const sectors = props.holdingSectors ?? [];
+        const weights = props.holdingWeights ?? [];
+        const maxLen = Math.max(vols.length, sectors.length);
+        const inputs = Array.from({ length: maxLen }, (_, i) => ({
+            annualizedVolPct: vols[i] ?? null,
+            sectorBucket: sectors[i] ?? null,
+            weight: weights[i] ?? null,
+        }));
+        return bucketRiskProfile(inputs).aggressiveFraction;
     });
 
     const horizon = computed(() => props.goal?.horizonYears ?? 0);
@@ -300,10 +339,27 @@
         if (!fit.value || fit.value.verdict !== 'too_aggressive') return '';
         return drawdownStatement(
             fit.value.actualBand,
-            // aggressiveFraction not in HorizonFit; use actualBand as proxy
-            fit.value.actualBand === 'aggressive' ? 0.8 : 0.5
+            aggressiveFraction.value,
+            props.bucketValue ?? null
         );
     });
+
+    /** Goal-progress: current value vs the goal's target amount. */
+    const goalProgress = computed(() => {
+        const target = props.goal?.targetAmount;
+        const value = props.bucketValue;
+        if (!target || target <= 0 || value == null || value <= 0) return null;
+        const pct = Math.min(100, Math.round((value / target) * 100));
+        return { value, target, pct };
+    });
+
+    function formatUsd(value: number): string {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+            maximumFractionDigits: 0,
+        }).format(Math.round(value));
+    }
 
     function capitalize(s: string): string {
         return s.charAt(0).toUpperCase() + s.slice(1);

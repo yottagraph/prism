@@ -260,11 +260,17 @@
                             </template>
                             <v-spacer />
                             <div class="text-right">
-                                <div class="text-caption text-medium-emphasis">
-                                    {{ buckets.length }} bucket{{ buckets.length !== 1 ? 's' : '' }}
+                                <div
+                                    v-if="householdValue != null"
+                                    class="text-subtitle-2 font-weight-bold"
+                                >
+                                    {{ formatUsd(householdValue) }}
                                 </div>
                                 <div class="text-caption text-medium-emphasis">
-                                    {{ totalHoldings }} holdings
+                                    {{ buckets.length }} bucket{{
+                                        buckets.length !== 1 ? 's' : ''
+                                    }}
+                                    · {{ totalHoldings }} holdings
                                 </div>
                             </div>
                         </div>
@@ -551,11 +557,16 @@
             const holdingSectors = bucket.entities.map(
                 (e) => (e.monitor?.sector ?? null) as MacroFactorBucket | null
             );
-            const inputs = bucket.entities.map((_, i) => ({
+            const inputs = bucket.entities.map((e, i) => ({
                 annualizedVolPct: holdingVols[i],
                 sectorBucket: holdingSectors[i],
+                weight: e.valuation?.currentValue ?? e.amountInvested ?? null,
             }));
             const profile = bucketRiskProfile(inputs);
+            const bucketValue = bucket.entities.reduce((sum, e) => {
+                const v = e.valuation?.currentValue ?? e.amountInvested ?? null;
+                return typeof v === 'number' && Number.isFinite(v) ? sum + v : sum;
+            }, 0);
             const fit: HorizonFit | null =
                 analyzed && bucket.goal && activeUser.value
                     ? horizonFit(
@@ -598,6 +609,7 @@
                         : 'default',
                 overlappingNames: [] as string[],
                 avgRiskScore: profile.avgScore,
+                bucketValue,
                 health,
             };
         });
@@ -655,6 +667,30 @@
         () => analyzedBuckets.value.filter((c) => c.fit?.verdict === 'too_conservative').length
     );
     const totalHoldings = computed(() => buckets.value.reduce((s, b) => s + b.entities.length, 0));
+
+    /** Household-wide current value across all buckets (live valuation, cost fallback). */
+    const householdValue = computed<number | null>(() => {
+        let total = 0;
+        let any = false;
+        for (const b of buckets.value) {
+            for (const e of b.entities) {
+                const v = e.valuation?.currentValue ?? e.amountInvested ?? null;
+                if (typeof v === 'number' && Number.isFinite(v)) {
+                    total += v;
+                    any = true;
+                }
+            }
+        }
+        return any ? total : null;
+    });
+
+    function formatUsd(value: number): string {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+            maximumFractionDigits: 0,
+        }).format(Math.round(value));
+    }
 
     // Live per-source coverage aggregated across all buckets during a scan
     const liveScanCoverage = computed(() => {

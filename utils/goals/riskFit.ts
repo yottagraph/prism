@@ -81,17 +81,23 @@ export function holdingRiskBand(
 export interface BucketRiskProfile {
     /** Weighted mean risk score across holdings. */
     avgScore: number;
-    /** Modal risk band. */
+    /** Modal (weight-dominant) risk band. */
     dominantBand: RiskBand;
-    /** Share of holdings (0-1) in aggressive bucket. */
+    /** Share of holdings (0-1, weighted) in aggressive bucket. */
     aggressiveFraction: number;
-    /** Share of holdings (0-1) using real-vol data. */
+    /** Share of holdings (0-1, weighted) using real-vol data. */
     volCoverage: number;
 }
 
 export interface HoldingInput {
     annualizedVolPct?: number | null;
     sectorBucket?: MacroFactorBucket | null;
+    /**
+     * Position weight (e.g. current value or amount invested). When provided
+     * for one or more holdings, the bucket profile becomes value-weighted
+     * instead of equal-weighted. Non-positive/missing weights fall back to 1.
+     */
+    weight?: number | null;
 }
 
 export function bucketRiskProfile(holdings: HoldingInput[]): BucketRiskProfile {
@@ -99,19 +105,32 @@ export function bucketRiskProfile(holdings: HoldingInput[]): BucketRiskProfile {
         return { avgScore: 50, dominantBand: 'unknown', aggressiveFraction: 0, volCoverage: 0 };
     }
 
-    const risks = holdings.map((h) => holdingRiskBand(h.annualizedVolPct, h.sectorBucket));
-    const avgScore = Math.round(risks.reduce((s, r) => s + r.score, 0) / risks.length);
-    const aggressiveFraction = risks.filter((r) => r.band === 'aggressive').length / risks.length;
-    const volCoverage = risks.filter((r) => r.source === 'vol').length / risks.length;
+    const risks = holdings.map((h) => ({
+        ...holdingRiskBand(h.annualizedVolPct, h.sectorBucket),
+        weight:
+            typeof h.weight === 'number' && Number.isFinite(h.weight) && h.weight > 0
+                ? h.weight
+                : 1,
+    }));
+    const totalWeight = risks.reduce((s, r) => s + r.weight, 0) || 1;
 
-    const bandCount: Record<RiskBand, number> = {
+    const avgScore = Math.round(risks.reduce((s, r) => s + r.score * r.weight, 0) / totalWeight);
+    const aggressiveFraction =
+        risks.filter((r) => r.band === 'aggressive').reduce((s, r) => s + r.weight, 0) /
+        totalWeight;
+    const volCoverage =
+        risks.filter((r) => r.source === 'vol').reduce((s, r) => s + r.weight, 0) / totalWeight;
+
+    const bandWeight: Record<RiskBand, number> = {
         conservative: 0,
         moderate: 0,
         aggressive: 0,
         unknown: 0,
     };
-    risks.forEach((r) => bandCount[r.band]++);
-    const dominantBand = Object.entries(bandCount).sort(([, a], [, b]) => b - a)[0]![0] as RiskBand;
+    risks.forEach((r) => (bandWeight[r.band] += r.weight));
+    const dominantBand = Object.entries(bandWeight).sort(
+        ([, a], [, b]) => b - a
+    )[0]![0] as RiskBand;
 
     return { avgScore, dominantBand, aggressiveFraction, volCoverage };
 }
@@ -259,19 +278,50 @@ function buildReason(
 // ---------------------------------------------------------------------------
 
 /**
- * Returns an honest qualitative drawdown statement for a "too_aggressive"
- * verdict based on the actual risk band. No fabricated dollar figures —
- * percentages are historically grounded band-level estimates.
+ * Returns an honest drawdown statement for a "too_aggressive" verdict based on
+ * the actual risk band. Percentages are historically grounded band-level
+ * estimates. When `bucketValue` is supplied, the statement is made concrete
+ * with a dollar range derived from those same percentages.
  */
-export function drawdownStatement(actualBand: RiskBand, aggressiveFraction: number): string {
+export function drawdownStatement(
+    actualBand: RiskBand,
+    aggressiveFraction: number,
+    bucketValue?: number | null
+): string {
     const pct = Math.round(aggressiveFraction * 100);
+
+    // Band-level peak-to-trough drawdown ranges (lo, hi) as fractions.
+    let range: [number, number];
+    let lead: string;
     if (actualBand === 'aggressive') {
-        return `A 2008-style downturn could cut this bucket 40–55% — right when you'd need to withdraw.`;
+        range = [0.4, 0.55];
+        lead = `A 2008-style downturn could cut this bucket`;
+    } else if (actualBand === 'moderate' && aggressiveFraction > 0.4) {
+        range = [0.25, 0.4];
+        lead = `With ${pct}% in high-volatility holdings, a sharp correction could cut this bucket`;
+    } else {
+        if (bucketValue && bucketValue > 0) {
+            return `This bucket carries more risk than its timeline warrants — a market downturn could erode a meaningful slice of its ${formatUsd(bucketValue)} before you withdraw.`;
+        }
+        return `This bucket carries more risk than its timeline warrants — a market downturn could erode significant value before you withdraw.`;
     }
-    if (actualBand === 'moderate' && aggressiveFraction > 0.4) {
-        return `With ${pct}% in high-volatility holdings, a sharp correction could cut this bucket 25–40% before your target date.`;
+
+    const pctLabel = `${Math.round(range[0] * 100)}–${Math.round(range[1] * 100)}%`;
+    if (bucketValue && bucketValue > 0) {
+        const loDollars = formatUsd(bucketValue * range[0]);
+        const hiDollars = formatUsd(bucketValue * range[1]);
+        return `${lead} ${pctLabel} — roughly ${loDollars}–${hiDollars} of its ${formatUsd(bucketValue)} — right when you'd need to withdraw.`;
     }
-    return `This bucket carries more risk than its timeline warrants — a market downturn could erode significant value before you withdraw.`;
+    return `${lead} ${pctLabel} — right when you'd need to withdraw.`;
+}
+
+/** Compact USD formatter for plain-language statements. */
+function formatUsd(value: number): string {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        maximumFractionDigits: 0,
+    }).format(Math.round(value));
 }
 
 // ---------------------------------------------------------------------------

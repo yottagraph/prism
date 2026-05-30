@@ -33,7 +33,7 @@
                     :items-per-page="rowsPerPage"
                     density="comfortable"
                     hover
-                    style="min-width: 1200px"
+                    style="min-width: 1360px"
                     @click:row="onRowClick"
                 >
                     <template #item.rank="{ index }">
@@ -43,6 +43,31 @@
                     <template #item.name="{ item }">
                         <div class="font-weight-medium">{{ item.resolvedName }}</div>
                         <div class="text-caption text-medium-emphasis">{{ item.neid || '—' }}</div>
+                    </template>
+
+                    <template #item.currentValue="{ item }">
+                        <div v-if="item.currentValue != null">
+                            <div class="font-weight-medium">{{ formatUsd(item.currentValue) }}</div>
+                            <div
+                                v-if="item.amountInvested != null"
+                                class="text-caption text-medium-emphasis"
+                            >
+                                cost {{ formatUsd(item.amountInvested) }}
+                            </div>
+                        </div>
+                        <span v-else class="text-medium-emphasis">—</span>
+                    </template>
+
+                    <template #item.holdingReturn="{ item }">
+                        <span
+                            v-if="item.holdingReturn != null"
+                            class="font-weight-medium"
+                            :class="item.holdingReturn >= 0 ? 'text-success' : 'text-error'"
+                        >
+                            {{ item.holdingReturn >= 0 ? '+' : ''
+                            }}{{ item.holdingReturn.toFixed(1) }}%
+                        </span>
+                        <span v-else class="text-medium-emphasis">—</span>
                     </template>
 
                     <template #item.solvency="{ item }"
@@ -135,9 +160,19 @@
     const search = ref('');
     const rowsPerPage = ref(50);
 
+    function formatUsd(value: number): string {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+            maximumFractionDigits: 0,
+        }).format(Math.round(value));
+    }
+
     const headers = [
         { title: '#', key: 'rank', sortable: false, width: 50 },
         { title: 'Holding', key: 'name', sortable: true },
+        { title: 'Value', key: 'currentValue', sortable: true, width: 120 },
+        { title: 'Return', key: 'holdingReturn', sortable: true, width: 90 },
         { title: 'Signals', key: 'signalAgreement', sortable: true, width: 120 },
         // SEC lens
         { title: 'Fin. strength', key: 'solvency', sortable: true, width: 120 },
@@ -162,6 +197,9 @@
             entity,
             neid: entity.neid,
             resolvedName: entity.resolvedName,
+            currentValue: entity.valuation?.currentValue ?? entity.amountInvested ?? null,
+            amountInvested: entity.amountInvested ?? null,
+            holdingReturn: entity.valuation?.returnPct ?? null,
             fused: entity.scores?.fused ?? null,
             riskCategory: entity.monitor?.riskCategory ?? 'LOW',
             signalAgreement: entity.monitor?.signalAgreement ?? null,

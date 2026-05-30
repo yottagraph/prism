@@ -30,6 +30,10 @@
         }
     ],
     "defaultActiveUserId": "maya",
+    "_notes": {
+        "purchaseDate": "Split-safe ISO dates. Elemental stores raw (unadjusted) Alpha Vantage closes, so backdated cost-basis dates are chosen AFTER each name's most recent split (e.g. NVDA 10:1 2024-06-10, MicroStrategy 10:1 2024-08-08) to avoid artificial cost-basis cliffs.",
+        "amountInvested": "Cost-basis dollars at purchase. Current value, shares, and return are derived live from Elemental price history via /api/holdings/valuation."
+    },
     "portfolios": [
         {
             "id": "maya-retirement",
@@ -43,11 +47,41 @@
                 "priority": "essential"
             },
             "entities": [
-                { "inputName": "Apple", "resolvedName": "Apple", "neid": null },
-                { "inputName": "Microsoft", "resolvedName": "Microsoft", "neid": null },
-                { "inputName": "NVIDIA", "resolvedName": "NVIDIA", "neid": null },
-                { "inputName": "Amazon", "resolvedName": "Amazon", "neid": null },
-                { "inputName": "Alphabet", "resolvedName": "Alphabet", "neid": null }
+                {
+                    "inputName": "Apple",
+                    "resolvedName": "Apple",
+                    "neid": null,
+                    "amountInvested": 22000,
+                    "purchaseDate": "2022-09-06"
+                },
+                {
+                    "inputName": "Microsoft",
+                    "resolvedName": "Microsoft",
+                    "neid": null,
+                    "amountInvested": 20000,
+                    "purchaseDate": "2022-09-06"
+                },
+                {
+                    "inputName": "NVIDIA",
+                    "resolvedName": "NVIDIA",
+                    "neid": null,
+                    "amountInvested": 12000,
+                    "purchaseDate": "2024-09-03"
+                },
+                {
+                    "inputName": "Amazon",
+                    "resolvedName": "Amazon",
+                    "neid": null,
+                    "amountInvested": 16000,
+                    "purchaseDate": "2023-01-09"
+                },
+                {
+                    "inputName": "Alphabet",
+                    "resolvedName": "Alphabet",
+                    "neid": null,
+                    "amountInvested": 14000,
+                    "purchaseDate": "2023-01-09"
+                }
             ]
         },
         {
@@ -63,20 +97,40 @@
                 "priority": "important"
             },
             "entities": [
-                { "inputName": "Tesla", "resolvedName": "Tesla", "neid": null },
+                {
+                    "inputName": "Tesla",
+                    "resolvedName": "Tesla",
+                    "neid": null,
+                    "amountInvested": 24000,
+                    "purchaseDate": "2023-03-06"
+                },
                 {
                     "inputName": "Palantir Technologies",
                     "resolvedName": "Palantir Technologies",
-                    "neid": null
+                    "neid": null,
+                    "amountInvested": 18000,
+                    "purchaseDate": "2023-03-06"
                 },
-                { "inputName": "Coinbase", "resolvedName": "Coinbase", "neid": null },
-                { "inputName": "MicroStrategy", "resolvedName": "MicroStrategy", "neid": null }
+                {
+                    "inputName": "Coinbase",
+                    "resolvedName": "Coinbase",
+                    "neid": null,
+                    "amountInvested": 16000,
+                    "purchaseDate": "2023-03-06"
+                },
+                {
+                    "inputName": "MicroStrategy",
+                    "resolvedName": "MicroStrategy",
+                    "neid": null,
+                    "amountInvested": 14000,
+                    "purchaseDate": "2024-09-03"
+                }
             ]
         },
         {
             "id": "maya-emergency",
             "name": "Emergency Fund",
-            "description": "Liquid safety net — 6 months of expenses.",
+            "description": "Liquid safety net — 6 months of expenses. Held in short-duration treasury and bond ETFs.",
             "createdAt": 1748476800000,
             "ownerUserId": "maya",
             "goal": {
@@ -86,16 +140,26 @@
                 "priority": "essential"
             },
             "entities": [
-                { "inputName": "JPMorgan Chase", "resolvedName": "JPMorgan Chase", "neid": null },
                 {
-                    "inputName": "Johnson & Johnson",
-                    "resolvedName": "Johnson & Johnson",
-                    "neid": null
+                    "inputName": "SPDR Bloomberg 1-3 Month T-Bill ETF",
+                    "resolvedName": "SPDR Bloomberg 1-3 Month T-Bill ETF",
+                    "neid": null,
+                    "amountInvested": 12000,
+                    "purchaseDate": "2024-09-03"
                 },
                 {
-                    "inputName": "Procter & Gamble",
-                    "resolvedName": "Procter & Gamble",
-                    "neid": null
+                    "inputName": "iShares Short Treasury Bond ETF",
+                    "resolvedName": "iShares Short Treasury Bond ETF",
+                    "neid": null,
+                    "amountInvested": 10000,
+                    "purchaseDate": "2024-09-03"
+                },
+                {
+                    "inputName": "Vanguard Total Bond Market ETF",
+                    "resolvedName": "Vanguard Total Bond Market ETF",
+                    "neid": null,
+                    "amountInvested": 6000,
+                    "purchaseDate": "2024-09-03"
                 }
             ]
         },
@@ -111,25 +175,47 @@
                 "priority": "essential"
             },
             "entities": [
-                { "inputName": "Apple", "resolvedName": "Apple", "neid": null },
-                { "inputName": "JPMorgan Chase", "resolvedName": "JPMorgan Chase", "neid": null },
+                {
+                    "inputName": "Apple",
+                    "resolvedName": "Apple",
+                    "neid": null,
+                    "amountInvested": 90000,
+                    "purchaseDate": "2022-09-06"
+                },
+                {
+                    "inputName": "JPMorgan Chase",
+                    "resolvedName": "JPMorgan Chase",
+                    "neid": null,
+                    "amountInvested": 70000,
+                    "purchaseDate": "2022-09-06"
+                },
                 {
                     "inputName": "UnitedHealth Group",
                     "resolvedName": "UnitedHealth Group",
-                    "neid": null
+                    "neid": null,
+                    "amountInvested": 80000,
+                    "purchaseDate": "2022-09-06"
                 },
-                { "inputName": "Exxon Mobil", "resolvedName": "Exxon Mobil", "neid": null },
+                {
+                    "inputName": "Exxon Mobil",
+                    "resolvedName": "Exxon Mobil",
+                    "neid": null,
+                    "amountInvested": 60000,
+                    "purchaseDate": "2022-09-06"
+                },
                 {
                     "inputName": "Berkshire Hathaway",
                     "resolvedName": "Berkshire Hathaway",
-                    "neid": null
+                    "neid": null,
+                    "amountInvested": 100000,
+                    "purchaseDate": "2022-09-06"
                 }
             ]
         },
         {
             "id": "david-college",
             "name": "College Fund",
-            "description": "10-year 529-style education savings.",
+            "description": "10-year 529-style education savings — equities balanced with an aggregate bond ETF.",
             "createdAt": 1748476800000,
             "ownerUserId": "david-priya",
             "goal": {
@@ -139,20 +225,47 @@
                 "priority": "important"
             },
             "entities": [
-                { "inputName": "Microsoft", "resolvedName": "Microsoft", "neid": null },
+                {
+                    "inputName": "Microsoft",
+                    "resolvedName": "Microsoft",
+                    "neid": null,
+                    "amountInvested": 30000,
+                    "purchaseDate": "2023-01-09"
+                },
                 {
                     "inputName": "Verizon Communications",
                     "resolvedName": "Verizon Communications",
-                    "neid": null
+                    "neid": null,
+                    "amountInvested": 18000,
+                    "purchaseDate": "2023-01-09"
                 },
-                { "inputName": "Walmart", "resolvedName": "Walmart", "neid": null },
-                { "inputName": "Costco", "resolvedName": "Costco", "neid": null }
+                {
+                    "inputName": "Walmart",
+                    "resolvedName": "Walmart",
+                    "neid": null,
+                    "amountInvested": 22000,
+                    "purchaseDate": "2023-01-09"
+                },
+                {
+                    "inputName": "Costco",
+                    "resolvedName": "Costco",
+                    "neid": null,
+                    "amountInvested": 26000,
+                    "purchaseDate": "2023-01-09"
+                },
+                {
+                    "inputName": "iShares Core U.S. Aggregate Bond ETF",
+                    "resolvedName": "iShares Core U.S. Aggregate Bond ETF",
+                    "neid": null,
+                    "amountInvested": 24000,
+                    "purchaseDate": "2024-09-03"
+                }
             ]
         },
         {
             "id": "david-reno",
             "name": "Home Renovation",
-            "description": "3-year savings for a kitchen and basement remodel.",
+            "description": "3-year savings for a kitchen and basement remodel — short horizon, bond-heavy for stability.",
             "createdAt": 1748476800000,
             "ownerUserId": "david-priya",
             "goal": {
@@ -162,16 +275,33 @@
                 "priority": "aspirational"
             },
             "entities": [
-                { "inputName": "Home Depot", "resolvedName": "Home Depot", "neid": null },
+                {
+                    "inputName": "Home Depot",
+                    "resolvedName": "Home Depot",
+                    "neid": null,
+                    "amountInvested": 16000,
+                    "purchaseDate": "2023-01-09"
+                },
                 {
                     "inputName": "Lowe's Companies",
                     "resolvedName": "Lowe's Companies",
-                    "neid": null
+                    "neid": null,
+                    "amountInvested": 14000,
+                    "purchaseDate": "2023-01-09"
                 },
                 {
-                    "inputName": "Johnson & Johnson",
-                    "resolvedName": "Johnson & Johnson",
-                    "neid": null
+                    "inputName": "Vanguard Total Bond Market ETF",
+                    "resolvedName": "Vanguard Total Bond Market ETF",
+                    "neid": null,
+                    "amountInvested": 14000,
+                    "purchaseDate": "2024-09-03"
+                },
+                {
+                    "inputName": "iShares Short Treasury Bond ETF",
+                    "resolvedName": "iShares Short Treasury Bond ETF",
+                    "neid": null,
+                    "amountInvested": 12000,
+                    "purchaseDate": "2024-09-03"
                 }
             ]
         },
@@ -187,14 +317,34 @@
                 "priority": "essential"
             },
             "entities": [
-                { "inputName": "Tesla", "resolvedName": "Tesla", "neid": null },
-                { "inputName": "NVIDIA", "resolvedName": "NVIDIA", "neid": null },
+                {
+                    "inputName": "Tesla",
+                    "resolvedName": "Tesla",
+                    "neid": null,
+                    "amountInvested": 90000,
+                    "purchaseDate": "2023-03-06"
+                },
+                {
+                    "inputName": "NVIDIA",
+                    "resolvedName": "NVIDIA",
+                    "neid": null,
+                    "amountInvested": 80000,
+                    "purchaseDate": "2024-09-03"
+                },
                 {
                     "inputName": "Advanced Micro Devices",
                     "resolvedName": "Advanced Micro Devices",
-                    "neid": null
+                    "neid": null,
+                    "amountInvested": 70000,
+                    "purchaseDate": "2023-01-09"
                 },
-                { "inputName": "Amazon", "resolvedName": "Amazon", "neid": null }
+                {
+                    "inputName": "Amazon",
+                    "resolvedName": "Amazon",
+                    "neid": null,
+                    "amountInvested": 70000,
+                    "purchaseDate": "2023-01-09"
+                }
             ]
         },
         {
@@ -212,19 +362,31 @@
                 {
                     "inputName": "Berkshire Hathaway",
                     "resolvedName": "Berkshire Hathaway",
-                    "neid": null
+                    "neid": null,
+                    "amountInvested": 50000,
+                    "purchaseDate": "2022-09-06"
                 },
                 {
                     "inputName": "Johnson & Johnson",
                     "resolvedName": "Johnson & Johnson",
-                    "neid": null
+                    "neid": null,
+                    "amountInvested": 30000,
+                    "purchaseDate": "2022-09-06"
                 },
                 {
                     "inputName": "Procter & Gamble",
                     "resolvedName": "Procter & Gamble",
-                    "neid": null
+                    "neid": null,
+                    "amountInvested": 30000,
+                    "purchaseDate": "2022-09-06"
                 },
-                { "inputName": "Exxon Mobil", "resolvedName": "Exxon Mobil", "neid": null }
+                {
+                    "inputName": "Exxon Mobil",
+                    "resolvedName": "Exxon Mobil",
+                    "neid": null,
+                    "amountInvested": 30000,
+                    "purchaseDate": "2022-09-06"
+                }
             ]
         }
     ]

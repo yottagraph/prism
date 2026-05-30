@@ -77,6 +77,40 @@ export interface ResolvedEntityInput {
     resolvedName?: string;
     neid?: string | null;
     ticker?: string;
+    /** Dollars invested at cost. */
+    amountInvested?: number;
+    /** ISO date (YYYY-MM-DD) the position was opened. */
+    purchaseDate?: string;
+}
+
+/**
+ * Live valuation of a holding, derived from Elemental price history.
+ * `shares` is back-solved from `amountInvested / costBasisPrice`, so the
+ * position is "priced through time": current value tracks the latest close.
+ */
+export interface HoldingValuation {
+    /** Cost basis dollars at purchase (echo of the seeded/entered amount). */
+    amountInvested: number | null;
+    /** Implied share count: amountInvested / costBasisPrice. */
+    shares: number | null;
+    /** Close on (or first trading day after) the purchase date. */
+    costBasisPrice: number | null;
+    /** Actual trading date used for the cost basis. */
+    costBasisDate: string | null;
+    /** Most recent close in Elemental's price history. */
+    latestClose: number | null;
+    /** Date of the latest close. */
+    latestDate: string | null;
+    /** shares * latestClose. */
+    currentValue: number | null;
+    /** Percent return from cost basis to latest close. */
+    returnPct: number | null;
+    /** Instrument currency (best-effort; USD for US-listed names). */
+    currency: string | null;
+    /** Downsampled value-over-time series (monthly), for sparklines. */
+    series: Array<{ date: string; value: number }>;
+    /** Populated when the holding could not be valued. */
+    error?: string;
 }
 
 export interface PortfolioEntity extends Pick<MonitorEntity, 'signalAgreement' | 'signalSummary'> {
@@ -88,6 +122,12 @@ export interface PortfolioEntity extends Pick<MonitorEntity, 'signalAgreement' |
     neid: string | null;
     /** Optional ticker (best-effort, populated when available). */
     ticker?: string;
+    /** Dollars invested at cost. Drives value-weighting and dollar consequences. */
+    amountInvested?: number;
+    /** ISO date (YYYY-MM-DD) the position was opened, for backdated valuation. */
+    purchaseDate?: string;
+    /** Live valuation from Elemental price history (null until valued). */
+    valuation?: HoldingValuation | null;
     /** When this entity was added (epoch ms). */
     addedAt: number;
     /** Latest agent-computed scores (null until first scan). */
@@ -210,6 +250,10 @@ function defaultPortfolios(): PortfolioDoc[] {
                 inputName: entity.inputName,
                 resolvedName: entity.resolvedName || entity.inputName,
                 neid: entity.neid || null,
+                ...(typeof entity.amountInvested === 'number'
+                    ? { amountInvested: entity.amountInvested }
+                    : {}),
+                ...(entity.purchaseDate ? { purchaseDate: entity.purchaseDate } : {}),
                 addedAt: now,
                 scores: null,
             })),
@@ -601,6 +645,10 @@ export function usePortfolio(activeUserId?: globalThis.Ref<string | null>) {
                     resolvedName: e.resolvedName || e.inputName.trim(),
                     neid: e.neid ?? null,
                     ticker: e.ticker,
+                    ...(typeof e.amountInvested === 'number'
+                        ? { amountInvested: e.amountInvested }
+                        : {}),
+                    ...(e.purchaseDate ? { purchaseDate: e.purchaseDate } : {}),
                     addedAt: now,
                     scores: null,
                 })),
@@ -634,6 +682,10 @@ export function usePortfolio(activeUserId?: globalThis.Ref<string | null>) {
                 resolvedName: e.resolvedName || e.inputName.trim(),
                 neid: e.neid ?? null,
                 ticker: e.ticker,
+                ...(typeof e.amountInvested === 'number'
+                    ? { amountInvested: e.amountInvested }
+                    : {}),
+                ...(e.purchaseDate ? { purchaseDate: e.purchaseDate } : {}),
                 addedAt: now,
                 scores: null,
             }));
@@ -831,6 +883,8 @@ export function usePortfolio(activeUserId?: globalThis.Ref<string | null>) {
                     throw new Error(data?.message || 'Scan pipeline failed');
                 }
             }
+            // Holdings are now resolved + scored — value them through time.
+            void valuePortfolio(portfolioId);
         } catch (e: any) {
             lastScanError.value = e?.message || 'Scan failed';
             scanStatusMessage.value = `Scan failed: ${lastScanError.value}`;
@@ -865,6 +919,45 @@ export function usePortfolio(activeUserId?: globalThis.Ref<string | null>) {
             if (!lastScanError.value && scanStatusMessage.value === 'Idle') {
                 scanStatusMessage.value = 'Scan complete.';
             }
+        }
+    }
+
+    /**
+     * Price each holding "through time" from its cost-basis dollars + purchase
+     * date via the server valuation endpoint, then attach the result to each
+     * entity. Best-effort: failures leave existing valuations untouched.
+     */
+    async function valuePortfolio(portfolioId: string) {
+        const idx = p.portfolios.findIndex((pp) => pp.id === portfolioId);
+        if (idx < 0) return;
+        const ents = p.portfolios[idx].entities;
+        const holdings = ents.map((entity) => ({
+            inputName: entity.inputName,
+            neid: entity.neid,
+            purchaseDate: entity.purchaseDate ?? null,
+            amountInvested:
+                typeof entity.amountInvested === 'number' ? entity.amountInvested : null,
+        }));
+        // Nothing to value if no holding carries a cost basis.
+        if (!holdings.some((h) => typeof h.amountInvested === 'number')) return;
+        try {
+            const res = await $fetch<{ valuations: HoldingValuation[] }>(
+                '/api/holdings/valuation',
+                {
+                    method: 'POST',
+                    body: { portfolioId, holdings },
+                    timeout: 120_000,
+                }
+            );
+            const valuations = Array.isArray(res?.valuations) ? res.valuations : [];
+            valuations.forEach((valuation, i) => {
+                const current = ents[i];
+                if (!current) return;
+                current.valuation = valuation;
+            });
+            p.portfolios[idx].entities = [...ents];
+        } catch (e) {
+            console.warn('[valuePortfolio] valuation request failed', e);
         }
     }
 
@@ -974,6 +1067,7 @@ export function usePortfolio(activeUserId?: globalThis.Ref<string | null>) {
         saveAssessment,
         scanPortfolio,
         scanActiveUserPortfolios,
+        valuePortfolio,
     };
 }
 
