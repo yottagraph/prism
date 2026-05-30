@@ -85,7 +85,9 @@
                 <nuxt-link to="/bucket">Goal Bucket</nuxt-link> to create one.
             </v-alert>
 
-            <!-- ── Post-analysis payoff band ──────────────────────────── -->
+            <!-- ── SECTION 1: Portfolio metrics ───────────────────────── -->
+
+            <!-- Post-analysis payoff band -->
             <v-card
                 v-if="analysisSummary.isComplete && !scanningAll"
                 variant="tonal"
@@ -116,7 +118,7 @@
                 </div>
             </v-card>
 
-            <!-- ── Scan error / Retry banner ───────────────────────────── -->
+            <!-- Scan error / Retry banner -->
             <v-alert
                 v-if="!scanningAll && lastScanError"
                 type="warning"
@@ -140,7 +142,7 @@
                 </div>
             </v-alert>
 
-            <!-- ── Two-question hero band ──────────────────────────── -->
+            <!-- Two-question hero band -->
             <v-row v-if="buckets.length > 0" dense class="mb-4">
                 <!-- Question A: Are the goals built right? -->
                 <v-col cols="12" md="6">
@@ -156,7 +158,6 @@
                             </span>
                         </div>
 
-                        <!-- Headline verdict -->
                         <!-- Mid-scan: live signal-ingestion lanes -->
                         <div v-if="scanningAll" class="mb-3">
                             <GoalsScanSignalLanes
@@ -201,8 +202,6 @@
                             </span>
                             <span class="text-body-1 ml-1">may be leaving growth on the table</span>
                         </div>
-                        <!-- "All goals aligned" only shown when scan is complete AND no
-                             holdings are flagging risk — prevents contradictory green + red states. -->
                         <div
                             v-else-if="
                                 allAnalyzedAndComplete && analysisSummary.needsAttention === 0
@@ -368,8 +367,8 @@
                 </v-col>
             </v-row>
 
-            <!-- ── Intelligence band: risk distribution + macro ────────── -->
-            <v-row v-if="anyAnalyzed" dense class="mb-3">
+            <!-- Intelligence band: risk distribution + macro -->
+            <v-row v-if="anyAnalyzed" dense class="mb-6">
                 <v-col cols="12" sm="5">
                     <RiskDistribution
                         :counts="overviewTierCounts"
@@ -382,109 +381,102 @@
                 </v-col>
             </v-row>
 
-            <!-- ── Full portfolio briefing (PortfolioSummaryTab) ─────── -->
-            <v-row v-if="anyAnalyzed" dense class="mb-4">
-                <v-col cols="12">
-                    <SummaryPortfolioSummaryTab
-                        :entities="allScoredEntities"
-                        portfolio-id="__overview__"
-                        :portfolio-name="`${activeUser?.name ?? 'Your'} portfolio`"
-                        :active="true"
-                        :scan-completed-at="scanCompletedAt"
-                        :macro="overviewMacro"
-                        :investor="overviewInvestor"
-                    />
-                </v-col>
-            </v-row>
-
-            <!-- ── Bucket cards ────────────────────────────────────── -->
-            <v-row dense class="mb-4">
-                <v-col
-                    v-for="card in bucketCardsWithOverlap"
-                    :key="card.id"
-                    cols="12"
-                    md="6"
-                    xl="4"
-                >
-                    <GoalsBucketCard
-                        :card="card"
-                        :health="bucketHealthMap[card.id] ?? emptyHealth"
-                        :scanning="scanningAll"
-                        @open="onOpenBucket"
-                    />
-                </v-col>
-            </v-row>
-
-            <!-- ── Next best review ──────────────────────────────────── -->
-            <v-card
-                v-if="nextBestReview"
-                variant="outlined"
-                class="mb-4 pa-3 d-flex align-center"
-                style="gap: 12px; cursor: pointer"
-                @click="onOpenBucket(nextBestReview.id)"
-            >
-                <v-icon color="warning" size="small">mdi-alert-circle-outline</v-icon>
-                <div class="flex-grow-1">
-                    <span class="text-subtitle-2 font-weight-medium">Next best review: </span>
-                    <span class="text-body-2">{{ nextBestReview.name }}</span>
-                    <span class="text-body-2 text-medium-emphasis ml-2">
-                        · {{ nextBestReview.reason }}
-                    </span>
+            <!-- ── SECTION 2: Your Goals ───────────────────────────────── -->
+            <section v-if="buckets.length > 0" class="mb-6">
+                <h2 class="text-h6 font-weight-medium mb-3">Your Goals</h2>
+                <div v-for="bucket in enrichedBucketsWithEntities" :key="bucket.id" class="mb-4">
+                    <v-row dense>
+                        <v-col cols="12" md="5">
+                            <GoalsBucketCard
+                                :card="bucket"
+                                :health="bucketHealthMap[bucket.id] ?? emptyHealth"
+                                :scanning="scanningAll"
+                                @open="onOpenBucket"
+                            />
+                        </v-col>
+                        <v-col cols="12" md="7">
+                            <GoalsBucketInsightsPanel
+                                :entities="bucket.entities"
+                                :analyzed="bucket.analyzed"
+                                @open="onOpenBucket(bucket.id)"
+                            />
+                        </v-col>
+                    </v-row>
                 </div>
-                <v-btn size="small" variant="text" color="primary" append-icon="mdi-arrow-right">
-                    Open bucket
-                </v-btn>
-            </v-card>
+            </section>
 
-            <!-- ── Cross-bucket concentration ─────────────────────── -->
-            <template v-if="duplicateHoldings.length > 0">
-                <h2 class="text-subtitle-1 font-weight-medium mb-2">
-                    <v-icon size="small" class="mr-1">mdi-content-copy</v-icon>
-                    Cross-bucket concentration
-                </h2>
-                <p class="text-body-2 text-medium-emphasis mb-3">
-                    These holdings appear in multiple buckets — consider whether the overlap is
-                    intentional.
-                </p>
-                <v-table density="compact" class="mb-4">
-                    <thead>
-                        <tr>
-                            <th>Holding</th>
-                            <th>Buckets</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="dup in duplicateHoldings" :key="dup.name">
-                            <td class="text-body-2">{{ dup.name }}</td>
-                            <td>
-                                <v-chip
-                                    v-for="b in dup.buckets"
-                                    :key="b"
-                                    size="x-small"
-                                    variant="tonal"
-                                    class="mr-1"
-                                >
-                                    {{ b }}
-                                </v-chip>
-                            </td>
-                        </tr>
-                    </tbody>
-                </v-table>
-            </template>
+            <!-- ── SECTION 3: Portfolio Construction ──────────────────── -->
+            <section v-if="buckets.length > 0" class="mb-4">
+                <h2 class="text-h6 font-weight-medium mb-3">Portfolio Construction</h2>
 
-            <!-- ── Risk spectrum (secondary / contextual) ─────────── -->
-            <div v-if="buckets.length > 1" class="mt-2">
-                <h2 class="text-subtitle-1 font-weight-medium mb-2">
-                    <v-icon size="small" class="mr-1">mdi-chart-scatter-plot</v-icon>
-                    Risk spectrum across goals
-                </h2>
+                <!-- Next best review -->
+                <v-card
+                    v-if="nextBestReview"
+                    variant="outlined"
+                    class="mb-4 pa-3 d-flex align-center"
+                    style="gap: 12px; cursor: pointer"
+                    @click="onOpenBucket(nextBestReview.id)"
+                >
+                    <v-icon color="warning" size="small">mdi-alert-circle-outline</v-icon>
+                    <div class="flex-grow-1">
+                        <span class="text-subtitle-2 font-weight-medium">Next best review: </span>
+                        <span class="text-body-2">{{ nextBestReview.name }}</span>
+                        <span class="text-body-2 text-medium-emphasis ml-2">
+                            · {{ nextBestReview.reason }}
+                        </span>
+                    </div>
+                    <v-btn
+                        size="small"
+                        variant="text"
+                        color="primary"
+                        append-icon="mdi-arrow-right"
+                    >
+                        Open bucket
+                    </v-btn>
+                </v-card>
+
+                <!-- Cross-bucket concentration -->
+                <template v-if="duplicateHoldings.length > 0">
+                    <p class="text-body-2 text-medium-emphasis mb-3">
+                        <v-icon size="small" class="mr-1">mdi-content-copy</v-icon>
+                        These holdings appear in multiple buckets — consider whether the overlap is
+                        intentional.
+                    </p>
+                    <v-table density="compact" class="mb-4">
+                        <thead>
+                            <tr>
+                                <th>Holding</th>
+                                <th>Buckets</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="dup in duplicateHoldings" :key="dup.name">
+                                <td class="text-body-2">{{ dup.name }}</td>
+                                <td>
+                                    <v-chip
+                                        v-for="b in dup.buckets"
+                                        :key="b"
+                                        size="x-small"
+                                        variant="tonal"
+                                        class="mr-1"
+                                    >
+                                        {{ b }}
+                                    </v-chip>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </v-table>
+                </template>
+
+                <!-- Risk spectrum -->
                 <GoalsConstructionSpectrum
+                    v-if="buckets.length > 1"
                     :buckets="spectrumBuckets"
                     :ready="allAnalyzedAndComplete"
                     class="mb-4"
                     @open="onOpenBucket"
                 />
-            </div>
+            </section>
         </div>
 
         <OnboardingOnboardingDialog
@@ -500,7 +492,6 @@
     import { useRouter } from 'vue-router';
     import { useUser } from '~/composables/useUser';
     import { usePortfolio } from '~/composables/usePortfolio';
-    import { useMacroRegime } from '~/composables/useMacroRegime';
     import { riskLabel, riskDescription } from '~/utils/goals/riskLabels';
     import type { RiskTier } from '~/composables/useFusedScoring';
     import { tierColor, tierLabel } from '~/composables/useFusedScoring';
@@ -520,10 +511,7 @@
         scanningAll,
         lastScanError,
         scanActiveUserPortfolios,
-        scanCompletedAt,
     } = usePortfolio(activeUserId);
-
-    const { regime: macroRegime } = useMacroRegime();
 
     const onboardingOpen = ref(false);
 
@@ -858,32 +846,6 @@
         () => void ensurePersonaDescription()
     );
 
-    // ── Cross-portfolio scored entities (used by PortfolioSummaryTab) ────
-    const allScoredEntities = computed(() => {
-        const seen = new Set<string>();
-        const result: any[] = [];
-        for (const portfolio of portfolios.value) {
-            for (const e of portfolio.entities) {
-                if (!e.scores) continue;
-                const key = e.neid ?? e.inputName;
-                if (seen.has(key)) continue;
-                seen.add(key);
-                result.push({
-                    resolvedName: e.resolvedName || e.inputName,
-                    neid: e.neid ?? null,
-                    ticker: (e as any).ticker ?? undefined,
-                    scores: e.scores,
-                    drivers: (e as any).drivers,
-                    confidenceLevel: (e as any).confidenceLevel,
-                    coverage: (e as any).coverage,
-                    coverageDetail: (e as any).coverageDetail,
-                    monitor: e.monitor,
-                });
-            }
-        }
-        return result;
-    });
-
     // ── Cross-portfolio tier counts (for RiskDistribution) ───────────
     const overviewTierCounts = computed<Record<RiskTier, number>>(() => {
         const counts: Record<RiskTier, number> = { critical: 0, high: 0, medium: 0, low: 0 };
@@ -935,32 +897,18 @@
         return out;
     });
 
-    // ── Macro context (forwarded to PortfolioSummaryTab) ─────────────
-    const overviewMacro = computed(() =>
-        macroRegime.value
-            ? {
-                  regime: macroRegime.value.label,
-                  synthesis: macroRegime.value.synthesis,
-                  sectorTilt: macroRegime.value.sectorTilt?.map((s) => s.label).join(', '),
-                  portfolioImplication: macroRegime.value.portfolioImplication,
-              }
-            : undefined
+    // ── Bucket cards with raw entity data (for BucketInsightsPanel) ──
+    // Use enrichedBuckets (has `analyzed`) merged with overlap info + raw entities.
+    const enrichedBucketsWithEntities = computed(() =>
+        enrichedBuckets.value.map((card) => {
+            const withOverlap = bucketCardsWithOverlap.value.find((c) => c.id === card.id);
+            return {
+                ...card,
+                overlappingNames: withOverlap?.overlappingNames ?? [],
+                entities: portfolios.value.find((p) => p.id === card.id)?.entities ?? [],
+            };
+        })
     );
-
-    // ── Investor context (forwarded to PortfolioSummaryTab) ──────────
-    const overviewInvestor = computed(() => {
-        const u = activeUser.value;
-        if (!u) return undefined;
-        return {
-            name: u.name,
-            age: u.age,
-            retirementAge: u.retirementAge,
-            riskPreference: riskLabel(u.riskTolerance),
-            goals: portfolios.value
-                .filter((p) => p.goal)
-                .map((p) => ({ purpose: p.goal!.purpose, horizonYears: p.goal!.horizonYears })),
-        };
-    });
 </script>
 
 <style scoped>
