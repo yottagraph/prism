@@ -6,6 +6,7 @@
 
             <v-main class="fill-height">
                 <ServerStatus />
+                <PrefsPersistenceBanner />
                 <NuxtPage />
             </v-main>
 

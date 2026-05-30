@@ -488,7 +488,7 @@
     const modelOptions = [
         // Keep in sync with GEMINI_DEFAULT_MODEL / GEMINI_PRO_MODEL in server/utils/gemini.ts
         { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (fast)' },
-        { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (quality)' },
+        { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro (quality)' },
     ];
 
     // --- Computed ---

@@ -36,23 +36,24 @@ export interface CallGeminiOptions {
  * so a model rotation can be done from the Vercel dashboard without a deploy.
  */
 export const GEMINI_DEFAULT_MODEL = process.env.GEMINI_DEFAULT_MODEL ?? 'gemini-2.5-flash';
-export const GEMINI_PRO_MODEL = process.env.GEMINI_PRO_MODEL ?? 'gemini-2.5-pro';
+export const GEMINI_PRO_MODEL = process.env.GEMINI_PRO_MODEL ?? 'gemini-3.1-pro-preview';
 
 // Pricing per 1M tokens (Flash 2.5, Feb 2026) — used for display only.
 const COST_PER_1M_INPUT = 0.3;
 const COST_PER_1M_OUTPUT = 2.5;
 
 /**
- * Thinking config for Gemini 2.5 Flash.
+ * Thinking config for Flash models.
  *
  * Thinking tokens count against maxOutputTokens, so leaving dynamic thinking
  * on with a small budget truncates responses. We explicitly disable thinking
  * (thinkingBudget: 0) unless the caller opts in via thinkingMode: true.
  *
- * Gemini 2.5 Pro cannot disable thinking — don't send thinkingConfig for it.
+ * Pro models (2.5 Pro, 3.1 Pro) cannot disable thinking — don't send
+ * thinkingConfig for them.
  */
 function buildThinkingConfig(model: string, thinkingMode: boolean): Record<string, any> {
-    if (model.includes('2.5-flash')) {
+    if (model.includes('-flash')) {
         return { thinkingConfig: { thinkingBudget: thinkingMode ? 4096 : 0 } };
     }
     return {};
