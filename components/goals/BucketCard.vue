@@ -5,7 +5,7 @@
             <v-icon :color="priorityColor" class="mr-2" size="small">mdi-target</v-icon>
             <span class="text-subtitle-2 font-weight-medium">{{ card.name }}</span>
             <v-spacer />
-            <v-chip v-if="card.fitLabel" :color="card.fitColor" size="x-small" variant="flat" label>
+            <v-chip v-if="card.fitLabel" :color="card.fitColor" size="small" variant="flat" label>
                 {{ card.fitLabel }}
             </v-chip>
             <span v-else class="text-caption text-medium-emphasis">No goal set</span>
@@ -13,18 +13,18 @@
 
         <!-- ── Dimension A: Goal alignment ──────────────────────────── -->
         <div class="dimension-row mb-3">
-            <span class="dimension-label text-caption text-medium-emphasis">
-                <v-icon size="10" class="mr-1">mdi-bullseye-arrow</v-icon>
+            <span class="dimension-label text-body-2 text-medium-emphasis">
+                <v-icon size="14" class="mr-1">mdi-bullseye-arrow</v-icon>
                 Built for
             </span>
 
             <div v-if="card.goal" class="d-flex align-center flex-wrap mt-1" style="gap: 6px">
-                <v-chip size="x-small" variant="tonal" color="default">
+                <v-chip size="small" variant="tonal" color="default">
                     {{ card.goal.horizonYears }}y horizon
                 </v-chip>
                 <v-chip
                     v-if="card.goal.priority"
-                    size="x-small"
+                    size="small"
                     variant="tonal"
                     :color="priorityColor"
                 >
@@ -33,20 +33,20 @@
             </div>
 
             <div v-if="card.fit" class="d-flex align-center mt-2" style="gap: 6px">
-                <span class="text-caption text-medium-emphasis">Actual:</span>
-                <v-chip :color="bandColor(card.fit.actualBand)" size="x-small" variant="tonal">
+                <span class="text-body-2 text-medium-emphasis">Actual:</span>
+                <v-chip :color="bandColor(card.fit.actualBand)" size="small" variant="tonal">
                     {{ capitalize(card.fit.actualBand) }}
                 </v-chip>
-                <v-icon size="x-small" color="medium-emphasis">mdi-arrow-right</v-icon>
-                <span class="text-caption text-medium-emphasis">Target:</span>
-                <v-chip :color="bandColor(card.fit.targetBand)" size="x-small" variant="tonal">
+                <v-icon size="small" color="medium-emphasis">mdi-arrow-right</v-icon>
+                <span class="text-body-2 text-medium-emphasis">Target:</span>
+                <v-chip :color="bandColor(card.fit.targetBand)" size="small" variant="tonal">
                     {{ capitalize(card.fit.targetBand) }}
                 </v-chip>
             </div>
 
             <p
                 v-if="card.fit"
-                class="text-caption text-medium-emphasis mt-2 mb-0"
+                class="text-body-2 text-medium-emphasis mt-2 mb-0"
                 style="line-height: 1.4"
             >
                 {{ card.fit.reason }}
@@ -61,21 +61,32 @@
 
         <!-- ── Dimension B: Holdings health ─────────────────────────── -->
         <div class="dimension-row mb-3">
-            <span class="dimension-label text-caption text-medium-emphasis">
-                <v-icon size="10" class="mr-1">mdi-shield-search</v-icon>
+            <span class="dimension-label text-body-2 text-medium-emphasis">
+                <v-icon size="14" class="mr-1">mdi-shield-search</v-icon>
                 Holdings health
-                <span class="ml-1 text-caption" style="opacity: 0.6"
-                    >SEC · news · market · ownership</span
+                <v-tooltip
+                    location="top"
+                    text="Fused from SEC filings, news events, 30-day market signals, and ownership screening"
                 >
+                    <template #activator="{ props: ttProps }">
+                        <v-icon
+                            v-bind="ttProps"
+                            size="14"
+                            class="ml-1"
+                            style="cursor: default; opacity: 0.5"
+                            >mdi-information-outline</v-icon
+                        >
+                    </template>
+                </v-tooltip>
             </span>
 
             <!-- Not yet scanned -->
             <div
                 v-if="health.scanned === 0"
-                class="text-caption text-medium-emphasis mt-2 d-flex align-center"
+                class="text-body-2 text-medium-emphasis mt-2 d-flex align-center"
                 style="gap: 6px"
             >
-                <v-icon size="14" color="medium-emphasis">mdi-radar</v-icon>
+                <v-icon size="16" color="medium-emphasis">mdi-radar</v-icon>
                 Analyze to assess holdings
             </div>
 
@@ -86,7 +97,7 @@
                     <v-chip
                         v-if="health.worstTier"
                         :color="tierColor(health.worstTier)"
-                        size="x-small"
+                        size="small"
                         variant="flat"
                         label
                     >
@@ -97,15 +108,13 @@
                     <v-chip
                         v-if="health.needsAttention > 0"
                         color="warning"
-                        size="x-small"
+                        size="small"
                         variant="tonal"
                         prepend-icon="mdi-alert-outline"
                     >
                         {{ health.needsAttention }} need attention
                     </v-chip>
-                    <v-chip v-else color="success" size="x-small" variant="tonal">
-                        All clear
-                    </v-chip>
+                    <v-chip v-else color="success" size="small" variant="tonal"> All clear </v-chip>
                 </div>
 
                 <!-- Tier breakdown -->
@@ -129,13 +138,37 @@
 
                 <!-- Lens worst scores -->
                 <div class="d-flex align-center mt-2" style="gap: 8px">
-                    <LensScore label="Fin. strength" :score="health.lensWorst.fhs" />
-                    <LensScore label="Leadership" :score="health.lensWorst.ers" />
-                    <LensScore
+                    <v-tooltip
+                        location="top"
+                        text="Financial Health Score — balance sheet strength and earnings quality"
+                    >
+                        <template #activator="{ props: ttProps }">
+                            <span v-bind="ttProps">
+                                <LensScore label="Fin. strength" :score="health.lensWorst.fhs" />
+                            </span>
+                        </template>
+                    </v-tooltip>
+                    <v-tooltip
+                        location="top"
+                        text="Executive Risk Score — governance, leadership turnover, and stability signals"
+                    >
+                        <template #activator="{ props: ttProps }">
+                            <span v-bind="ttProps">
+                                <LensScore label="Leadership" :score="health.lensWorst.ers" />
+                            </span>
+                        </template>
+                    </v-tooltip>
+                    <v-tooltip
                         v-if="health.lensWorst.acs !== null"
-                        label="Ownership"
-                        :score="health.lensWorst.acs"
-                    />
+                        location="top"
+                        text="Ownership & Compliance Screening — sanctions, beneficial ownership, and ACS flags"
+                    >
+                        <template #activator="{ props: ttProps }">
+                            <span v-bind="ttProps">
+                                <LensScore label="Ownership" :score="health.lensWorst.acs" />
+                            </span>
+                        </template>
+                    </v-tooltip>
                 </div>
             </template>
         </div>
@@ -154,7 +187,7 @@
 
         <!-- ── Footer ────────────────────────────────────────────────── -->
         <div class="d-flex align-center mt-auto pt-2">
-            <span class="text-caption text-medium-emphasis">
+            <span class="text-caption">
                 {{ card.entityCount }} holding{{ card.entityCount !== 1 ? 's' : '' }}
                 <template v-if="health.scanned > 0 && health.scanned < health.total">
                     · {{ health.scanned }} scored

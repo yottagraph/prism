@@ -87,14 +87,14 @@
 
                 <v-spacer />
 
-                <span v-if="active" class="text-caption text-medium-emphasis mr-3">
+                <span v-if="active" class="text-body-2 text-medium-emphasis mr-3">
                     <strong>{{ active.entities.length }}</strong> holding{{
                         active.entities.length !== 1 ? 's' : ''
                     }}
                 </span>
                 <span
                     v-if="scanning"
-                    class="d-inline-flex align-center text-caption text-medium-emphasis"
+                    class="d-inline-flex align-center text-body-2 text-medium-emphasis"
                 >
                     <v-progress-circular
                         size="14"
@@ -109,12 +109,12 @@
                         >· {{ scanElapsedText }}</span
                     >
                 </span>
-                <span v-else-if="allResolved" class="text-caption text-success">
-                    <v-icon size="x-small" class="mr-1">mdi-check-circle</v-icon>
+                <span v-else-if="allResolved" class="text-body-2 text-success">
+                    <v-icon size="small" class="mr-1">mdi-check-circle</v-icon>
                     All holdings analyzed
                 </span>
-                <span v-else class="text-caption text-medium-emphasis">
-                    <v-icon size="x-small" color="warning" class="mr-1"
+                <span v-else class="text-body-2 text-medium-emphasis">
+                    <v-icon size="small" color="warning" class="mr-1"
                         >mdi-information-outline</v-icon
                     >
                     Analyze to assess holdings
@@ -344,9 +344,25 @@
                             </div>
                         </template>
 
-                        <p class="text-caption text-medium-emphasis mt-3 mb-0" style="opacity: 0.7">
-                            Multi-source fusion: SEC · news · market · ownership
-                        </p>
+                        <div class="mt-3">
+                            <v-tooltip
+                                location="top"
+                                text="Fused from SEC filings, news events, 30-day market signals, and ownership screening"
+                            >
+                                <template #activator="{ props: ttProps }">
+                                    <span
+                                        v-bind="ttProps"
+                                        class="text-caption text-medium-emphasis"
+                                        style="cursor: default"
+                                    >
+                                        <v-icon size="12" class="mr-1"
+                                            >mdi-lightning-bolt-circle</v-icon
+                                        >
+                                        Multi-source fusion
+                                    </span>
+                                </template>
+                            </v-tooltip>
+                        </div>
                     </v-card>
                 </v-col>
             </v-row>

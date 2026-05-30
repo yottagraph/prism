@@ -3,14 +3,25 @@
         <!-- ── Header ──────────────────────────────────────────────── -->
         <div class="flex-shrink-0 pa-4 page-header">
             <div class="d-flex align-center" style="gap: 8px">
-                <v-icon size="large" color="primary" class="mr-2">mdi-home-account</v-icon>
-                <div>
-                    <h1 class="text-h6 font-weight-medium">
+                <div class="d-flex align-center flex-shrink-0">
+                    <v-tooltip
+                        location="right"
+                        text="Cross-bucket goal alignment, horizon fit, and concentration — one view"
+                    >
+                        <template #activator="{ props: ttProps }">
+                            <v-icon
+                                v-bind="ttProps"
+                                size="large"
+                                color="primary"
+                                class="mr-2"
+                                style="cursor: default"
+                                >mdi-home-account</v-icon
+                            >
+                        </template>
+                    </v-tooltip>
+                    <h1 class="text-h6 font-weight-medium mb-0">
                         {{ activeUser?.name ?? 'Your' }} Overview
                     </h1>
-                    <p class="text-caption text-medium-emphasis mb-0">
-                        All goal buckets · horizon fit · cross-bucket concentration
-                    </p>
                 </div>
                 <v-spacer />
                 <v-select
@@ -318,10 +329,25 @@
                             </div>
                         </template>
 
-                        <p class="text-caption text-medium-emphasis mt-3 mb-0">
-                            Powered by multi-source fusion: SEC filings · news pressure · market
-                            signals · ownership screening.
-                        </p>
+                        <div class="mt-3">
+                            <v-tooltip
+                                location="top"
+                                text="Powered by Elemental: SEC filings · news pressure · market signals · ownership screening"
+                            >
+                                <template #activator="{ props: ttProps }">
+                                    <span
+                                        v-bind="ttProps"
+                                        class="text-caption text-medium-emphasis"
+                                        style="cursor: default"
+                                    >
+                                        <v-icon size="12" class="mr-1"
+                                            >mdi-lightning-bolt-circle</v-icon
+                                        >
+                                        Powered by Elemental
+                                    </span>
+                                </template>
+                            </v-tooltip>
+                        </div>
                     </v-card>
                 </v-col>
             </v-row>
@@ -355,11 +381,11 @@
                 <div class="flex-grow-1">
                     <span class="text-subtitle-2 font-weight-medium">Next best review: </span>
                     <span class="text-body-2">{{ nextBestReview.name }}</span>
-                    <span class="text-caption text-medium-emphasis ml-2">
+                    <span class="text-body-2 text-medium-emphasis ml-2">
                         · {{ nextBestReview.reason }}
                     </span>
                 </div>
-                <v-btn size="x-small" variant="text" color="primary" append-icon="mdi-arrow-right">
+                <v-btn size="small" variant="text" color="primary" append-icon="mdi-arrow-right">
                     Open bucket
                 </v-btn>
             </v-card>

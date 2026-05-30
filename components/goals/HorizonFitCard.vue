@@ -32,7 +32,7 @@
             >
                 Not analyzed
             </v-chip>
-            <span v-else-if="!goal" class="text-caption text-medium-emphasis"
+            <span v-else-if="!goal" class="text-body-2 text-medium-emphasis"
                 >Set a goal to see fit</span
             >
         </div>
@@ -83,7 +83,7 @@
                 <div class="timeline-end timeline-end--left">
                     <div class="timeline-marker" :class="`timeline-marker--${verdictColorRaw}`" />
                     <div class="timeline-label">
-                        <span class="text-caption text-medium-emphasis">Need money in</span>
+                        <span class="text-body-2 text-medium-emphasis">Need money in</span>
                         <span class="text-h6 font-weight-bold">{{ horizon }}y</span>
                     </div>
                 </div>
@@ -122,7 +122,7 @@
                         :class="`timeline-marker--${actualBandClass}`"
                     />
                     <div class="timeline-label timeline-label--right">
-                        <span class="text-caption text-medium-emphasis">Holdings behave like</span>
+                        <span class="text-body-2 text-medium-emphasis">Holdings behave like</span>
                         <span
                             class="text-subtitle-2 font-weight-bold"
                             :class="`text-${actualBandClass}`"
