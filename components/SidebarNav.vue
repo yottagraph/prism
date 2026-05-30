@@ -4,14 +4,32 @@
             <div class="brand-icon mr-2">P</div>
             <div>
                 <div class="brand-name">Prism</div>
-                <div class="brand-tag text-caption">Goals-based investing</div>
+                <div class="brand-tag text-caption">Elemental · Agent-builder demo</div>
             </div>
         </div>
         <v-divider />
 
-        <!-- Primary investor path -->
+        <!-- Agent-builder surface — the primary demo entry point -->
         <div class="nav-section-label px-4 pt-3 pb-1 text-caption text-medium-emphasis">
-            Investor
+            Agent workspace
+        </div>
+        <v-list nav density="compact" class="pb-0">
+            <v-list-item
+                v-for="item in workspaceItems"
+                :key="item.to"
+                :to="item.to"
+                :prepend-icon="item.icon"
+                :title="item.title"
+                :subtitle="item.subtitle"
+                color="primary"
+            />
+        </v-list>
+
+        <v-divider class="mt-2" />
+
+        <!-- Retail goals-based path (same engine, retail mandate) -->
+        <div class="nav-section-label px-4 pt-3 pb-1 text-caption text-medium-emphasis">
+            Retail demo
         </div>
         <v-list nav density="compact" class="pb-0">
             <v-list-item
@@ -27,9 +45,9 @@
 
         <v-divider class="mt-2" />
 
-        <!-- Under-the-hood / Elemental section -->
+        <!-- Engine internals -->
         <div class="nav-section-label px-4 pt-3 pb-1 text-caption text-medium-emphasis">
-            Built on Elemental
+            Elemental internals
         </div>
         <v-list nav density="compact" class="pb-0">
             <v-list-item
@@ -58,6 +76,15 @@
     import { useBrandLogo } from '~/composables/useBrandLogo';
 
     const { logoSrc } = useBrandLogo();
+
+    const workspaceItems = [
+        {
+            to: '/workspace',
+            icon: 'mdi-layers-triple-outline',
+            title: 'Workspace',
+            subtitle: 'EDD · one book, all renders',
+        },
+    ];
 
     const investorItems = [
         {
@@ -91,7 +118,7 @@
             to: '/scoring',
             icon: 'mdi-tune-vertical',
             title: 'Scoring config',
-            subtitle: 'Weights + thresholds',
+            subtitle: 'Module weights + policy',
         },
     ];
 </script>

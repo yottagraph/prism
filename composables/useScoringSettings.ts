@@ -198,6 +198,92 @@ const PRESETS: ScoringPreset[] = [
     },
 ];
 
+/**
+ * Mandate presets — the interactive composability proof for the Workspace.
+ *
+ * Each mandate maps a Solution Pack to a concrete policy over the SAME analytical
+ * modules (FHS/ERS/ACS/event pressure). Switching the mandate re-runs the same
+ * engine under different weights and thresholds — "same module, different policy",
+ * made tangible. Retail goals are included to show the engine spans audiences.
+ */
+export type MandateId = 'edd' | 'kyc' | 'portfolio-risk' | 'retail';
+
+export interface MandatePreset {
+    id: MandateId;
+    /** Short UI label. */
+    label: string;
+    /** Solution Pack name from the demo doc. */
+    pack: string;
+    /** The single question the agents answer under this mandate. */
+    question: string;
+    /** Modules this mandate leads with, in emphasis order. */
+    primaryModules: string[];
+    settings: ScoringSettings;
+}
+
+function mandateSettings(base: ScoringSettings, weights: SourceFusionWeights): ScoringSettings {
+    return { ...structuredClone(base), weights };
+}
+
+const CONSERVATIVE_BASE = PRESETS.find((p) => p.id === 'conservative')!.settings;
+const MODERATE_BASE = PRESETS.find((p) => p.id === 'moderate')!.settings;
+
+export const MANDATE_PRESETS: MandatePreset[] = [
+    {
+        id: 'edd',
+        label: 'EDD — Diligence',
+        pack: 'Enhanced Due Diligence',
+        question: 'What is the complete risk picture for each counterparty under review?',
+        primaryModules: ['FHS', 'ERS', 'ACS'],
+        settings: mandateSettings(CONSERVATIVE_BASE, {
+            solvency: 0.3,
+            executive: 0.25,
+            news: 0.1,
+            market: 0,
+            eventPressure: 0.15,
+            compliance: 0.2,
+        }),
+    },
+    {
+        id: 'kyc',
+        label: 'KYC — Compliance',
+        pack: 'Know Your Customer',
+        question: 'Has this customer\u2019s ownership or sanctions exposure changed?',
+        primaryModules: ['ACS', 'ERS'],
+        settings: mandateSettings(CONSERVATIVE_BASE, {
+            solvency: 0.05,
+            executive: 0.25,
+            news: 0.15,
+            market: 0,
+            eventPressure: 0.15,
+            compliance: 0.4,
+        }),
+    },
+    {
+        id: 'portfolio-risk',
+        label: 'Portfolio Risk — Credit',
+        pack: 'Portfolio Risk Monitoring',
+        question: 'Where is deterioration occurring across the book, and how does it correlate?',
+        primaryModules: ['FHS', 'SCR', 'ERS'],
+        settings: mandateSettings(MODERATE_BASE, {
+            solvency: 0.45,
+            executive: 0.1,
+            news: 0.15,
+            market: 0.1,
+            eventPressure: 0.2,
+            compliance: 0,
+        }),
+    },
+    {
+        id: 'retail',
+        label: 'Retail — Goals',
+        pack: 'Private Wealth',
+        question: 'Is each holding healthy for the goal it backs? (same engine, retail mandate)',
+        primaryModules: ['FHS', 'ERS'],
+        settings: structuredClone(MODERATE_BASE),
+    },
+];
+
 export type ScoringSection =
     | 'weights'
     | 'tiers'
@@ -227,6 +313,12 @@ export function useScoringSettings() {
         const preset = PRESETS.find((p) => p.id === id);
         if (!preset) return;
         scoring.value = structuredClone(preset.settings);
+    }
+
+    function applyMandate(id: MandateId) {
+        const mandate = MANDATE_PRESETS.find((m) => m.id === id);
+        if (!mandate) return;
+        scoring.value = structuredClone(mandate.settings);
     }
 
     function setWeights(w: SourceFusionWeights) {
@@ -277,7 +369,9 @@ export function useScoringSettings() {
         scoring,
         hasCustom,
         presets,
+        mandatePresets: MANDATE_PRESETS,
         applyPreset,
+        applyMandate,
         setWeights,
         setTiers,
         setCategoryBands,

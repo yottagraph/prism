@@ -1,0 +1,61 @@
+{
+    "generatedAt": "2026-05-30T00:00:00Z",
+    "_notes": {
+        "purpose": "Institutional books for the agent-builder Workspace surface. Real public issuers that resolve in Elemental so an enterprise evaluator sees themselves (and their counterparties) in the graph. Every score traces to Elemental source — nothing is hand-authored.",
+        "ownerUserId": "Institutional books use the __institutional__ sentinel so they never appear in the retail per-user bucket lists; the Workspace surface selects them explicitly."
+    },
+    "books": [
+        {
+            "id": "edd-credit-committee",
+            "name": "Credit Committee — Diligence Pipeline",
+            "kind": "institutional",
+            "ownerUserId": "__institutional__",
+            "description": "Counterparties under enhanced due diligence ahead of refinancing and investment-committee review. Real public issuers, resolved and scored from Elemental.",
+            "createdAt": 1748563200000,
+            "mandate": {
+                "pack": "Enhanced Due Diligence",
+                "question": "What is the complete risk picture for each counterparty under review?",
+                "context": "A monitoring agent watches the book; when an issuer's risk profile shifts, an analytic agent runs the EDD module combination and a composition agent assembles an evidence-backed diligence brief.",
+                "primaryModules": ["FHS", "ERS", "ACS"]
+            },
+            "entities": [
+                { "inputName": "Boeing", "resolvedName": "Boeing", "neid": null },
+                {
+                    "inputName": "Carvana",
+                    "resolvedName": "Carvana",
+                    "neid": null
+                },
+                {
+                    "inputName": "Walgreens Boots Alliance",
+                    "resolvedName": "Walgreens Boots Alliance",
+                    "neid": null
+                },
+                {
+                    "inputName": "Paramount Global",
+                    "resolvedName": "Paramount Global",
+                    "neid": null
+                },
+                {
+                    "inputName": "Lumen Technologies",
+                    "resolvedName": "Lumen Technologies",
+                    "neid": null
+                },
+                {
+                    "inputName": "Carnival Corporation",
+                    "resolvedName": "Carnival Corporation",
+                    "neid": null
+                },
+                {
+                    "inputName": "Rivian Automotive",
+                    "resolvedName": "Rivian Automotive",
+                    "neid": null
+                },
+                {
+                    "inputName": "Hertz Global Holdings",
+                    "resolvedName": "Hertz Global Holdings",
+                    "neid": null
+                }
+            ]
+        }
+    ]
+}

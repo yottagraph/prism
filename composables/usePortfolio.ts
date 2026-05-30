@@ -11,6 +11,7 @@ import { computed, effectScope, ref, watch } from 'vue';
 
 import portfolioFixture from '~/assets/portfolios-fixture.json';
 import householdFixture from '~/assets/household-fixture.json';
+import eddFixture from '~/assets/edd-fixture.json';
 import { searchEntities } from '~/utils/elementalHelpers';
 import {
     type CitationRef,
@@ -178,6 +179,25 @@ export interface GoalMeta {
     priority?: 'essential' | 'important' | 'aspirational';
 }
 
+/** Sentinel owner for institutional books so they never surface in retail per-user lists. */
+export const INSTITUTIONAL_OWNER = '__institutional__';
+
+/**
+ * Mandate metadata for institutional books. Parallels GoalMeta for retail:
+ * it frames the book for the agent-builder audience (which Solution Pack /
+ * policy the agents operate under) instead of a personal savings goal.
+ */
+export interface MandateMeta {
+    /** Solution Pack name, e.g. "Enhanced Due Diligence". */
+    pack: string;
+    /** The single question the agents answer for this book. */
+    question: string;
+    /** How the monitoring → analytic → composition agents operate this book. */
+    context?: string;
+    /** Analytical modules this mandate leads with, e.g. ["FHS", "ERS", "ACS"]. */
+    primaryModules?: string[];
+}
+
 export interface PortfolioDoc {
     id: string;
     name: string;
@@ -189,6 +209,10 @@ export interface PortfolioDoc {
     ownerUserId?: string;
     /** Goal metadata for goals-based framing. */
     goal?: GoalMeta;
+    /** 'retail' (default) for goal buckets, 'institutional' for Workspace books. */
+    kind?: 'retail' | 'institutional';
+    /** Mandate metadata for institutional books (parallels `goal` for retail). */
+    mandate?: MandateMeta;
 }
 
 interface PortfolioPrefsShape {
@@ -231,20 +255,48 @@ const debugPrefs = useAppFeaturePrefs('debug-settings', {
     scanDiagnosticsLogs: false,
 });
 
+/**
+ * Institutional books for the agent-builder Workspace surface. Loaded from
+ * edd-fixture.json and always merged in alongside the retail fixtures so they
+ * are available regardless of which retail fixture is active.
+ */
+function institutionalBooks(now: number): PortfolioDoc[] {
+    const books = (eddFixture as any)?.books;
+    if (!Array.isArray(books)) return [];
+    return books.map((book: any) => ({
+        id: book.id,
+        name: book.name,
+        description: book.description || '',
+        createdAt: book.createdAt ?? now,
+        ownerUserId: book.ownerUserId ?? INSTITUTIONAL_OWNER,
+        kind: 'institutional' as const,
+        ...(book.mandate ? { mandate: book.mandate } : {}),
+        entities: (book.entities || []).map((entity: any) => ({
+            inputName: entity.inputName,
+            resolvedName: entity.resolvedName || entity.inputName,
+            neid: entity.neid || null,
+            addedAt: now,
+            scores: null,
+        })),
+    }));
+}
+
 // Preloaded demo portfolios. Prefer household fixture (goals-based) over the
-// legacy CLO fixture when available.
+// legacy CLO fixture when available. Institutional books are always appended.
 function defaultPortfolios(): PortfolioDoc[] {
     const now = Date.now();
+    const institutional = institutionalBooks(now);
 
     // Household fixture takes precedence (goals-based personas)
     const householdPortfolios = (householdFixture as any)?.portfolios;
     if (Array.isArray(householdPortfolios) && householdPortfolios.length > 0) {
-        return householdPortfolios.map((portfolio: any) => ({
+        const retail = householdPortfolios.map((portfolio: any) => ({
             id: portfolio.id,
             name: portfolio.name,
             description: portfolio.description || '',
             createdAt: portfolio.createdAt ?? now,
             ownerUserId: portfolio.ownerUserId ?? 'maya',
+            kind: 'retail' as const,
             ...(portfolio.goal ? { goal: portfolio.goal } : {}),
             entities: (portfolio.entities || []).map((entity: any) => ({
                 inputName: entity.inputName,
@@ -258,12 +310,13 @@ function defaultPortfolios(): PortfolioDoc[] {
                 scores: null,
             })),
         }));
+        return [...retail, ...institutional];
     }
 
     // Legacy fallback: portfolios-fixture.json
     const fixturePortfolios = (portfolioFixture as any)?.portfolios;
     if (Array.isArray(fixturePortfolios) && fixturePortfolios.length > 0) {
-        return fixturePortfolios.map((portfolio: any) => ({
+        const legacy = fixturePortfolios.map((portfolio: any) => ({
             id: portfolio.id,
             name: portfolio.name,
             description: portfolio.description || '',
@@ -276,6 +329,7 @@ function defaultPortfolios(): PortfolioDoc[] {
                 scores: null,
             })),
         }));
+        return [...legacy, ...institutional];
     }
     return [
         {
@@ -375,6 +429,7 @@ function defaultPortfolios(): PortfolioDoc[] {
                 scores: null,
             })),
         },
+        ...institutional,
     ];
 }
 
@@ -510,6 +565,23 @@ function migratePortfolioOwnership(portfolios: PortfolioDoc[], defaultUserId: st
     return migrated;
 }
 
+/**
+ * Inject institutional fixture books that aren't already present. Prefs are
+ * persisted, so users provisioned before the Workspace pivot won't have these
+ * books on disk — this back-fills them without disturbing retail buckets.
+ */
+function migrateInjectInstitutionalBooks(portfolios: PortfolioDoc[]) {
+    const existing = new Set(portfolios.map((p) => p.id));
+    let migrated = false;
+    for (const book of institutionalBooks(Date.now())) {
+        if (!existing.has(book.id)) {
+            portfolios.push(book);
+            migrated = true;
+        }
+    }
+    return migrated;
+}
+
 function ensurePrefs(activeUserId?: string) {
     if (!prefs.value) {
         const defaults = defaultPortfolios();
@@ -524,6 +596,7 @@ function ensurePrefs(activeUserId?: string) {
         }
         migratePortfolioScoring(prefs.value.portfolios, prefs.value.weights);
         migratePortfolioOwnership(prefs.value.portfolios, activeUserId ?? 'default');
+        migrateInjectInstitutionalBooks(prefs.value.portfolios);
         _installSessionWatcher();
     }
     return prefs.value!;
