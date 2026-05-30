@@ -61,13 +61,13 @@
 
     const investorItems = [
         {
-            to: '/household',
+            to: '/',
             icon: 'mdi-home-account',
             title: 'Overview',
             subtitle: 'All goals at a glance',
         },
         {
-            to: '/',
+            to: '/bucket',
             icon: 'mdi-briefcase-variant-outline',
             title: 'Goal Bucket',
             subtitle: 'Holdings + horizon fit',

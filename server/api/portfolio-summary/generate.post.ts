@@ -83,10 +83,16 @@ interface ReportConfig {
     timePeriod: '7' | '30' | '90';
 }
 
+interface GoalInput {
+    purpose?: string;
+    horizonYears?: number;
+}
+
 interface GenerateRequest {
     portfolioName: string;
     entities: EntityInput[];
     macro?: MacroInput;
+    goal?: GoalInput;
     config?: Partial<ReportConfig>;
 }
 
@@ -250,10 +256,15 @@ ${body.macro.portfolioImplication ? `Portfolio implication: ${body.macro.portfol
     const timePeriod =
         config.timePeriod === '7' ? '7-day' : config.timePeriod === '90' ? '90-day' : '30-day';
 
+    // -- Goal context block
+    const goalBlock = body.goal?.purpose
+        ? `Bucket goal: "${body.goal.purpose}"${body.goal.horizonYears ? ` · ${body.goal.horizonYears}-year horizon` : ''}\n`
+        : '';
+
     const dialogueDurationMs = Date.now() - dialogueStart;
 
     // -- Build prompt
-    const prompt = `You are a senior portfolio risk analyst writing an intelligence briefing for "${portfolioName}".
+    const prompt = `You are a senior portfolio risk analyst writing an intelligence briefing for a financial advisor whose client owns "${portfolioName}".
 
 ## PORTFOLIO OVERVIEW
 - Total entities: ${total}
@@ -269,10 +280,25 @@ ${entityBlocks}
 ---
 
 ## YOUR MISSION
-
+${goalBlock}
 ${STYLE_INSTRUCTIONS[config.style] || STYLE_INSTRUCTIONS.standard}
 ${FOCUS_INSTRUCTIONS[config.focus] || FOCUS_INSTRUCTIONS.balanced}
 ${TONE_INSTRUCTIONS[config.tone] || TONE_INSTRUCTIONS.formal}
+
+LEAD WITH WHAT HAPPENED, not scores:
+- Name specific events with dates: e.g. "disclosed a $2.1B export restriction in its Q3 10-K"
+- Name specific people: executives, board members, regulators mentioned in the findings above
+- Use exact headlines and news signals from the entity data above
+- Use exact numbers from FRED/macro data where relevant
+- For each finding, explain WHY it matters for this specific portfolio${goalBlock ? ' and its stated goal' : ''}
+
+STYLE RULES:
+- NEVER write "fused score X.X" or "risk tier HIGH" — these are internal scores, not investor language
+- Instead say: "the most pressing concern is [specific event or finding]"
+- NEVER open a bullet with a company name followed by a generic score summary
+- Every bullet must anchor to a specific event, filing, headline, or signal — not an aggregated number
+- Tailor every forward-looking statement to the portfolio's time horizon and goal if provided
+- Citations come from the entity data above — use them exactly; never invent
 
 ## CITATION REQUIREMENTS
 
@@ -291,24 +317,29 @@ The citations are provided in the entity data above — USE THEM. Never invent c
 
 ## What You Need to Know
 
-Write 5-8 bullet points covering the most important risk signals. Each bullet MUST:
-1. Name the specific entity or entities involved
-2. Describe the signal and why it matters for the portfolio
-3. End with a source citation
+Write 5-8 bullet points. Each bullet MUST:
+1. Start with the specific event, headline, or finding — not the entity name or a score
+2. Name the specific entity involved after establishing the context
+3. End with a source citation in the format above
+
+Example of WRONG format: "Microsoft Corporation exhibits high compliance risk (fused score 75.0)..."
+Example of RIGHT format: "A $2.1B China export restriction disclosed in Q3 filings now directly threatens NVIDIA's data-center revenue pipeline — a core holding in this ${goalBlock ? (body.goal!.purpose ?? 'portfolio') : 'portfolio'}. *(SEC Filing, Nov 2024)*"
 
 ## Priority Watch List
 
-List 3-5 entities requiring immediate attention or monitoring. Include tier, fused score, and the primary risk driver for each.
+List 3-5 entities requiring immediate attention. For each:
+- Name the most concrete finding with a source citation
+- One sentence on why it matters for ${goalBlock ? `a "${body.goal!.purpose}" portfolio${body.goal?.horizonYears ? ` with a ${body.goal.horizonYears}-year horizon` : ''}` : 'this portfolio'}
 
 ## Portfolio-Level Themes
 
-Identify risk patterns that appear across multiple entities (e.g., sector-wide pressure, clustered executive turnover, common counterparty exposure). Minimum 2 entities per theme.
+Identify risk patterns that appear across multiple entities (sector-wide pressure, clustered leadership changes, common regulatory exposure). Minimum 2 entities per theme. Name specific people or events that link them.
 
-If the macro regime is available, describe its implication for the portfolio's risk profile.
+If macro data is available, describe its concrete implication — use the actual numbers (rates, odds, CPI readings).
 
 ## Coverage Gaps
 
-Note which entities have limited data coverage and what risks may be underweighted as a result.
+Note which entities have thin data coverage and what risks may be underweighted. Keep brief.
 
 ---
 

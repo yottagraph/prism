@@ -1,353 +1,338 @@
 <template>
     <div class="d-flex flex-column fill-height">
+        <!-- ── Header ──────────────────────────────────────────────── -->
         <div class="flex-shrink-0 pa-4 page-header">
-            <div class="d-flex align-center flex-wrap" style="gap: 4px 0">
-                <!-- User switcher -->
+            <div class="d-flex align-center" style="gap: 8px">
+                <div class="d-flex align-center flex-shrink-0">
+                    <v-tooltip
+                        location="right"
+                        text="Cross-bucket goal alignment, horizon fit, and concentration — one view"
+                    >
+                        <template #activator="{ props: ttProps }">
+                            <v-icon
+                                v-bind="ttProps"
+                                size="large"
+                                color="primary"
+                                class="mr-2"
+                                style="cursor: default"
+                                >mdi-home-account</v-icon
+                            >
+                        </template>
+                    </v-tooltip>
+                    <h1 class="text-h6 font-weight-medium mb-0">
+                        {{ activeUser?.name ?? 'Your' }} Overview
+                    </h1>
+                </div>
+                <v-spacer />
                 <v-select
                     v-model="activeUserIdModel"
                     :items="userOptions"
-                    variant="plain"
+                    variant="outlined"
                     density="compact"
                     hide-details
+                    style="max-width: 200px"
                     prepend-inner-icon="mdi-account-circle-outline"
-                    style="max-width: 180px"
-                    class="mr-1"
                 />
                 <v-btn
-                    icon="mdi-pencil-outline"
-                    variant="text"
                     size="small"
+                    variant="text"
+                    icon="mdi-pencil-outline"
                     aria-label="Edit profile"
                     @click="onboardingOpen = true"
                 />
+            </div>
 
-                <v-divider vertical class="mx-2" style="height: 28px; align-self: center" />
-
-                <v-icon size="large" color="primary" class="mr-2">
-                    mdi-briefcase-variant-outline
-                </v-icon>
-
-                <v-select
-                    v-model="activeId"
-                    :items="portfolioOptions"
-                    variant="plain"
-                    density="comfortable"
-                    hide-details
-                    class="portfolio-title-select mr-1"
-                    style="max-width: 260px"
-                />
-
-                <!-- Goal metadata chip + edit button -->
-                <template v-if="active">
-                    <v-chip
-                        v-if="active.goal"
-                        size="small"
-                        variant="tonal"
-                        color="primary"
-                        class="mr-1"
-                        prepend-icon="mdi-target"
-                        @click="goalEditorOpen = true"
-                    >
-                        {{ active.goal.purpose }} · {{ active.goal.horizonYears }}y
-                    </v-chip>
-                    <v-btn
-                        v-else
-                        icon="mdi-target"
-                        variant="text"
-                        size="small"
-                        aria-label="Set goal for this bucket"
-                        @click="goalEditorOpen = true"
-                    />
-                </template>
-
-                <v-btn
-                    color="primary"
-                    :loading="scanning"
-                    :disabled="!active"
-                    prepend-icon="mdi-play-circle-outline"
-                    @click="onScan"
+            <!-- Profile chips -->
+            <div v-if="activeUser" class="d-flex align-center mt-3" style="gap: 12px">
+                <v-chip size="small" variant="tonal" color="default">
+                    Age {{ activeUser.age }}
+                </v-chip>
+                <v-chip size="small" variant="tonal" color="default">
+                    Retire at {{ activeUser.retirementAge }} ({{
+                        Math.max(0, activeUser.retirementAge - activeUser.age)
+                    }}y away)
+                </v-chip>
+                <v-chip
+                    size="small"
+                    variant="tonal"
+                    :color="toleranceColor(activeUser.riskTolerance)"
                 >
-                    {{ allResolved ? 'Re-analyze' : 'Analyze' }}
-                </v-btn>
-                <v-btn
-                    icon="mdi-plus"
-                    variant="text"
-                    class="ml-1"
-                    aria-label="Create new goal bucket"
-                    @click="newPortfolioOpen = true"
-                />
-                <v-btn
-                    icon="mdi-account-multiple-plus-outline"
-                    variant="text"
-                    class="ml-1"
-                    aria-label="Add holdings to bucket"
-                    :disabled="!active"
-                    @click="addEntitiesOpen = true"
-                />
-
-                <v-spacer />
-
-                <span v-if="active" class="text-body-2 text-medium-emphasis mr-3">
-                    <strong>{{ active.entities.length }}</strong> holding{{
-                        active.entities.length !== 1 ? 's' : ''
-                    }}
-                </span>
-                <span
-                    v-if="scanning"
-                    class="d-inline-flex align-center text-body-2 text-medium-emphasis"
-                >
-                    <v-progress-circular
-                        size="14"
-                        width="2"
-                        indeterminate
-                        color="primary"
-                        class="mr-2"
-                    />
-                    {{ scanStatusMessage }}
-                    <span class="ml-1">({{ scanProgress.done }}/{{ scanProgress.total }})</span>
-                    <span v-if="scanElapsedText" class="ml-2 font-mono"
-                        >· {{ scanElapsedText }}</span
-                    >
-                </span>
-                <span v-else-if="allResolved" class="text-body-2 text-success">
-                    <v-icon size="small" class="mr-1">mdi-check-circle</v-icon>
-                    All holdings analyzed
-                </span>
-                <span v-else class="text-body-2 text-medium-emphasis">
-                    <v-icon size="small" color="warning" class="mr-1"
-                        >mdi-information-outline</v-icon
-                    >
-                    Analyze to assess holdings
-                </span>
+                    Risk tolerance {{ activeUser.riskTolerance }}/5
+                </v-chip>
             </div>
         </div>
 
-        <div class="flex-grow-1 overflow-y-auto pa-4 pt-0">
+        <div class="flex-grow-1 overflow-y-auto pa-4 pt-2">
+            <v-alert v-if="buckets.length === 0" type="info" variant="tonal" class="mb-4">
+                No goal buckets yet. Head to
+                <nuxt-link to="/bucket">Goal Bucket</nuxt-link> to create one.
+            </v-alert>
+
+            <!-- ── Post-analysis payoff band ──────────────────────────── -->
+            <v-card
+                v-if="analysisSummary.isComplete && !scanningAll"
+                variant="tonal"
+                color="primary"
+                class="mb-4 pa-3"
+            >
+                <div class="d-flex align-center flex-wrap" style="gap: 12px">
+                    <v-icon size="small" class="mr-1">mdi-check-circle-outline</v-icon>
+                    <span class="text-subtitle-2 font-weight-medium mr-2">Analysis complete</span>
+                    <v-chip size="small" variant="text" class="px-1">
+                        {{ analysisSummary.analyzedBuckets }}
+                        {{ analysisSummary.analyzedBuckets === 1 ? 'goal' : 'goals' }} analyzed
+                    </v-chip>
+                    <span class="text-caption text-medium-emphasis">·</span>
+                    <v-chip size="small" variant="text" class="px-1">
+                        {{ analysisSummary.scoredHoldings }} holdings scored
+                    </v-chip>
+                    <span class="text-caption text-medium-emphasis">·</span>
+                    <v-chip size="small" variant="text" class="px-1">
+                        {{ analysisSummary.relationshipReadyCount }} entities in graph
+                    </v-chip>
+                    <template v-if="analysisSummary.needsAttention > 0">
+                        <span class="text-caption text-medium-emphasis">·</span>
+                        <v-chip size="small" variant="tonal" color="warning" class="px-2">
+                            {{ analysisSummary.needsAttention }} need attention
+                        </v-chip>
+                    </template>
+                </div>
+            </v-card>
+
+            <!-- ── Scan error / Retry banner ───────────────────────────── -->
             <v-alert
-                v-if="lastScanError"
+                v-if="!scanningAll && lastScanError"
                 type="warning"
                 variant="tonal"
-                closable
-                class="mb-3"
-                @click:close="lastScanError = ''"
+                class="mb-4"
+                icon="mdi-alert-circle-outline"
             >
-                Scan completed with errors: {{ lastScanError }}
+                <div class="d-flex align-center justify-space-between flex-wrap" style="gap: 8px">
+                    <span
+                        >Analysis ran into a problem — some holdings may not be fully scored.</span
+                    >
+                    <v-btn
+                        size="small"
+                        variant="tonal"
+                        color="warning"
+                        prepend-icon="mdi-refresh"
+                        @click="scanActiveUserPortfolios({ force: true })"
+                    >
+                        Retry
+                    </v-btn>
+                </div>
             </v-alert>
 
-            <v-expansion-panels v-if="recentScanStatus.length" variant="accordion" class="mb-3">
-                <v-expansion-panel>
-                    <v-expansion-panel-title>
-                        <div class="d-flex align-center" style="width: 100%">
-                            <v-icon size="small" class="mr-2">mdi-text-box-search-outline</v-icon>
-                            <span class="text-subtitle-2">Scan details</span>
-                            <v-spacer />
-                            <span class="text-caption text-medium-emphasis">
-                                {{ recentScanStatus.length }} events
+            <!-- ── Two-question hero band ──────────────────────────── -->
+            <v-row v-if="buckets.length > 0" dense class="mb-4">
+                <!-- Question A: Are the goals built right? -->
+                <v-col cols="12" md="6">
+                    <v-card
+                        variant="tonal"
+                        :color="summaryFitColor"
+                        class="hero-panel pa-4 fill-height"
+                    >
+                        <div class="d-flex align-center mb-3">
+                            <v-icon size="small" class="mr-2">mdi-bullseye-arrow</v-icon>
+                            <span class="text-subtitle-2 font-weight-medium">
+                                Are portfolios built for their goals?
                             </span>
                         </div>
-                    </v-expansion-panel-title>
-                    <v-expansion-panel-text>
-                        <div class="scan-status-list">
-                            <div
-                                v-for="(item, idx) in recentScanStatus"
-                                :key="`${item.at}-${idx}`"
-                                class="scan-status-row"
-                            >
-                                <span class="font-mono text-caption text-medium-emphasis">
-                                    {{ new Date(item.at).toLocaleTimeString() }}
-                                </span>
-                                <v-chip
-                                    size="x-small"
-                                    variant="tonal"
-                                    :color="
-                                        item.phase === 'error'
-                                            ? 'error'
-                                            : item.phase === 'warning'
-                                              ? 'warning'
-                                              : 'info'
-                                    "
-                                    label
-                                >
-                                    {{ item.phase }}
-                                </v-chip>
-                                <span class="text-body-2">{{ item.message }}</span>
+
+                        <!-- Headline verdict -->
+                        <!-- Mid-scan: show progress, not a premature verdict -->
+                        <div v-if="scanningAll" class="headline-verdict mb-3">
+                            <span class="text-h5 font-weight-bold text-medium-emphasis">
+                                Analyzing goals…
+                            </span>
+                            <div class="text-body-2 text-medium-emphasis mt-1">
+                                Elemental is fusing signals — check back in a moment.
                             </div>
                         </div>
-                    </v-expansion-panel-text>
-                </v-expansion-panel>
-            </v-expansion-panels>
-
-            <!-- Bucket recommendation verdict (post-analysis) -->
-            <v-alert
-                v-if="bucketVerdict"
-                :color="bucketVerdict.color"
-                variant="tonal"
-                density="compact"
-                class="mb-3"
-                :icon="
-                    bucketVerdict.color === 'success'
-                        ? 'mdi-check-circle-outline'
-                        : 'mdi-alert-circle-outline'
-                "
-            >
-                <span class="text-body-2">{{ bucketVerdict.message }}</span>
-            </v-alert>
-
-            <!-- Two-dimension strip: A) Horizon fit · B) Holdings health -->
-            <v-row v-if="active" dense class="mb-3 align-stretch">
-                <!-- Dimension A: Goal alignment -->
-                <v-col cols="12" md="6">
-                    <GoalsHorizonFitCard
-                        :goal="active.goal"
-                        :user="activeUser"
-                        :analyzed="bucketHealth.scanned > 0"
-                        :holding-vols="
-                            sortedEntities.map((e) => e.monitor?.stockVolatility30d ?? null)
-                        "
-                        :holding-sectors="
-                            sortedEntities.map((e) => (e.monitor?.sector as any) ?? null)
-                        "
-                        class="fill-height"
-                        @edit-goal="goalEditorOpen = true"
-                    />
-                </v-col>
-
-                <!-- Dimension B: Holdings health -->
-                <v-col cols="12" md="6">
-                    <v-card variant="outlined" class="pa-4 fill-height">
-                        <div class="d-flex align-center mb-3">
-                            <v-icon color="primary" class="mr-2" size="small">
-                                mdi-shield-search
-                            </v-icon>
-                            <span class="text-subtitle-2 font-weight-medium">Holdings health</span>
-                            <v-spacer />
-                            <v-chip
-                                v-if="bucketHealth.worstTier"
-                                :color="tierColor(bucketHealth.worstTier)"
-                                size="small"
-                                label
-                                variant="flat"
+                        <div v-else-if="!anyAnalyzed" class="headline-verdict mb-3">
+                            <span class="text-h5 font-weight-bold text-medium-emphasis">
+                                Analysis needed
+                            </span>
+                            <div class="text-body-2 text-medium-emphasis mt-1">
+                                Analyze your goals to see if they're built for your timeline.
+                            </div>
+                        </div>
+                        <div
+                            v-else-if="anyPartiallyAnalyzed && !allAnalyzedAndComplete"
+                            class="headline-verdict mb-3"
+                        >
+                            <span class="text-h5 font-weight-bold text-warning">
+                                Partial analysis
+                            </span>
+                            <div class="text-body-2 text-medium-emphasis mt-1">
+                                Some holdings are still loading — verdicts may be incomplete.
+                            </div>
+                        </div>
+                        <div v-else-if="aggressiveBuckets > 0" class="headline-verdict mb-3">
+                            <span class="text-h5 font-weight-bold text-error">
+                                {{ aggressiveBuckets }}
+                                {{ aggressiveBuckets === 1 ? 'bucket' : 'buckets' }}
+                            </span>
+                            <span class="text-body-1 ml-1">
+                                {{ aggressiveBuckets === 1 ? 'is' : 'are' }} too aggressive for its
+                                timeline
+                            </span>
+                        </div>
+                        <div v-else-if="conservativeBuckets > 0" class="headline-verdict mb-3">
+                            <span class="text-h5 font-weight-bold text-warning">
+                                {{ conservativeBuckets }}
+                                {{ conservativeBuckets === 1 ? 'bucket' : 'buckets' }}
+                            </span>
+                            <span class="text-body-1 ml-1">may be leaving growth on the table</span>
+                        </div>
+                        <!-- "All goals aligned" only shown when scan is complete AND no
+                             holdings are flagging risk — prevents contradictory green + red states. -->
+                        <div
+                            v-else-if="
+                                allAnalyzedAndComplete && analysisSummary.needsAttention === 0
+                            "
+                            class="headline-verdict mb-3"
+                        >
+                            <span class="text-h5 font-weight-bold text-success">All goals</span>
+                            <span class="text-body-1 ml-1">aligned with their timelines</span>
+                        </div>
+                        <div v-else-if="anyAnalyzed" class="headline-verdict mb-3">
+                            <span class="text-h5 font-weight-bold text-success">Goals</span>
+                            <span class="text-body-1 ml-1">structurally aligned</span>
+                            <div
+                                v-if="analysisSummary.needsAttention > 0"
+                                class="text-body-2 text-warning mt-1"
                             >
-                                {{ tierLabel(bucketHealth.worstTier) }} risk
-                            </v-chip>
+                                but {{ analysisSummary.needsAttention }}
+                                {{
+                                    analysisSummary.needsAttention === 1
+                                        ? 'holding needs'
+                                        : 'holdings need'
+                                }}
+                                review
+                            </div>
+                        </div>
+                        <div v-else class="headline-verdict mb-3">
+                            <span class="text-h5 font-weight-bold text-medium-emphasis"
+                                >Analysis needed</span
+                            >
                         </div>
 
-                        <!-- Unscanned -->
+                        <div class="d-flex align-center" style="gap: 16px">
+                            <template v-if="anyAnalyzed">
+                                <div class="text-center">
+                                    <div class="text-h6 font-weight-bold">
+                                        {{ appropriateBuckets }}
+                                    </div>
+                                    <div class="text-caption text-medium-emphasis">On track</div>
+                                </div>
+                                <div v-if="aggressiveBuckets > 0" class="text-center">
+                                    <div class="text-h6 font-weight-bold text-error">
+                                        {{ aggressiveBuckets }}
+                                    </div>
+                                    <div class="text-caption text-medium-emphasis">
+                                        Too aggressive
+                                    </div>
+                                </div>
+                                <div v-if="conservativeBuckets > 0" class="text-center">
+                                    <div class="text-h6 font-weight-bold text-warning">
+                                        {{ conservativeBuckets }}
+                                    </div>
+                                    <div class="text-caption text-medium-emphasis">
+                                        Too conservative
+                                    </div>
+                                </div>
+                            </template>
+                            <v-spacer />
+                            <div class="text-right">
+                                <div class="text-caption text-medium-emphasis">
+                                    {{ buckets.length }} bucket{{ buckets.length !== 1 ? 's' : '' }}
+                                </div>
+                                <div class="text-caption text-medium-emphasis">
+                                    {{ totalHoldings }} holdings
+                                </div>
+                            </div>
+                        </div>
+                    </v-card>
+                </v-col>
+
+                <!-- Question B: Are the holdings healthy? -->
+                <v-col cols="12" md="6">
+                    <v-card
+                        variant="tonal"
+                        :color="healthPanelColor"
+                        class="hero-panel pa-4 fill-height"
+                    >
+                        <div class="d-flex align-center mb-2">
+                            <v-icon size="small" class="mr-2">mdi-shield-search</v-icon>
+                            <span class="text-subtitle-2 font-weight-medium">
+                                What needs attention?
+                            </span>
+                        </div>
+
+                        <!-- Not scanned yet -->
                         <div
-                            v-if="bucketHealth.scanned === 0"
-                            class="text-body-2 text-medium-emphasis"
+                            v-if="hhHealth.scanned === 0"
+                            class="d-flex align-center"
+                            style="gap: 8px"
                         >
-                            Use the Analyze button to assess holdings across SEC filings, news, and
-                            market signals.
+                            <v-icon size="20" color="medium-emphasis">mdi-radar</v-icon>
+                            <span class="text-body-2 text-medium-emphasis">
+                                Use the Analyze button to assess holdings.
+                            </span>
                         </div>
 
                         <!-- Scanned -->
                         <template v-else>
-                            <!-- Headline verdict -->
-                            <div class="mb-3">
-                                <template v-if="bucketHealth.needsAttention > 0">
-                                    <span
-                                        class="text-h6 font-weight-bold"
-                                        :class="`text-${tierColor(bucketHealth.worstTier ?? 'medium')}`"
-                                    >
-                                        {{ bucketHealth.needsAttention }}
-                                        {{
-                                            bucketHealth.needsAttention === 1
-                                                ? 'holding'
-                                                : 'holdings'
-                                        }}
-                                    </span>
-                                    <span class="text-body-2 ml-1 text-medium-emphasis"
-                                        >need attention</span
-                                    >
-                                </template>
-                                <template v-else>
-                                    <v-icon color="success" size="20" class="mr-1"
-                                        >mdi-check-circle</v-icon
-                                    >
-                                    <span class="text-body-1 font-weight-medium text-success"
-                                        >All holdings look healthy</span
-                                    >
-                                </template>
-                            </div>
-
-                            <div class="d-flex align-center mb-3" style="gap: 12px">
+                            <div class="d-flex align-center" style="gap: 16px">
                                 <div class="text-center">
-                                    <div class="text-h6 font-weight-bold">
-                                        {{ bucketHealth.scanned }}
+                                    <div class="text-h4 font-weight-bold">
+                                        {{ hhHealth.scanned }}
                                     </div>
-                                    <div class="text-caption text-medium-emphasis">Scored</div>
+                                    <div class="text-caption">Scored</div>
                                 </div>
-                                <div v-if="bucketHealth.needsAttention > 0" class="text-center">
-                                    <div class="text-h6 font-weight-bold text-warning">
-                                        {{ bucketHealth.needsAttention }}
+                                <div v-if="hhHealth.needsAttention > 0" class="text-center">
+                                    <div class="text-h4 font-weight-bold text-warning">
+                                        {{ hhHealth.needsAttention }}
                                     </div>
-                                    <div class="text-caption text-medium-emphasis">Flagged</div>
+                                    <div class="text-caption">Need attention</div>
+                                </div>
+                                <div v-else class="text-center">
+                                    <v-icon size="32" color="success"
+                                        >mdi-check-circle-outline</v-icon
+                                    >
+                                    <div class="text-caption">All clear</div>
                                 </div>
                                 <v-spacer />
-                                <div v-if="bucketHealth.avgFused !== null" class="text-right">
-                                    <div class="text-subtitle-2 font-weight-bold">
-                                        {{ bucketHealth.avgFused }}
-                                    </div>
-                                    <div class="text-caption text-medium-emphasis">
-                                        Avg overall risk
+                                <div class="text-right">
+                                    <v-chip
+                                        v-if="hhHealth.worstTier"
+                                        :color="tierColor(hhHealth.worstTier)"
+                                        size="small"
+                                        label
+                                        variant="flat"
+                                    >
+                                        {{ tierLabel(hhHealth.worstTier) }} risk
+                                    </v-chip>
+                                    <div class="text-caption text-medium-emphasis mt-1">
+                                        Worst across portfolio
                                     </div>
                                 </div>
                             </div>
-
-                            <!-- Lens worst -->
-                            <div
-                                v-if="anyLensData"
-                                class="d-flex align-center"
-                                style="gap: 12px; flex-wrap: wrap"
-                            >
-                                <div
-                                    v-if="bucketHealth.lensWorst.fhs !== null"
-                                    class="lens-score-item"
-                                >
-                                    <span class="text-caption text-medium-emphasis"
-                                        >Fin. strength</span
-                                    >
-                                    <span
-                                        class="text-caption font-weight-bold"
-                                        :class="`text-${tierColor(scoreToLabel(bucketHealth.lensWorst.fhs))}`"
-                                    >
-                                        {{ bucketHealth.lensWorst.fhs }}
+                            <!-- Tier bar -->
+                            <div class="d-flex align-center mt-3" style="gap: 6px; flex-wrap: wrap">
+                                <template v-for="tier in ALL_TIERS" :key="tier">
+                                    <span v-if="hhHealth.tierCounts[tier] > 0" class="text-caption">
+                                        {{ hhHealth.tierCounts[tier] }} {{ tier }}
                                     </span>
-                                </div>
-                                <div
-                                    v-if="bucketHealth.lensWorst.ers !== null"
-                                    class="lens-score-item"
-                                >
-                                    <span class="text-caption text-medium-emphasis"
-                                        >Leadership</span
-                                    >
-                                    <span
-                                        class="text-caption font-weight-bold"
-                                        :class="`text-${tierColor(scoreToLabel(bucketHealth.lensWorst.ers))}`"
-                                    >
-                                        {{ bucketHealth.lensWorst.ers }}
-                                    </span>
-                                </div>
-                                <div
-                                    v-if="bucketHealth.lensWorst.acs !== null"
-                                    class="lens-score-item"
-                                >
-                                    <span class="text-caption text-medium-emphasis">Ownership</span>
-                                    <span
-                                        class="text-caption font-weight-bold"
-                                        :class="`text-${tierColor(scoreToLabel(bucketHealth.lensWorst.acs))}`"
-                                    >
-                                        {{ bucketHealth.lensWorst.acs }}
-                                    </span>
-                                </div>
+                                </template>
                             </div>
                         </template>
 
                         <div class="mt-3">
                             <v-tooltip
                                 location="top"
-                                text="Fused from SEC filings, news events, 30-day market signals, and ownership screening"
+                                text="Powered by Elemental: SEC filings · news pressure · market signals · ownership screening"
                             >
                                 <template #activator="{ props: ttProps }">
                                     <span
@@ -358,7 +343,7 @@
                                         <v-icon size="12" class="mr-1"
                                             >mdi-lightning-bolt-circle</v-icon
                                         >
-                                        Multi-source fusion
+                                        Powered by Elemental
                                     </span>
                                 </template>
                             </v-tooltip>
@@ -367,559 +352,245 @@
                 </v-col>
             </v-row>
 
-            <v-row dense class="mb-3 align-stretch">
-                <v-col cols="12" class="d-flex flex-column summary-col summary-col--20">
-                    <SourceFusionBar
-                        :total="active?.entities.length ?? 0"
-                        :coverage="coverage"
-                        :coverage-detail="coverageDetail"
-                        :fred-macro="fredMacroCoverage"
-                        :scanning="scanning"
-                        class="flex-grow-1"
-                    />
+            <!-- ── Intelligence band: macro + AI summary ─────────────── -->
+            <v-row v-if="anyAnalyzed" dense class="mb-4">
+                <v-col cols="12" md="5">
+                    <MacroPanel />
                 </v-col>
-                <v-col cols="12" class="d-flex flex-column summary-col summary-col--20">
-                    <RiskDistribution
-                        :counts="tierCounts"
-                        :details="tierDrivers"
-                        :scanning="scanning"
-                        class="flex-grow-1"
-                    />
-                </v-col>
-                <v-col cols="12" class="d-flex flex-column summary-col summary-col--60">
-                    <MacroPanel class="flex-grow-1" />
+                <v-col cols="12" md="7">
+                    <v-card class="pa-4 fill-height d-flex flex-column">
+                        <div class="d-flex align-center mb-3" style="gap: 10px">
+                            <v-icon size="small">mdi-text-box-outline</v-icon>
+                            <span class="text-subtitle-2">Portfolio Intelligence</span>
+                            <v-chip
+                                v-if="overviewSummaryLoading"
+                                size="small"
+                                variant="text"
+                                color="default"
+                            >
+                                <v-progress-circular
+                                    size="10"
+                                    width="2"
+                                    indeterminate
+                                    class="mr-1"
+                                />
+                                Generating…
+                            </v-chip>
+                            <v-spacer />
+                            <v-btn
+                                v-if="overviewSummaryText && !overviewSummaryLoading"
+                                size="x-small"
+                                variant="text"
+                                color="primary"
+                                append-icon="mdi-arrow-right"
+                                @click="router.push('/bucket')"
+                            >
+                                Full briefing
+                            </v-btn>
+                        </div>
+
+                        <!-- Loading state -->
+                        <div
+                            v-if="overviewSummaryLoading"
+                            class="flex-grow-1 d-flex flex-column align-center justify-center text-center pa-4"
+                        >
+                            <v-progress-circular
+                                size="28"
+                                width="2"
+                                indeterminate
+                                class="mb-3 text-medium-emphasis"
+                            />
+                            <div class="text-body-2 text-medium-emphasis">
+                                Synthesizing portfolio intelligence…
+                            </div>
+                        </div>
+
+                        <!-- Error state -->
+                        <div
+                            v-else-if="overviewSummaryError"
+                            class="flex-grow-1 d-flex align-center justify-center text-center pa-4"
+                        >
+                            <div>
+                                <div class="text-body-2 text-medium-emphasis mb-2">
+                                    Intelligence summary unavailable
+                                </div>
+                                <v-btn
+                                    size="small"
+                                    variant="text"
+                                    color="primary"
+                                    @click="generateOverviewSummary"
+                                >
+                                    Retry
+                                </v-btn>
+                            </div>
+                        </div>
+
+                        <!-- Empty: analysis not yet run -->
+                        <div
+                            v-else-if="!overviewSummaryText"
+                            class="flex-grow-1 d-flex flex-column align-center justify-center text-center pa-6"
+                        >
+                            <v-icon size="32" class="mb-2 text-medium-emphasis"
+                                >mdi-text-box-outline</v-icon
+                            >
+                            <div class="text-body-2 text-medium-emphasis">
+                                Analyze your goals to generate a portfolio intelligence briefing.
+                            </div>
+                        </div>
+
+                        <!-- Content: parsed "What You Need to Know" bullets -->
+                        <div v-else class="flex-grow-1">
+                            <div
+                                v-for="(line, idx) in overviewSummaryBullets"
+                                :key="idx"
+                                class="d-flex mb-2"
+                                style="gap: 8px; align-items: flex-start"
+                            >
+                                <v-icon
+                                    size="14"
+                                    color="primary"
+                                    class="flex-shrink-0"
+                                    style="margin-top: 4px"
+                                    >mdi-circle-small</v-icon
+                                >
+                                <span class="text-body-2">{{ line }}</span>
+                            </div>
+                        </div>
+                    </v-card>
                 </v-col>
             </v-row>
 
-            <div class="d-flex align-center mb-1">
-                <v-tabs
-                    ref="tabsEl"
-                    v-model="monitorTab"
-                    style="flex: 1"
-                    @update:model-value="scrollToTabs"
+            <!-- ── Bucket cards ────────────────────────────────────── -->
+            <v-row dense class="mb-4">
+                <v-col
+                    v-for="card in bucketCardsWithOverlap"
+                    :key="card.id"
+                    cols="12"
+                    md="6"
+                    xl="4"
                 >
-                    <v-tab value="monitor">Holdings</v-tab>
-                    <v-tab value="summary">AI Summary</v-tab>
-                    <template v-if="showAdvanced">
-                        <v-tab value="fhs">Financial (FHS)</v-tab>
-                        <v-tab value="ers">Leadership (ERS)</v-tab>
-                        <v-tab value="acs">Ownership (ACS)</v-tab>
-                    </template>
-                </v-tabs>
-                <v-btn
-                    size="small"
-                    variant="text"
-                    :color="showAdvanced ? 'primary' : 'default'"
-                    :prepend-icon="showAdvanced ? 'mdi-chevron-up' : 'mdi-tune-variant'"
-                    class="ml-2 text-caption"
-                    @click="showAdvanced = !showAdvanced"
-                >
-                    Advanced
+                    <GoalsBucketCard
+                        :card="card"
+                        :health="bucketHealthMap[card.id] ?? emptyHealth"
+                        @open="onOpenBucket"
+                    />
+                </v-col>
+            </v-row>
+
+            <!-- ── Next best review ──────────────────────────────────── -->
+            <v-card
+                v-if="nextBestReview"
+                variant="outlined"
+                class="mb-4 pa-3 d-flex align-center"
+                style="gap: 12px; cursor: pointer"
+                @click="onOpenBucket(nextBestReview.id)"
+            >
+                <v-icon color="warning" size="small">mdi-alert-circle-outline</v-icon>
+                <div class="flex-grow-1">
+                    <span class="text-subtitle-2 font-weight-medium">Next best review: </span>
+                    <span class="text-body-2">{{ nextBestReview.name }}</span>
+                    <span class="text-body-2 text-medium-emphasis ml-2">
+                        · {{ nextBestReview.reason }}
+                    </span>
+                </div>
+                <v-btn size="small" variant="text" color="primary" append-icon="mdi-arrow-right">
+                    Open bucket
                 </v-btn>
+            </v-card>
+
+            <!-- ── Cross-bucket concentration ─────────────────────── -->
+            <template v-if="duplicateHoldings.length > 0">
+                <h2 class="text-subtitle-1 font-weight-medium mb-2">
+                    <v-icon size="small" class="mr-1">mdi-content-copy</v-icon>
+                    Cross-bucket concentration
+                </h2>
+                <p class="text-body-2 text-medium-emphasis mb-3">
+                    These holdings appear in multiple buckets — consider whether the overlap is
+                    intentional.
+                </p>
+                <v-table density="compact" class="mb-4">
+                    <thead>
+                        <tr>
+                            <th>Holding</th>
+                            <th>Buckets</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="dup in duplicateHoldings" :key="dup.name">
+                            <td class="text-body-2">{{ dup.name }}</td>
+                            <td>
+                                <v-chip
+                                    v-for="b in dup.buckets"
+                                    :key="b"
+                                    size="x-small"
+                                    variant="tonal"
+                                    class="mr-1"
+                                >
+                                    {{ b }}
+                                </v-chip>
+                            </td>
+                        </tr>
+                    </tbody>
+                </v-table>
+            </template>
+
+            <!-- ── Risk spectrum (secondary / contextual) ─────────── -->
+            <div v-if="buckets.length > 1" class="mt-2">
+                <h2 class="text-subtitle-1 font-weight-medium mb-2">
+                    <v-icon size="small" class="mr-1">mdi-chart-scatter-plot</v-icon>
+                    Risk spectrum across goals
+                </h2>
+                <GoalsConstructionSpectrum
+                    :buckets="spectrumBuckets"
+                    class="mb-4"
+                    @open="onOpenBucket"
+                />
             </div>
-            <v-window v-model="monitorTab">
-                <v-window-item value="monitor" style="min-height: 400px">
-                    <MonitorTable
-                        v-if="active"
-                        :entities="sortedEntities"
-                        :loading="scanning"
-                        @open="goToEntity"
-                        @assess="onAssess"
-                        @remove="onRemoveEntity"
-                    />
-                </v-window-item>
-                <v-window-item value="fhs" style="min-height: 400px">
-                    <MonitorFhsTable
-                        v-if="active"
-                        :entities="sortedEntities"
-                        :loading="scanning"
-                        @open="(e) => goToEntity(e, 'fhs')"
-                    />
-                </v-window-item>
-                <v-window-item value="ers" style="min-height: 400px">
-                    <MonitorErsTable
-                        v-if="active"
-                        :entities="sortedEntities"
-                        :loading="scanning"
-                        @open="(e) => goToEntity(e, 'ers')"
-                    />
-                </v-window-item>
-                <v-window-item value="acs" style="min-height: 400px">
-                    <MonitorAcsTable
-                        v-if="active"
-                        :entities="sortedEntities"
-                        :loading="scanning"
-                        @open="(e) => goToEntity(e, 'acs')"
-                    />
-                </v-window-item>
-                <v-window-item value="summary" style="min-height: 600px">
-                    <SummaryPortfolioSummaryTab
-                        v-if="active"
-                        :entities="sortedEntities"
-                        :portfolio-id="active.id"
-                        :portfolio-name="active.name"
-                        :active="monitorTab === 'summary'"
-                        :scan-completed-at="scanCompletedAt"
-                        :macro="{
-                            regime: regime.label,
-                            synthesis: regime.synthesis,
-                            sectorTilt: regime.sectorTilt?.map((s) => s.label).join(', '),
-                            portfolioImplication: regime.portfolioImplication,
-                        }"
-                        :coverage-detail="coverageDetail"
-                        @request-scan="onScan"
-                    />
-                    <div v-else class="pa-6 text-center text-medium-emphasis">
-                        Select a portfolio to view the summary.
-                    </div>
-                </v-window-item>
-            </v-window>
         </div>
-
-        <PortfolioAddEntitiesDialog
-            v-model="newPortfolioOpen"
-            mode="create"
-            @submit="onCreatePortfolio"
-        />
-
-        <PortfolioAddEntitiesDialog v-model="addEntitiesOpen" mode="add" @submit="onAddEntities" />
 
         <OnboardingOnboardingDialog
             v-model="onboardingOpen"
             :user="activeUser"
             @submit="onOnboardingSubmit"
         />
-
-        <GoalsGoalEditorDialog
-            v-model="goalEditorOpen"
-            :bucket-name="active?.name"
-            :existing-goal="active?.goal"
-            :user-risk-tolerance="activeUser?.riskTolerance"
-            @submit="onGoalSubmit"
-            @clear="onGoalClear"
-        />
-
-        <v-dialog
-            :model-value="!!entityToRemove"
-            max-width="420"
-            @update:model-value="entityToRemove = null"
-        >
-            <v-card>
-                <v-card-title class="text-body-1 font-weight-medium">Remove entity?</v-card-title>
-                <v-card-text class="text-body-2">
-                    Remove
-                    <strong>{{ entityToRemove?.resolvedName || entityToRemove?.inputName }}</strong>
-                    from <strong>{{ active?.name }}</strong
-                    >? This only affects this portfolio.
-                </v-card-text>
-                <v-card-actions>
-                    <v-spacer />
-                    <v-btn variant="text" @click="entityToRemove = null">Cancel</v-btn>
-                    <v-btn color="error" variant="tonal" @click="confirmRemoveEntity">Remove</v-btn>
-                </v-card-actions>
-            </v-card>
-        </v-dialog>
     </div>
 </template>
 
 <script setup lang="ts">
-    import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
-
-    import type {
-        PortfolioEntity,
-        PortfolioCoverageDetail,
-        ResolvedEntityInput,
-    } from '~/composables/usePortfolio';
-    import type { RiskTier } from '~/composables/useFusedScoring';
-    import { tierColor, tierLabel, scoreToLabel } from '~/composables/useFusedScoring';
-    import { bucketHoldingsHealth } from '~/utils/goals/holdingsHealth';
-    import { usePortfolio } from '~/composables/usePortfolio';
+    import { computed, ref, watch } from 'vue';
+    import { useRouter } from 'vue-router';
     import { useUser } from '~/composables/useUser';
-    import { useAgentPipeline } from '~/composables/useAgentPipeline';
-    import { useFredMacroContext, useRelationships } from '~/composables/useRelationships';
-    import { useMacroRegime } from '~/composables/useMacroRegime';
+    import { usePortfolio } from '~/composables/usePortfolio';
+    import type { RiskTier } from '~/composables/useFusedScoring';
+    import { tierColor, tierLabel } from '~/composables/useFusedScoring';
+    import type { RiskBand, HorizonFit } from '~/utils/goals/riskFit';
+    import { bucketRiskProfile, horizonFit, VERDICT_COLORS } from '~/utils/goals/riskFit';
+    import type { MacroFactorBucket } from '~/utils/macro/sectorFactors';
+    import { bucketHoldingsHealth, householdHoldingsHealth } from '~/utils/goals/holdingsHealth';
+    import type { BucketHoldingsHealth } from '~/utils/goals/holdingsHealth';
+    import type { BucketCardViewModel } from '~/components/goals/BucketCard.vue';
 
     const router = useRouter();
-
-    const {
-        users,
-        activeUserId,
-        activeUser,
-        setActiveUser,
-        createUser,
-        updateUser,
-        markOnboarded,
-    } = useUser();
-
+    const { users, activeUserId, activeUser, setActiveUser, updateUser, markOnboarded } = useUser();
     const {
         portfolios,
-        activePortfolio: active,
         setActivePortfolio,
-        scanPortfolio,
-        scanning,
-        scanProgress,
-        scanStatusMessage,
-        scanStatusHistory,
-        scanStartedAt,
-        scanCompletedAt,
-        lastScanError: scanError,
-        lastScanCoverage,
-        lastScanCoverageDetail,
-        createPortfolioFromEntities,
-        addResolvedEntities,
-        removeEntity,
-        updateGoal,
-        saveAssessment,
+        analysisSummary,
+        scanningAll,
+        lastScanError,
+        scanActiveUserPortfolios,
     } = usePortfolio(activeUserId);
 
-    const { runPipeline, pushActivity } = useAgentPipeline();
-
-    // Pre-warm the relationship universe so /relationships loads instantly after a scan.
-    useRelationships(active, scanning);
-
-    // FRED is portfolio-wide macro context (GDP, inflation, rates), not a
-    // per-entity source — surface its live curated series in the coverage panel.
-    const { signals: fredMacroSignals } = useFredMacroContext({ autoRefresh: false });
-    const fredMacroCoverage = computed(() => {
-        const sig = fredMacroSignals.value;
-        const latest = sig
-            .map((s) => s.historyEnd)
-            .filter((d): d is string => !!d)
-            .sort()
-            .pop();
-        return {
-            live: sig.length,
-            total: Math.max(sig.length, 5),
-            earliest: null,
-            latest: latest ?? null,
-        };
-    });
-
-    const lastScanError = ref('');
-    const showAdvanced = ref(false);
-    const monitorTab = ref<'monitor' | 'fhs' | 'ers' | 'acs' | 'summary'>('monitor');
-    const tabsEl = ref<HTMLElement | null>(null);
-
-    function scrollToTabs() {
-        nextTick(() => {
-            const el = tabsEl.value as any;
-            const node: HTMLElement | null = el?.$el ?? el;
-            node?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        });
-    }
-    const { regime } = useMacroRegime();
-    watch(scanError, (e) => {
-        if (e) lastScanError.value = e;
-    });
-
-    const portfolioOptions = computed(() =>
-        portfolios.value.map((p) => ({ title: p.name, value: p.id }))
-    );
-
-    const activeId = computed({
-        get: () => active.value?.id ?? null,
-        set: (v) => {
-            if (v) setActivePortfolio(v);
-        },
-    });
-
-    const sortedEntities = computed(() => {
-        if (!active.value) return [];
-        return [...active.value.entities].sort(
-            (a, b) => (b.scores?.fused ?? -1) - (a.scores?.fused ?? -1)
-        );
-    });
-
-    const allResolved = computed(
-        () => !!active.value && active.value.entities.every((e) => e.scores && e.neid)
-    );
-
-    // ── Dimension B: holdings health for the active bucket ──────────
-    const bucketHealth = computed(() => bucketHoldingsHealth(active.value?.entities ?? []));
-
-    /** Short recommendation-first verdict for the active bucket. */
-    const bucketVerdict = computed(() => {
-        if (bucketHealth.value.scanned === 0) return null;
-        const { worstTier, needsAttention, avgFused } = bucketHealth.value;
-        if (worstTier === 'critical' || worstTier === 'high') {
-            const topRiskyNames = (active.value?.entities ?? [])
-                .filter((e) => e.scores?.tier === worstTier)
-                .slice(0, 2)
-                .map((e) => e.resolvedName || e.inputName)
-                .join(' and ');
-            const reason = topRiskyNames
-                ? `${topRiskyNames} ${needsAttention > 1 ? 'raise' : 'raises'} near-term risk`
-                : `${needsAttention} holding${needsAttention > 1 ? 's' : ''} need attention`;
-            return { color: 'error', message: reason };
-        }
-        if (needsAttention > 0) {
-            return {
-                color: 'warning',
-                message: `${needsAttention} holding${needsAttention > 1 ? 's' : ''} warrant a closer look`,
-            };
-        }
-        if (avgFused !== null && avgFused < 30) {
-            return { color: 'success', message: 'All holdings look healthy across key signals' };
-        }
-        return null;
-    });
-
-    const anyLensData = computed(
-        () =>
-            bucketHealth.value.lensWorst.fhs !== null ||
-            bucketHealth.value.lensWorst.ers !== null ||
-            bucketHealth.value.lensWorst.acs !== null
-    );
-
-    const tierCounts = computed<Record<RiskTier, number>>(() => {
-        const counts: Record<RiskTier, number> = {
-            critical: 0,
-            high: 0,
-            medium: 0,
-            low: 0,
-        };
-        active.value?.entities.forEach((e) => {
-            if (e.scores?.tier) counts[e.scores.tier]++;
-        });
-        return counts;
-    });
-
-    const DRIVER_LENS_LABEL: Record<string, string> = {
-        solvency: 'Solvency',
-        executive: 'Leadership',
-        news: 'News',
-        market: 'Market',
-        eventPressure: 'Events',
-        compliance: 'Screening',
-    };
-
-    // Per-tier "what's driving this priority": tally each entity's top driver
-    // lenses, then surface the most common ones for the tier.
-    const tierDrivers = computed<Partial<Record<RiskTier, string>>>(() => {
-        const tally: Record<RiskTier, Map<string, number>> = {
-            critical: new Map(),
-            high: new Map(),
-            medium: new Map(),
-            low: new Map(),
-        };
-        for (const e of active.value?.entities ?? []) {
-            const tier = e.scores?.tier;
-            if (!tier) continue;
-            const topDrivers = [...(e.drivers ?? [])].sort((a, b) => b.score - a.score).slice(0, 2);
-            for (const d of topDrivers) {
-                const label = DRIVER_LENS_LABEL[d.lens] ?? d.lens;
-                tally[tier].set(label, (tally[tier].get(label) ?? 0) + 1);
-            }
-        }
-        const out: Partial<Record<RiskTier, string>> = {};
-        (Object.keys(tally) as RiskTier[]).forEach((t) => {
-            const ranked = [...tally[t].entries()]
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, 3)
-                .map(([label]) => label);
-            if (ranked.length) out[t] = ranked.join(' · ');
-        });
-        return out;
-    });
-
-    const coverage = computed(() => {
-        if (!active.value) return { sec: 0, news: 0, stock: 0, poly: 0 };
-        const counts = { sec: 0, news: 0, stock: 0, poly: 0 };
-        let anyPerEntityCoverage = false;
-        for (const entity of active.value.entities) {
-            if (!entity.coverage) continue;
-            anyPerEntityCoverage = true;
-            if (entity.coverage.sec) counts.sec++;
-            if (entity.coverage.news) counts.news++;
-            if (entity.coverage.stock) counts.stock++;
-            if (entity.coverage.poly) counts.poly++;
-        }
-        // Per-entity coverage is the source of truth. Fall back to the scan-summary
-        // block only when no entity has streamed coverage yet (e.g. a freshly loaded
-        // portfolio with cached scores but no coverage payload).
-        if (
-            !anyPerEntityCoverage &&
-            lastScanCoverage.value.poly +
-                lastScanCoverage.value.sec +
-                lastScanCoverage.value.news +
-                lastScanCoverage.value.stock >
-                0
-        ) {
-            return lastScanCoverage.value;
-        }
-        return counts;
-    });
-
-    function minDate(a: string | null, b: string | null): string | null {
-        if (!a) return b;
-        if (!b) return a;
-        return a < b ? a : b;
-    }
-    function maxDate(a: string | null, b: string | null): string | null {
-        if (!a) return b;
-        if (!b) return a;
-        return a > b ? a : b;
-    }
-
-    function emptyPortfolioCoverage(): PortfolioCoverageDetail {
-        return {
-            sec: { entities: 0, filings: 0, earliest: null, latest: null },
-            news: { entities: 0, articles: 0, events: 0, earliest: null, latest: null },
-            stock: { entities: 0, readings: 0, instruments: 0, earliest: null, latest: null },
-            poly: { entities: 0, markets: 0, active: 0 },
-            fred: { entities: 0, series: 0, earliest: null, latest: null },
-            acs: 0,
-            eventPressure: 0,
-            velocity: 0,
-            sanctions: 0,
-            ownership: { entities: 0, links: 0 },
-            fdic: 0,
-        };
-    }
-
-    const coverageDetail = computed<PortfolioCoverageDetail>(() => {
-        if (!active.value) return emptyPortfolioCoverage();
-
-        let anyDetail = false;
-        const agg = emptyPortfolioCoverage();
-
-        for (const entity of active.value.entities) {
-            const cd = entity.coverageDetail;
-            if (!cd) continue;
-            anyDetail = true;
-
-            const cov = entity.coverage;
-            if (cd.sec.filings > 0 || cov?.sec) {
-                agg.sec.entities++;
-                agg.sec.filings += cd.sec.filings;
-                agg.sec.earliest = minDate(agg.sec.earliest, cd.sec.earliest);
-                agg.sec.latest = maxDate(agg.sec.latest, cd.sec.latest);
-            }
-            if (cd.news.articles > 0 || cd.news.events > 0 || cov?.news) {
-                agg.news.entities++;
-                agg.news.articles += cd.news.articles;
-                agg.news.events += cd.news.events;
-                agg.news.earliest = minDate(agg.news.earliest, cd.news.earliest);
-                agg.news.latest = maxDate(agg.news.latest, cd.news.latest);
-            }
-            if (cd.stock.readings > 0 || cov?.stock) {
-                agg.stock.entities++;
-                agg.stock.readings += cd.stock.readings;
-                agg.stock.earliest = minDate(agg.stock.earliest, cd.stock.earliest);
-                agg.stock.latest = maxDate(agg.stock.latest, cd.stock.latest);
-            }
-            if (cd.poly.markets > 0) {
-                agg.poly.entities++;
-                agg.poly.markets += cd.poly.markets;
-                agg.poly.active += cd.poly.active;
-            }
-            if (cd.fred.series > 0) {
-                agg.fred.entities++;
-                agg.fred.series += cd.fred.series;
-                agg.fred.earliest = minDate(agg.fred.earliest, cd.fred.earliest);
-                agg.fred.latest = maxDate(agg.fred.latest, cd.fred.latest);
-            }
-            if (cd.acs) agg.acs++;
-            if (cd.eventPressure) agg.eventPressure++;
-            if (cd.velocity) agg.velocity++;
-            if (cd.sanctions) agg.sanctions++;
-            if (cd.ownership > 0) {
-                agg.ownership.entities++;
-                agg.ownership.links += cd.ownership;
-            }
-            if (cd.fdic) agg.fdic++;
-        }
-
-        if (!anyDetail) return lastScanCoverageDetail.value;
-        return agg;
-    });
-
-    const recentScanStatus = computed(() => scanStatusHistory.value.slice(-40).reverse());
-    const nowMs = ref(Date.now());
-    let clockTimer: ReturnType<typeof setInterval> | null = null;
-
-    onMounted(() => {
-        clockTimer = setInterval(() => {
-            nowMs.value = Date.now();
-        }, 1000);
-    });
-
-    onUnmounted(() => {
-        if (clockTimer) clearInterval(clockTimer);
-        clockTimer = null;
-    });
-
-    const scanElapsedText = computed(() => {
-        const startedAt = scanStartedAt.value;
-        if (!startedAt) return null;
-        const end = scanning.value ? nowMs.value : (scanCompletedAt.value ?? nowMs.value);
-        const elapsedSec = Math.max(0, Math.floor((end - startedAt) / 1000));
-        const minutes = Math.floor(elapsedSec / 60);
-        const seconds = elapsedSec % 60;
-        return `${minutes}:${String(seconds).padStart(2, '0')}`;
-    });
-
-    async function onScan() {
-        if (!active.value) return;
-        const id = active.value.id;
-        pushActivity('Dialogue Agent', active.value.name, 'Portfolio scan triggered');
-        await Promise.all([
-            scanPortfolio(id, { force: true }),
-            runPipeline({ trigger: active.value.name, entityCount: active.value.entities.length }),
-        ]);
-    }
-
-    function goToEntity(entity: PortfolioEntity, tab?: string) {
-        if (!entity.neid) return;
-        const query = tab ? { tab } : {};
-        router.push({ path: `/entity/${entity.neid}`, query });
-    }
-
-    function onAssess(entityRow: any, tier: 'HIGH' | 'MEDIUM' | 'LOW' | 'IGNORE' | null) {
-        if (!active.value?.id || !entityRow?.entity?.neid || !tier) return;
-        const mapped: RiskTier = tier === 'HIGH' ? 'high' : tier === 'MEDIUM' ? 'medium' : 'low';
-        saveAssessment(active.value.id, entityRow.entity.neid, mapped, '');
-    }
-
-    const newPortfolioOpen = ref(false);
-    const addEntitiesOpen = ref(false);
-
-    function onCreatePortfolio(payload: { name?: string; entities: ResolvedEntityInput[] }) {
-        if (!payload.name?.trim()) return;
-        createPortfolioFromEntities(payload.name.trim(), payload.entities);
-    }
-
-    function onAddEntities(payload: { name?: string; entities: ResolvedEntityInput[] }) {
-        if (!active.value) return;
-        addResolvedEntities(active.value.id, payload.entities);
-    }
-
-    const entityToRemove = ref<PortfolioEntity | null>(null);
-
-    function onRemoveEntity(entity: PortfolioEntity) {
-        entityToRemove.value = entity;
-    }
-
-    function confirmRemoveEntity() {
-        if (!active.value || !entityToRemove.value) return;
-        removeEntity(active.value.id, entityToRemove.value.inputName);
-        entityToRemove.value = null;
-    }
-
-    // --- Onboarding / user management ---
     const onboardingOpen = ref(false);
-    const editingUser = ref(false);
 
-    // Show onboarding when the active user hasn't completed it yet.
-    watch(
-        activeUser,
-        (u) => {
-            if (u && !u.onboarded) {
-                onboardingOpen.value = true;
-            }
+    const userOptions = computed(() => users.value.map((u) => ({ title: u.name, value: u.id })));
+
+    const activeUserIdModel = computed({
+        get: () => activeUserId.value,
+        set: (v) => {
+            if (v) setActiveUser(v);
         },
-        { immediate: true }
-    );
+    });
 
     function onOnboardingSubmit(
         profile: Omit<import('~/composables/useUser').DemoUser, 'id' | 'createdAt' | 'onboarded'>
@@ -930,29 +601,315 @@
         }
     }
 
-    // User-switcher options
-    const userOptions = computed(() => users.value.map((u) => ({ title: u.name, value: u.id })));
+    const buckets = computed(() => portfolios.value);
 
-    const activeUserIdModel = computed({
-        get: () => activeUserId.value,
-        set: (v) => {
-            if (v) setActiveUser(v);
-        },
+    const ALL_TIERS: RiskTier[] = ['critical', 'high', 'medium', 'low'];
+
+    // ── Per-bucket risk fit + health (one pass) ─────────────────────
+    const enrichedBuckets = computed(() => {
+        if (!activeUser.value) return [];
+        return buckets.value.map((bucket) => {
+            const analyzed = bucket.entities.some((e) => e.scores != null);
+            // Partially analyzed: some scored but not all entities in the bucket.
+            const scoredEntities = bucket.entities.filter((e) => e.scores != null);
+            const partiallyAnalyzed = analyzed && scoredEntities.length < bucket.entities.length;
+            const holdingVols = bucket.entities.map(
+                (e) => (e.monitor?.stockVolatility30d ?? null) as number | null
+            );
+            const holdingSectors = bucket.entities.map(
+                (e) => (e.monitor?.sector ?? null) as MacroFactorBucket | null
+            );
+            const inputs = bucket.entities.map((_, i) => ({
+                annualizedVolPct: holdingVols[i],
+                sectorBucket: holdingSectors[i],
+            }));
+            const profile = bucketRiskProfile(inputs);
+            const fit: HorizonFit | null =
+                analyzed && bucket.goal && activeUser.value
+                    ? horizonFit(
+                          profile,
+                          bucket.goal.horizonYears,
+                          activeUser.value.riskTolerance,
+                          bucket.goal.purpose
+                      )
+                    : null;
+            const health = bucketHoldingsHealth(bucket.entities);
+
+            return {
+                id: bucket.id,
+                name: bucket.name,
+                goal: bucket.goal ?? null,
+                entityCount: bucket.entities.length,
+                priority: bucket.goal?.priority ?? null,
+                analyzed,
+                partiallyAnalyzed,
+                fit,
+                fitLabel: !analyzed
+                    ? bucket.goal
+                        ? 'Not analyzed'
+                        : null
+                    : partiallyAnalyzed
+                      ? 'Partially analyzed'
+                      : fit
+                        ? fit.verdict === 'appropriate'
+                            ? 'On track'
+                            : fit.verdict === 'too_aggressive'
+                              ? 'Too aggressive'
+                              : 'Too conservative'
+                        : null,
+                fitColor: !analyzed
+                    ? 'default'
+                    : partiallyAnalyzed
+                      ? 'warning'
+                      : fit
+                        ? VERDICT_COLORS[fit.verdict]
+                        : 'default',
+                overlappingNames: [] as string[],
+                avgRiskScore: profile.avgScore,
+                health,
+            };
+        });
     });
 
-    // --- Goal editor ---
-    const goalEditorOpen = ref(false);
+    // Fill overlap info (fixes the existing bug: was iterating bucketCards, not with-overlap)
+    const bucketCardsWithOverlap = computed((): BucketCardViewModel[] => {
+        const cards = enrichedBuckets.value;
+        const nameMap = new Map<string, string[]>();
+        for (const card of cards) {
+            const bucket = buckets.value.find((b) => b.id === card.id);
+            if (!bucket) continue;
+            for (const entity of bucket.entities) {
+                const name = entity.resolvedName || entity.inputName;
+                if (!nameMap.has(name)) nameMap.set(name, []);
+                nameMap.get(name)!.push(card.name);
+            }
+        }
+        return cards.map((card) => {
+            const bucket = buckets.value.find((b) => b.id === card.id);
+            const overlappingNames = (bucket?.entities ?? [])
+                .map((e) => e.resolvedName || e.inputName)
+                .filter((name) => (nameMap.get(name)?.length ?? 0) > 1);
+            return { ...card, overlappingNames };
+        });
+    });
 
-    function onGoalSubmit(goal: import('~/composables/usePortfolio').GoalMeta) {
-        if (active.value) updateGoal(active.value.id, goal);
+    // Map bucketId -> health for BucketCard prop
+    const bucketHealthMap = computed((): Record<string, BucketHoldingsHealth> => {
+        const map: Record<string, BucketHoldingsHealth> = {};
+        for (const e of enrichedBuckets.value) {
+            map[e.id] = e.health;
+        }
+        return map;
+    });
+
+    // Spectrum view-model (shape required by ConstructionSpectrum)
+    const spectrumBuckets = computed(() => bucketCardsWithOverlap.value);
+
+    // Household-level health rollup
+    const hhHealth = computed(() => householdHoldingsHealth(buckets.value));
+
+    // Hero band — Dimension A stats
+    const analyzedBuckets = computed(() => enrichedBuckets.value.filter((c) => c.analyzed));
+    const notAnalyzedCount = computed(
+        () => enrichedBuckets.value.filter((c) => !c.analyzed && c.goal).length
+    );
+    const appropriateBuckets = computed(
+        () => analyzedBuckets.value.filter((c) => c.fit?.verdict === 'appropriate').length
+    );
+    const aggressiveBuckets = computed(
+        () => analyzedBuckets.value.filter((c) => c.fit?.verdict === 'too_aggressive').length
+    );
+    const conservativeBuckets = computed(
+        () => analyzedBuckets.value.filter((c) => c.fit?.verdict === 'too_conservative').length
+    );
+    const totalHoldings = computed(() => buckets.value.reduce((s, b) => s + b.entities.length, 0));
+
+    const anyAnalyzed = computed(() => analyzedBuckets.value.length > 0);
+
+    /** True when at least one bucket has some scored entities but not all. */
+    const anyPartiallyAnalyzed = computed(() =>
+        enrichedBuckets.value.some((c) => c.partiallyAnalyzed)
+    );
+
+    /**
+     * True only when all buckets are analyzed and no scan is running.
+     * Gates "All goals aligned" so we don't show a premature green headline
+     * while analysis is still in progress.
+     */
+    const allAnalyzedAndComplete = computed(
+        () => analysisSummary.value.isComplete && !scanningAll.value
+    );
+
+    const summaryFitColor = computed(() => {
+        if (!allAnalyzedAndComplete.value) return 'default';
+        if (aggressiveBuckets.value > 0) return 'error';
+        if (conservativeBuckets.value > 0) return 'warning';
+        // Even if bands are fine, flag attention if holdings are risky
+        if (analysisSummary.value.needsAttention > 0) return 'warning';
+        return 'success';
+    });
+
+    // Hero band — Dimension B color
+    const healthPanelColor = computed(() => {
+        if (hhHealth.value.scanned === 0) return 'default';
+        if (hhHealth.value.tierCounts.critical > 0) return 'error';
+        if (hhHealth.value.tierCounts.high > 0) return 'warning';
+        return 'success';
+    });
+
+    // Cross-bucket duplicates
+    const duplicateHoldings = computed(() => {
+        const nameMap = new Map<string, string[]>();
+        for (const bucket of buckets.value) {
+            for (const entity of bucket.entities) {
+                const name = entity.resolvedName || entity.inputName;
+                if (!nameMap.has(name)) nameMap.set(name, []);
+                const arr = nameMap.get(name)!;
+                if (!arr.includes(bucket.name)) arr.push(bucket.name);
+            }
+        }
+        return [...nameMap.entries()]
+            .filter(([, bs]) => bs.length > 1)
+            .map(([name, bs]) => ({ name, buckets: bs }));
+    });
+
+    // Empty health sentinel for type safety before map hydrates
+    const emptyHealth: BucketHoldingsHealth = {
+        total: 0,
+        scanned: 0,
+        tierCounts: { critical: 0, high: 0, medium: 0, low: 0 },
+        worstTier: null,
+        needsAttention: 0,
+        avgFused: null,
+        lensWorst: { fhs: null, ers: null, acs: null },
+    };
+
+    function onOpenBucket(bucketId: string) {
+        setActivePortfolio(bucketId);
+        router.push('/bucket');
     }
 
-    function onGoalClear() {
-        if (active.value) updateGoal(active.value.id, null);
+    /**
+     * Bucket most urgently needing review: too-aggressive first, then
+     * highest needsAttention count. Always includes a plain-language reason
+     * so the card is never contradictory (e.g. never "Retirement — On track").
+     */
+    const nextBestReview = computed((): { id: string; name: string; reason: string } | null => {
+        const cards = enrichedBuckets.value.filter((c) => c.analyzed);
+        if (cards.length === 0) return null;
+
+        // Priority 1: buckets that are too-aggressive for their horizon
+        const aggressive = cards
+            .filter((c) => c.fit?.verdict === 'too_aggressive')
+            .sort((a, b) => (b.health.needsAttention ?? 0) - (a.health.needsAttention ?? 0));
+        if (aggressive.length > 0) {
+            const c = aggressive[0]!;
+            const attn = c.health.needsAttention;
+            const reason =
+                attn > 0
+                    ? `${attn} high-risk holding${attn === 1 ? '' : 's'} · too aggressive for ${c.fit?.reason ? 'its timeline' : 'the goal'}`
+                    : 'Risk profile too aggressive for the goal horizon';
+            return { id: c.id, name: c.name, reason };
+        }
+
+        // Priority 2: buckets with high/critical holdings needing attention
+        const needsAttn = cards
+            .filter((c) => c.health.needsAttention > 0)
+            .sort((a, b) => (b.health.needsAttention ?? 0) - (a.health.needsAttention ?? 0));
+        if (needsAttn.length > 0) {
+            const c = needsAttn[0]!;
+            const n = c.health.needsAttention;
+            return {
+                id: c.id,
+                name: c.name,
+                reason: `${n} holding${n === 1 ? '' : 's'} flagged high or critical risk`,
+            };
+        }
+
+        return null;
+    });
+
+    // Color helpers
+    function toleranceColor(t: number): string {
+        if (t <= 2) return 'success';
+        if (t === 3) return 'warning';
+        return 'error';
     }
 
-    const yearsToRetirement = computed(() =>
-        activeUser.value ? Math.max(0, activeUser.value.retirementAge - activeUser.value.age) : null
+    // ── Overview AI summary (condensed, cross-bucket) ────────────────
+    const overviewSummaryText = ref('');
+    const overviewSummaryLoading = ref(false);
+    const overviewSummaryKey = ref('');
+    const overviewSummaryError = ref(false);
+
+    const allScoredEntities = computed(() => {
+        const seen = new Set<string>();
+        const result: any[] = [];
+        for (const portfolio of portfolios.value) {
+            for (const e of portfolio.entities) {
+                if (!e.scores) continue;
+                const key = e.neid ?? e.inputName;
+                if (seen.has(key)) continue;
+                seen.add(key);
+                result.push({
+                    resolvedName: e.resolvedName || e.inputName,
+                    neid: e.neid ?? null,
+                    ticker: (e as any).ticker ?? undefined,
+                    scores: e.scores,
+                    drivers: (e as any).drivers,
+                    confidenceLevel: (e as any).confidenceLevel,
+                    coverage: (e as any).coverage,
+                    monitor: e.monitor,
+                });
+            }
+        }
+        return result;
+    });
+
+    const overviewSummaryBullets = computed(() =>
+        overviewSummaryText.value
+            .split('\n')
+            .map((l) => l.replace(/^[-*•]\s*/, '').trim())
+            .filter((l) => l.length > 0)
+    );
+
+    async function generateOverviewSummary() {
+        if (!allScoredEntities.value.length) return;
+        const key = `${analysisSummary.value.scoredHoldings}::${analysisSummary.value.analyzedBuckets}`;
+        if (overviewSummaryKey.value === key && overviewSummaryText.value) return;
+        overviewSummaryKey.value = key;
+        overviewSummaryLoading.value = true;
+        overviewSummaryError.value = false;
+        try {
+            const res = await $fetch<{ summary: string }>('/api/portfolio-summary/generate', {
+                method: 'POST',
+                body: {
+                    portfolioName: `${activeUser.value?.name ?? 'Your'} portfolio`,
+                    entities: allScoredEntities.value,
+                    config: { style: 'brief', focus: 'risks', tone: 'conversational' },
+                },
+                timeout: 120_000,
+            });
+            const raw = res.summary ?? '';
+            const match = raw.match(/## What You Need to Know\s*([\s\S]*?)(?=\n## |\n---|\s*$)/);
+            overviewSummaryText.value = match ? match[1]!.trim() : raw;
+        } catch {
+            overviewSummaryError.value = true;
+            overviewSummaryText.value = '';
+            overviewSummaryKey.value = '';
+        } finally {
+            overviewSummaryLoading.value = false;
+        }
+    }
+
+    watch(
+        () => analysisSummary.value.isComplete,
+        (complete) => {
+            if (complete && !scanningAll.value) {
+                void generateOverviewSummary();
+            }
+        },
+        { immediate: true }
     );
 </script>
 
@@ -962,58 +919,12 @@
         background: rgba(var(--dynamic-bg-rgb), 0.3);
     }
 
-    .portfolio-title-select :deep(.v-field) {
-        background: transparent;
-        padding-inline: 0;
+    .hero-panel {
+        border-radius: 10px;
+        min-height: 160px;
     }
 
-    .portfolio-title-select :deep(.v-field__input) {
-        font-family: var(--font-primary);
-        font-size: var(--type-h1-size);
-        font-weight: var(--type-h1-weight);
-        letter-spacing: var(--type-h1-tracking);
-        min-height: 32px;
-        padding: 0;
-    }
-
-    .portfolio-title-select :deep(.v-field__outline) {
-        display: none;
-    }
-
-    .scan-status-list {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    .scan-status-row {
-        display: grid;
-        grid-template-columns: 92px 86px 1fr;
-        gap: 10px;
-        align-items: center;
-        padding: 4px 0;
-        border-bottom: 1px dashed rgba(var(--dynamic-fg-rgb), 0.05);
-    }
-
-    .font-mono {
-        font-family: var(--font-mono, ui-monospace, monospace);
-    }
-
-    .lens-score-item {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 1px;
-    }
-
-    @media (min-width: 960px) {
-        .summary-col--20 {
-            flex: 0 0 20%;
-            max-width: 20%;
-        }
-        .summary-col--60 {
-            flex: 0 0 60%;
-            max-width: 60%;
-        }
+    .headline-verdict {
+        line-height: 1.3;
     }
 </style>

@@ -430,6 +430,8 @@
         scanCompletedAt?: number | null;
         macro?: MacroProp;
         coverageDetail?: any;
+        /** Bucket goal context for tailored briefing. */
+        goal?: { purpose?: string; horizonYears?: number } | null;
     }>();
 
     defineEmits<{ requestScan: [] }>();
@@ -695,6 +697,7 @@
                         monitor: e.monitor,
                     })),
                     macro: props.macro,
+                    goal: props.goal ?? undefined,
                     config: reportConfig.value,
                 },
                 timeout: 180_000,

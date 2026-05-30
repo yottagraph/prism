@@ -134,11 +134,11 @@
     const buildString = ref(useRuntimeConfig().public.versionString);
     const avatarHasError = ref(false);
 
-    const isBucketRoute = computed(() => route.path === '/');
+    const isBucketRoute = computed(() => route.path === '/bucket');
 
     /** Only show on routes where scanning makes sense. */
     const showAnalyzeBtn = computed(() =>
-        ['/', '/household', '/agents', '/relationships', '/scoring'].includes(route.path)
+        ['/', '/bucket', '/agents', '/relationships', '/scoring'].includes(route.path)
     );
 
     const allAnalyzed = computed(() => hasAnyScored.value && !scanning.value && !scanningAll.value);

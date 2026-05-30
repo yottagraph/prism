@@ -283,6 +283,7 @@
         }
 
         // --- FRED signals (sparklines) ---
+        // Order matches PM columns: unemployment | fed funds | CPI | yield spread | 10y treasury
         const unrate = findSignal(props.fred, 'unemployment');
         if (unrate) {
             const tt = fredTooltip(unrate);
@@ -293,6 +294,22 @@
                 colorClass: colorClass(unrate.macroScore),
                 pct: null,
                 sparkline: toSparkline(unrate.history),
+                source: 'fred',
+                tooltipTitle: tt.title,
+                tooltipDetail: tt.detail,
+            });
+        }
+
+        const dff = findSignal(props.fred, 'fed funds');
+        if (dff) {
+            const tt = fredTooltip(dff);
+            tiles.push({
+                label: 'Fed funds rate',
+                display: dff.displayValue ?? `${dff.value}%`,
+                trend: dff.trend,
+                colorClass: colorClass(dff.macroScore),
+                pct: null,
+                sparkline: toSparkline(dff.history),
                 source: 'fred',
                 tooltipTitle: tt.title,
                 tooltipDetail: tt.detail,
@@ -315,22 +332,6 @@
             });
         }
 
-        const gs10 = findSignal(props.fred, '10y treasury');
-        if (gs10) {
-            const tt = fredTooltip(gs10);
-            tiles.push({
-                label: '10Y Bond rate',
-                display: gs10.displayValue ?? `${gs10.value}%`,
-                trend: gs10.trend,
-                colorClass: colorClass(gs10.macroScore),
-                pct: null,
-                sparkline: toSparkline(gs10.history),
-                source: 'fred',
-                tooltipTitle: tt.title,
-                tooltipDetail: tt.detail,
-            });
-        }
-
         const yield_ = findSignal(props.fred, 'yield spread');
         if (yield_) {
             const tt = fredTooltip(yield_);
@@ -347,16 +348,16 @@
             });
         }
 
-        const dff = findSignal(props.fred, 'fed funds');
-        if (dff) {
-            const tt = fredTooltip(dff);
+        const gs10 = findSignal(props.fred, '10y treasury');
+        if (gs10) {
+            const tt = fredTooltip(gs10);
             tiles.push({
-                label: 'Fed funds rate',
-                display: dff.displayValue ?? `${dff.value}%`,
-                trend: dff.trend,
-                colorClass: colorClass(dff.macroScore),
+                label: '10Y Bond rate',
+                display: gs10.displayValue ?? `${gs10.value}%`,
+                trend: gs10.trend,
+                colorClass: colorClass(gs10.macroScore),
                 pct: null,
-                sparkline: toSparkline(dff.history),
+                sparkline: toSparkline(gs10.history),
                 source: 'fred',
                 tooltipTitle: tt.title,
                 tooltipDetail: tt.detail,
