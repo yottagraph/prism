@@ -140,14 +140,13 @@
                         </div>
 
                         <!-- Headline verdict -->
-                        <!-- Mid-scan: show progress, not a premature verdict -->
-                        <div v-if="scanningAll" class="headline-verdict mb-3">
-                            <span class="text-h5 font-weight-bold text-medium-emphasis">
-                                Analyzing goals…
-                            </span>
-                            <div class="text-body-2 text-medium-emphasis mt-1">
-                                Elemental is fusing signals — check back in a moment.
-                            </div>
+                        <!-- Mid-scan: live signal-ingestion lanes -->
+                        <div v-if="scanningAll" class="mb-3">
+                            <GoalsScanSignalLanes
+                                :coverage="liveScanCoverage"
+                                :total="totalHoldings"
+                                :scored="scanScoredCount"
+                            />
                         </div>
                         <div v-else-if="!anyAnalyzed" class="headline-verdict mb-3">
                             <span class="text-h5 font-weight-bold text-medium-emphasis">
@@ -472,6 +471,7 @@
                     <GoalsBucketCard
                         :card="card"
                         :health="bucketHealthMap[card.id] ?? emptyHealth"
+                        :scanning="scanningAll"
                         @open="onOpenBucket"
                     />
                 </v-col>
@@ -723,6 +723,27 @@
         () => analyzedBuckets.value.filter((c) => c.fit?.verdict === 'too_conservative').length
     );
     const totalHoldings = computed(() => buckets.value.reduce((s, b) => s + b.entities.length, 0));
+
+    // Live per-source coverage aggregated across all buckets during a scan
+    const liveScanCoverage = computed(() => {
+        const c = { sec: 0, news: 0, stock: 0, screening: 0 };
+        for (const b of buckets.value) {
+            for (const e of b.entities) {
+                const cov = (e as any).coverage;
+                if (!cov) continue;
+                if (cov.sec) c.sec++;
+                if (cov.news) c.news++;
+                if (cov.stock) c.stock++;
+                if (cov.sanctions || cov.ownership || cov.acs) c.screening++;
+            }
+        }
+        return c;
+    });
+
+    // Total scored holdings across all buckets (updates live via reactive portfolios)
+    const scanScoredCount = computed(() =>
+        buckets.value.reduce((s, b) => s + b.entities.filter((e) => e.scores != null).length, 0)
+    );
 
     const anyAnalyzed = computed(() => analyzedBuckets.value.length > 0);
 

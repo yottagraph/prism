@@ -5,7 +5,23 @@
             <v-icon :color="priorityColor" class="mr-2" size="small">mdi-target</v-icon>
             <span class="text-subtitle-2 font-weight-medium">{{ card.name }}</span>
             <v-spacer />
-            <v-chip v-if="card.fitLabel" :color="card.fitColor" size="small" variant="flat" label>
+            <!-- Progress ring while this bucket is being scanned -->
+            <template v-if="scanning && health.total > 0 && health.scanned < health.total">
+                <GoalsScanProgressRing :value="(health.scanned / health.total) * 100" :size="26" />
+                <span
+                    class="text-caption text-medium-emphasis ml-2"
+                    style="font-variant-numeric: tabular-nums"
+                >
+                    {{ health.scanned }}/{{ health.total }}
+                </span>
+            </template>
+            <v-chip
+                v-else-if="card.fitLabel"
+                :color="card.fitColor"
+                size="small"
+                variant="flat"
+                label
+            >
                 {{ card.fitLabel }}
             </v-chip>
             <span v-else class="text-caption text-medium-emphasis">No goal set</span>
@@ -231,10 +247,15 @@
         avgRiskScore: number;
     }
 
-    const props = defineProps<{
-        card: BucketCardViewModel;
-        health: BucketHoldingsHealth;
-    }>();
+    const props = withDefaults(
+        defineProps<{
+            card: BucketCardViewModel;
+            health: BucketHoldingsHealth;
+            /** Pass true while a global scan is running to show progress rings. */
+            scanning?: boolean;
+        }>(),
+        { scanning: false }
+    );
 
     defineEmits<{
         open: [bucketId: string];
