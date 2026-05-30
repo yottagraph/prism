@@ -429,6 +429,23 @@ export async function callMcpTool(
         return frame?.result;
     }
 
+    // Record every MCP tools/call in the per-scan diagnostics so the
+    // request-budget counter reflects real load (not just REST calls).
+    if (_event) {
+        const diag = (_event.context as any)?.scanDiagnostics as
+            | { endpoints: Record<string, number>; calls: Array<Record<string, unknown>> }
+            | undefined;
+        if (diag) {
+            const key = `mcp:${serverName}:${toolName}`;
+            diag.endpoints = diag.endpoints ?? {};
+            diag.endpoints[key] = (diag.endpoints[key] ?? 0) + 1;
+            diag.calls = diag.calls ?? [];
+            if (diag.calls.length < 400) {
+                diag.calls.push({ endpoint: key, method: 'POST', at: Date.now() });
+            }
+        }
+    }
+
     const sem = getSemaphore(serverName);
     await sem.acquire();
     try {

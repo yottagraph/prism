@@ -879,6 +879,47 @@ export function usePortfolio(activeUserId?: globalThis.Ref<string | null>) {
                         scanStatusMessage.value = 'Scan complete.';
                         pushScanStatus(scanStatusMessage.value, 'complete');
                     }
+
+                    // Fire-and-forget per-entity AI headline summaries so they
+                    // don't block the scan itself. Results trickle into
+                    // entity.monitor.headlineSummary as they land.
+                    const summaryEntities = ents
+                        .filter((e) => e.neid)
+                        .map((e) => ({ neid: e.neid as string, resolvedName: e.resolvedName }));
+                    if (summaryEntities.length > 0) {
+                        fetch('/api/news-summary/generate', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ entities: summaryEntities }),
+                        })
+                            .then((res) => (res.ok ? res.json() : null))
+                            .then(
+                                (
+                                    payload: {
+                                        summaries?: Record<string, string | null>;
+                                    } | null
+                                ) => {
+                                    if (!payload?.summaries) return;
+                                    const summaries = payload.summaries;
+                                    let changed = false;
+                                    for (const entity of ents) {
+                                        if (!entity.neid) continue;
+                                        const blurb = summaries[entity.neid];
+                                        if (blurb !== undefined && entity.monitor) {
+                                            entity.monitor = {
+                                                ...entity.monitor,
+                                                headlineSummary: blurb,
+                                            };
+                                            changed = true;
+                                        }
+                                    }
+                                    if (changed) {
+                                        p.portfolios[idx].entities = [...ents];
+                                    }
+                                }
+                            )
+                            .catch(() => undefined);
+                    }
                 } else if (event === 'error') {
                     throw new Error(data?.message || 'Scan pipeline failed');
                 }

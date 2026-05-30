@@ -306,10 +306,10 @@ export async function scoreEntity(
             hasRealData: false,
             detail: { metrics: [{ label: 'Status', value: 'timeout' }], findings: [] },
         }),
-        // The stocks MCP price pull (get_daily_stock_prices) routinely takes
-        // 10s+ even when healthy, so a tight timeout silently zeroes out stock
-        // coverage. Give it enough headroom to actually land.
-        withTimeout(computeMarketSignalScore(event, portfolioId, neid, ctx), 15_000, {
+        // The stocks MCP cold path exceeds the gateway's 30s ceiling and
+        // is pre-warmed in the background by prewarmStocks. A 6s cap lets
+        // the lens fall back fast while warm-cache hits still land.
+        withTimeout(computeMarketSignalScore(event, portfolioId, neid, ctx), 6_000, {
             score: 0,
             hasRealData: false,
             priceCount: 0,
@@ -355,7 +355,9 @@ export async function scoreEntity(
             hasRealData: false,
             detail: { metrics: [{ label: 'Status', value: 'timeout' }], findings: [] },
         }),
-        withTimeout(computeNewsSummary24h(event, portfolioId, neid, ctx), 15_000, {
+        // newsSummary24h no longer calls Gemini inline (moved post-scan),
+        // so it's pure-CPU over ctx.articles — 3s is ample.
+        withTimeout(computeNewsSummary24h(event, portfolioId, neid, ctx), 3_000, {
             headlineSummary: null,
             mentionRatioLabel: 'normal',
             mentionRatioToday: null,

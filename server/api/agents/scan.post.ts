@@ -214,6 +214,17 @@ export default defineEventHandler(async (event) => {
                 );
             };
 
+            // Keep the SSE connection alive across long scoring waves so
+            // proxies and load balancers don't treat silence as a dead socket.
+            // Comment frames (`: ping\n\n`) are ignored by parseScanSSEBlock.
+            const keepalive = setInterval(() => {
+                try {
+                    controller.enqueue(encoder.encode(': ping\n\n'));
+                } catch {
+                    // Stream already closed — interval will be cleared in finally.
+                }
+            }, 10_000);
+
             try {
                 const entities = body.entities.map((entity) => ({ ...entity }));
                 const total = entities.length;
@@ -259,13 +270,19 @@ export default defineEventHandler(async (event) => {
                 // still warm the upstream cache, so the market-signal lookups
                 // below (and the next scan) resolve in seconds instead of
                 // timing out. Fire-and-forget; never blocks the scan.
+                // Cap at 15 names: the 5-slot stocks semaphore can't warm
+                // more in parallel anyway, and excess queued calls would
+                // compete with the live market-signal lens lookups.
+                const PREWARM_CAP = 15;
                 prewarmStocks(
-                    entities.map(
-                        (e) =>
-                            e.resolvedName ||
-                            batchResolutions.get(e.inputName.trim())?.resolvedName ||
-                            e.inputName
-                    ),
+                    entities
+                        .slice(0, PREWARM_CAP)
+                        .map(
+                            (e) =>
+                                e.resolvedName ||
+                                batchResolutions.get(e.inputName.trim())?.resolvedName ||
+                                e.inputName
+                        ),
                     event
                 );
 
@@ -344,7 +361,9 @@ export default defineEventHandler(async (event) => {
                 }
 
                 let cursor = 0;
-                const workers = Math.min(3, Math.max(1, total));
+                // Per-server semaphores (elemental:10, stocks:5, polymarket:5)
+                // protect upstreams — more workers just reduces idle waves.
+                const workers = Math.min(6, Math.max(1, total));
                 await Promise.all(
                     Array.from({ length: workers }, async () => {
                         while (cursor < total) {
@@ -577,6 +596,7 @@ export default defineEventHandler(async (event) => {
                 emit('status', { phase: 'error', message: error?.message || 'Scan failed' });
                 emit('error', { message: error?.message || 'Scan failed' });
             } finally {
+                clearInterval(keepalive);
                 controller.close();
             }
         },

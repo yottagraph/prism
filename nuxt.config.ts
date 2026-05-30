@@ -75,6 +75,9 @@ export default defineNuxtConfig({
 
     nitro: {
         preset: process.env.VERCEL ? 'vercel' : undefined,
+        ...(process.env.VERCEL && {
+            vercel: { functions: { maxDuration: 300 } },
+        }),
         ...(!process.env.VERCEL && {
             output: {
                 publicDir: '.output/public',
