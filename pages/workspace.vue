@@ -85,9 +85,9 @@
 
         <!-- ── Body ───────────────────────────────────────────────── -->
         <div class="flex-grow-1 overflow-y-auto">
-            <!-- Empty state before first scan -->
+            <!-- Empty state before first scan of this book -->
             <div
-                v-if="!hasAnyScored && !scanning"
+                v-if="!activeBookScored && !scanning"
                 class="d-flex flex-column align-center justify-center pa-12"
                 style="min-height: 400px; gap: 16px"
             >
@@ -110,7 +110,11 @@
                 </div>
             </div>
 
-            <div v-else class="pa-4 d-flex flex-column" style="gap: 16px">
+            <div
+                v-else-if="activeBookScored || scanning"
+                class="pa-4 d-flex flex-column"
+                style="gap: 16px"
+            >
                 <!-- ── The Seam ──────────────────────────────────────── -->
                 <v-card class="seam-card pa-0" variant="outlined">
                     <div class="seam-header pa-3 d-flex align-center" style="gap: 8px">
@@ -281,7 +285,7 @@
                         <v-divider />
                         <div class="render-body overflow-hidden">
                             <div
-                                v-if="!hasAnyScored && !scanning"
+                                v-if="!activeBookScored && !scanning"
                                 class="d-flex flex-column align-center justify-center pa-8 text-center text-medium-emphasis"
                                 style="height: 100%"
                             >
@@ -345,7 +349,7 @@
 </template>
 
 <script setup lang="ts">
-    import { computed, ref, watch } from 'vue';
+    import { computed, onMounted, ref, watch } from 'vue';
 
     import { INSTITUTIONAL_OWNER, type PortfolioEntity } from '~/composables/usePortfolio';
     import { usePortfolio } from '~/composables/usePortfolio';
@@ -353,7 +357,6 @@
     import { useAgentPipeline } from '~/composables/useAgentPipeline';
     import { useRelationships } from '~/composables/useRelationships';
     import type { GraphNode } from '~/composables/useRelationships';
-    import { tierColor } from '~/composables/useFusedScoring';
 
     const router = useRouter();
 
@@ -364,12 +367,13 @@
         setActivePortfolio,
         scanPortfolio,
         scanning,
-        scanProgress,
         scanCompletedAt,
         lastScanCoverage,
         lastScanCoverageDetail,
-        hasAnyScored,
     } = usePortfolio();
+
+    // True only when the currently active book has been scored — not any retail portfolio.
+    const activeBookScored = computed(() => active.value?.entities.some((e) => e.scores) ?? false);
 
     // Restrict to institutional books only on this surface
     const institutionalBooks = computed(() =>
@@ -382,16 +386,18 @@
         institutionalBooks.value.map((p) => ({ title: p.name, value: p.id }))
     );
 
-    // Default to the EDD book
     const EDD_BOOK_ID = 'edd-credit-committee';
-    const activeBookId = ref<string>(active.value?.id ?? EDD_BOOK_ID);
+    const activeBookId = ref<string>(EDD_BOOK_ID);
 
-    // On mount, ensure EDD book is active
-    if (active.value?.ownerUserId !== INSTITUTIONAL_OWNER) {
+    // Switch to the EDD book on mount, after prefs have loaded from Firestore/KV.
+    // Running this in script setup would race with async prefs hydration.
+    onMounted(() => {
         const eddBook = institutionalBooks.value.find((p) => p.id === EDD_BOOK_ID);
-        if (eddBook) setActivePortfolio(eddBook.id);
-        activeBookId.value = eddBook?.id ?? EDD_BOOK_ID;
-    }
+        if (eddBook) {
+            setActivePortfolio(eddBook.id);
+            activeBookId.value = eddBook.id;
+        }
+    });
 
     function onBookChange(id: string) {
         setActivePortfolio(id);
@@ -419,7 +425,8 @@
 
     async function onMandateChange(id: MandateId) {
         applyMandate(id);
-        if (hasAnyScored.value) await rescan();
+        // Only re-score if the active book has already been analyzed.
+        if (activeBookScored.value) await rescan();
     }
 
     // ── Scoring labels per module ────────────────────────────────────
