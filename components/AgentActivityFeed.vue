@@ -9,7 +9,7 @@
         </div>
         <div class="feed-list">
             <div v-if="!entries.length" class="text-caption text-medium-emphasis pa-4 text-center">
-                Waiting for agent activity… run a scan to see the pipeline in action.
+                Waiting for agent activity… click Analyze to see the pipeline in action.
             </div>
             <div v-for="e in entries" :key="e.id" class="feed-row">
                 <span class="ts text-caption text-medium-emphasis font-mono">

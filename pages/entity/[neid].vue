@@ -118,7 +118,7 @@
                         variant="tonal"
                         density="compact"
                         class="mb-3"
-                        text="No profile data available for this entity. Run a scan to populate scores."
+                        text="No profile data available for this entity. Analyze to populate scores."
                     />
                     <template v-if="data">
                         <!-- Descriptive card -->
@@ -269,7 +269,7 @@
                         variant="tonal"
                         density="compact"
                         class="mb-3"
-                        text="Run a scan to populate FHS data."
+                        text="Analyze to populate FHS data."
                     />
                     <EntityFhsSection
                         v-if="data"
@@ -289,7 +289,7 @@
                         variant="tonal"
                         density="compact"
                         class="mb-3"
-                        text="Run a scan to populate ERS data."
+                        text="Analyze to populate ERS data."
                     />
                     <EntityErsSection
                         v-if="data"
@@ -309,7 +309,7 @@
                         variant="tonal"
                         density="compact"
                         class="mb-3"
-                        text="Run a scan to populate ACS data."
+                        text="Analyze to populate ACS data."
                     />
                     <EntityAcsSection
                         v-if="data"

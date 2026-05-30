@@ -59,7 +59,7 @@
 
             <!-- ── Post-analysis payoff band ──────────────────────────── -->
             <v-card
-                v-if="analysisSummary.isComplete"
+                v-if="analysisSummary.isComplete && !scanningAll"
                 variant="tonal"
                 color="primary"
                 class="mb-4 pa-3"
@@ -87,6 +87,30 @@
                     </template>
                 </div>
             </v-card>
+
+            <!-- ── Scan error / Retry banner ───────────────────────────── -->
+            <v-alert
+                v-if="!scanningAll && lastScanError"
+                type="warning"
+                variant="tonal"
+                class="mb-4"
+                icon="mdi-alert-circle-outline"
+            >
+                <div class="d-flex align-center justify-space-between flex-wrap" style="gap: 8px">
+                    <span
+                        >Analysis ran into a problem — some holdings may not be fully scored.</span
+                    >
+                    <v-btn
+                        size="small"
+                        variant="tonal"
+                        color="warning"
+                        prepend-icon="mdi-refresh"
+                        @click="scanActiveUserPortfolios({ force: true })"
+                    >
+                        Retry
+                    </v-btn>
+                </div>
+            </v-alert>
 
             <!-- ── Two-question hero band ──────────────────────────── -->
             <v-row v-if="buckets.length > 0" dense class="mb-4">
@@ -120,6 +144,17 @@
                             </span>
                             <div class="text-body-2 text-medium-emphasis mt-1">
                                 Analyze your goals to see if they're built for your timeline.
+                            </div>
+                        </div>
+                        <div
+                            v-else-if="anyPartiallyAnalyzed && !allAnalyzedAndComplete"
+                            class="headline-verdict mb-3"
+                        >
+                            <span class="text-h5 font-weight-bold text-warning">
+                                Partial analysis
+                            </span>
+                            <div class="text-body-2 text-medium-emphasis mt-1">
+                                Some holdings are still loading — verdicts may be incomplete.
                             </div>
                         </div>
                         <div v-else-if="aggressiveBuckets > 0" class="headline-verdict mb-3">
@@ -403,8 +438,14 @@
 
     const router = useRouter();
     const { users, activeUserId, activeUser, setActiveUser, updateUser, markOnboarded } = useUser();
-    const { portfolios, setActivePortfolio, analysisSummary, scanningAll } =
-        usePortfolio(activeUserId);
+    const {
+        portfolios,
+        setActivePortfolio,
+        analysisSummary,
+        scanningAll,
+        lastScanError,
+        scanActiveUserPortfolios,
+    } = usePortfolio(activeUserId);
 
     const onboardingOpen = ref(false);
 
@@ -435,6 +476,9 @@
         if (!activeUser.value) return [];
         return buckets.value.map((bucket) => {
             const analyzed = bucket.entities.some((e) => e.scores != null);
+            // Partially analyzed: some scored but not all entities in the bucket.
+            const scoredEntities = bucket.entities.filter((e) => e.scores != null);
+            const partiallyAnalyzed = analyzed && scoredEntities.length < bucket.entities.length;
             const holdingVols = bucket.entities.map(
                 (e) => (e.monitor?.stockVolatility30d ?? null) as number | null
             );
@@ -464,19 +508,28 @@
                 entityCount: bucket.entities.length,
                 priority: bucket.goal?.priority ?? null,
                 analyzed,
+                partiallyAnalyzed,
                 fit,
                 fitLabel: !analyzed
                     ? bucket.goal
                         ? 'Not analyzed'
                         : null
-                    : fit
-                      ? fit.verdict === 'appropriate'
-                          ? 'On track'
-                          : fit.verdict === 'too_aggressive'
-                            ? 'Too aggressive'
-                            : 'Too conservative'
-                      : null,
-                fitColor: !analyzed ? 'default' : fit ? VERDICT_COLORS[fit.verdict] : 'default',
+                    : partiallyAnalyzed
+                      ? 'Partially analyzed'
+                      : fit
+                        ? fit.verdict === 'appropriate'
+                            ? 'On track'
+                            : fit.verdict === 'too_aggressive'
+                              ? 'Too aggressive'
+                              : 'Too conservative'
+                        : null,
+                fitColor: !analyzed
+                    ? 'default'
+                    : partiallyAnalyzed
+                      ? 'warning'
+                      : fit
+                        ? VERDICT_COLORS[fit.verdict]
+                        : 'default',
                 overlappingNames: [] as string[],
                 avgRiskScore: profile.avgScore,
                 health,
@@ -538,6 +591,11 @@
     const totalHoldings = computed(() => buckets.value.reduce((s, b) => s + b.entities.length, 0));
 
     const anyAnalyzed = computed(() => analyzedBuckets.value.length > 0);
+
+    /** True when at least one bucket has some scored entities but not all. */
+    const anyPartiallyAnalyzed = computed(() =>
+        enrichedBuckets.value.some((c) => c.partiallyAnalyzed)
+    );
 
     /**
      * True only when all buckets are analyzed and no scan is running.
