@@ -432,6 +432,14 @@
         coverageDetail?: any;
         /** Bucket goal context for tailored briefing. */
         goal?: { purpose?: string; horizonYears?: number } | null;
+        /** Investor profile context for cross-portfolio overview briefings. */
+        investor?: {
+            name?: string;
+            age?: number;
+            retirementAge?: number;
+            riskPreference?: string;
+            goals?: { purpose?: string; horizonYears?: number }[];
+        } | null;
     }>();
 
     defineEmits<{ requestScan: [] }>();
@@ -698,6 +706,7 @@
                     })),
                     macro: props.macro,
                     goal: props.goal ?? undefined,
+                    investor: props.investor ?? undefined,
                     config: reportConfig.value,
                 },
                 timeout: 180_000,

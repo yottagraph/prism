@@ -52,13 +52,30 @@
                         Math.max(0, activeUser.retirementAge - activeUser.age)
                     }}y away)
                 </v-chip>
-                <v-chip
-                    size="small"
-                    variant="tonal"
-                    :color="toleranceColor(activeUser.riskTolerance)"
+                <v-tooltip location="bottom" :text="riskDescription(activeUser.riskTolerance)">
+                    <template #activator="{ props: tt }">
+                        <v-chip
+                            v-bind="tt"
+                            size="small"
+                            variant="tonal"
+                            :color="toleranceColor(activeUser.riskTolerance)"
+                        >
+                            {{ riskLabel(activeUser.riskTolerance) }} investor
+                        </v-chip>
+                    </template>
+                </v-tooltip>
+            </div>
+
+            <!-- Persona blurb (Gemini-generated, cached per user) -->
+            <div v-if="activeUser" class="mt-2">
+                <div v-if="personaLoading" class="persona-shimmer" aria-hidden="true" />
+                <p
+                    v-else-if="activeUser.personaDescription"
+                    class="text-body-2 text-medium-emphasis mb-0"
+                    style="max-width: 72ch; line-height: 1.5"
                 >
-                    Risk tolerance {{ activeUser.riskTolerance }}/5
-                </v-chip>
+                    {{ activeUser.personaDescription }}
+                </p>
             </div>
         </div>
 
@@ -351,111 +368,32 @@
                 </v-col>
             </v-row>
 
-            <!-- ── Intelligence band: macro + AI summary ─────────────── -->
-            <v-row v-if="anyAnalyzed" dense class="mb-4">
-                <v-col cols="12" md="5">
-                    <MacroPanel />
+            <!-- ── Intelligence band: risk distribution + macro ────────── -->
+            <v-row v-if="anyAnalyzed" dense class="mb-3">
+                <v-col cols="12" sm="5">
+                    <RiskDistribution
+                        :counts="overviewTierCounts"
+                        :details="overviewTierDrivers"
+                        :scanning="scanningAll"
+                    />
                 </v-col>
-                <v-col cols="12" md="7">
-                    <v-card class="pa-4 fill-height d-flex flex-column">
-                        <div class="d-flex align-center mb-3" style="gap: 10px">
-                            <v-icon size="small">mdi-text-box-outline</v-icon>
-                            <span class="text-subtitle-2">Portfolio Intelligence</span>
-                            <v-chip
-                                v-if="overviewSummaryLoading"
-                                size="small"
-                                variant="text"
-                                color="default"
-                            >
-                                <v-progress-circular
-                                    size="10"
-                                    width="2"
-                                    indeterminate
-                                    class="mr-1"
-                                />
-                                Generating…
-                            </v-chip>
-                            <v-spacer />
-                            <v-btn
-                                v-if="overviewSummaryText && !overviewSummaryLoading"
-                                size="x-small"
-                                variant="text"
-                                color="primary"
-                                append-icon="mdi-arrow-right"
-                                @click="router.push('/bucket')"
-                            >
-                                Full briefing
-                            </v-btn>
-                        </div>
+                <v-col cols="12" sm="7">
+                    <MacroPanel class="fill-height" />
+                </v-col>
+            </v-row>
 
-                        <!-- Loading state -->
-                        <div
-                            v-if="overviewSummaryLoading"
-                            class="flex-grow-1 d-flex flex-column align-center justify-center text-center pa-4"
-                        >
-                            <v-progress-circular
-                                size="28"
-                                width="2"
-                                indeterminate
-                                class="mb-3 text-medium-emphasis"
-                            />
-                            <div class="text-body-2 text-medium-emphasis">
-                                Synthesizing portfolio intelligence…
-                            </div>
-                        </div>
-
-                        <!-- Error state -->
-                        <div
-                            v-else-if="overviewSummaryError"
-                            class="flex-grow-1 d-flex align-center justify-center text-center pa-4"
-                        >
-                            <div>
-                                <div class="text-body-2 text-medium-emphasis mb-2">
-                                    Intelligence summary unavailable
-                                </div>
-                                <v-btn
-                                    size="small"
-                                    variant="text"
-                                    color="primary"
-                                    @click="generateOverviewSummary"
-                                >
-                                    Retry
-                                </v-btn>
-                            </div>
-                        </div>
-
-                        <!-- Empty: analysis not yet run -->
-                        <div
-                            v-else-if="!overviewSummaryText"
-                            class="flex-grow-1 d-flex flex-column align-center justify-center text-center pa-6"
-                        >
-                            <v-icon size="32" class="mb-2 text-medium-emphasis"
-                                >mdi-text-box-outline</v-icon
-                            >
-                            <div class="text-body-2 text-medium-emphasis">
-                                Analyze your goals to generate a portfolio intelligence briefing.
-                            </div>
-                        </div>
-
-                        <!-- Content: parsed "What You Need to Know" bullets -->
-                        <div v-else class="flex-grow-1">
-                            <div
-                                v-for="(line, idx) in overviewSummaryBullets"
-                                :key="idx"
-                                class="d-flex mb-2"
-                                style="gap: 8px; align-items: flex-start"
-                            >
-                                <v-icon
-                                    size="14"
-                                    color="primary"
-                                    class="flex-shrink-0"
-                                    style="margin-top: 4px"
-                                    >mdi-circle-small</v-icon
-                                >
-                                <span class="text-body-2">{{ line }}</span>
-                            </div>
-                        </div>
-                    </v-card>
+            <!-- ── Full portfolio briefing (PortfolioSummaryTab) ─────── -->
+            <v-row v-if="anyAnalyzed" dense class="mb-4">
+                <v-col cols="12">
+                    <SummaryPortfolioSummaryTab
+                        :entities="allScoredEntities"
+                        portfolio-id="__overview__"
+                        :portfolio-name="`${activeUser?.name ?? 'Your'} portfolio`"
+                        :active="true"
+                        :scan-completed-at="scanCompletedAt"
+                        :macro="overviewMacro"
+                        :investor="overviewInvestor"
+                    />
                 </v-col>
             </v-row>
 
@@ -542,6 +480,7 @@
                 </h2>
                 <GoalsConstructionSpectrum
                     :buckets="spectrumBuckets"
+                    :ready="allAnalyzedAndComplete"
                     class="mb-4"
                     @open="onOpenBucket"
                 />
@@ -561,6 +500,8 @@
     import { useRouter } from 'vue-router';
     import { useUser } from '~/composables/useUser';
     import { usePortfolio } from '~/composables/usePortfolio';
+    import { useMacroRegime } from '~/composables/useMacroRegime';
+    import { riskLabel, riskDescription } from '~/utils/goals/riskLabels';
     import type { RiskTier } from '~/composables/useFusedScoring';
     import { tierColor, tierLabel } from '~/composables/useFusedScoring';
     import type { RiskBand, HorizonFit } from '~/utils/goals/riskFit';
@@ -579,7 +520,10 @@
         scanningAll,
         lastScanError,
         scanActiveUserPortfolios,
+        scanCompletedAt,
     } = usePortfolio(activeUserId);
+
+    const { regime: macroRegime } = useMacroRegime();
 
     const onboardingOpen = ref(false);
 
@@ -857,12 +801,64 @@
         return 'error';
     }
 
-    // ── Overview AI summary (condensed, cross-bucket) ────────────────
-    const overviewSummaryText = ref('');
-    const overviewSummaryLoading = ref(false);
-    const overviewSummaryKey = ref('');
-    const overviewSummaryError = ref(false);
+    // ── Persona description (Gemini-generated, cached on DemoUser) ────
+    const personaLoading = ref(false);
 
+    function personaInputHash(user: typeof activeUser.value): string {
+        const bucketNames = portfolios.value
+            .map((p) => p.name)
+            .sort()
+            .join(',');
+        return `${user?.name}|${user?.age}|${user?.retirementAge}|${user?.riskTolerance}|${bucketNames}`;
+    }
+
+    async function ensurePersonaDescription() {
+        const user = activeUser.value;
+        if (!user) return;
+        const hash = personaInputHash(user);
+        if (user.personaHash === hash && user.personaDescription) return;
+
+        personaLoading.value = true;
+        try {
+            const res = await $fetch<{ description: string }>('/api/persona/description', {
+                method: 'POST',
+                body: {
+                    name: user.name,
+                    age: user.age,
+                    retirementAge: user.retirementAge,
+                    riskPreference: riskLabel(user.riskTolerance),
+                    goals: portfolios.value
+                        .filter((p) => p.goal)
+                        .map((p) => ({
+                            purpose: p.goal!.purpose,
+                            horizonYears: p.goal!.horizonYears,
+                        })),
+                },
+                timeout: 25_000,
+            });
+            updateUser(user.id, {
+                personaDescription: res.description,
+                personaHash: hash,
+            });
+        } catch {
+            // Fail silently — the blurb is cosmetic
+        } finally {
+            personaLoading.value = false;
+        }
+    }
+
+    watch(
+        () => activeUser.value?.id,
+        () => void ensurePersonaDescription(),
+        { immediate: true }
+    );
+
+    watch(
+        () => portfolios.value.map((p) => p.name).join(','),
+        () => void ensurePersonaDescription()
+    );
+
+    // ── Cross-portfolio scored entities (used by PortfolioSummaryTab) ────
     const allScoredEntities = computed(() => {
         const seen = new Set<string>();
         const result: any[] = [];
@@ -880,6 +876,7 @@
                     drivers: (e as any).drivers,
                     confidenceLevel: (e as any).confidenceLevel,
                     coverage: (e as any).coverage,
+                    coverageDetail: (e as any).coverageDetail,
                     monitor: e.monitor,
                 });
             }
@@ -887,51 +884,83 @@
         return result;
     });
 
-    const overviewSummaryBullets = computed(() =>
-        overviewSummaryText.value
-            .split('\n')
-            .map((l) => l.replace(/^[-*•]\s*/, '').trim())
-            .filter((l) => l.length > 0)
-    );
-
-    async function generateOverviewSummary() {
-        if (!allScoredEntities.value.length) return;
-        const key = `${analysisSummary.value.scoredHoldings}::${analysisSummary.value.analyzedBuckets}`;
-        if (overviewSummaryKey.value === key && overviewSummaryText.value) return;
-        overviewSummaryKey.value = key;
-        overviewSummaryLoading.value = true;
-        overviewSummaryError.value = false;
-        try {
-            const res = await $fetch<{ summary: string }>('/api/portfolio-summary/generate', {
-                method: 'POST',
-                body: {
-                    portfolioName: `${activeUser.value?.name ?? 'Your'} portfolio`,
-                    entities: allScoredEntities.value,
-                    config: { style: 'brief', focus: 'risks', tone: 'conversational' },
-                },
-                timeout: 120_000,
-            });
-            const raw = res.summary ?? '';
-            const match = raw.match(/## What You Need to Know\s*([\s\S]*?)(?=\n## |\n---|\s*$)/);
-            overviewSummaryText.value = match ? match[1]!.trim() : raw;
-        } catch {
-            overviewSummaryError.value = true;
-            overviewSummaryText.value = '';
-            overviewSummaryKey.value = '';
-        } finally {
-            overviewSummaryLoading.value = false;
-        }
-    }
-
-    watch(
-        () => analysisSummary.value.isComplete,
-        (complete) => {
-            if (complete && !scanningAll.value) {
-                void generateOverviewSummary();
+    // ── Cross-portfolio tier counts (for RiskDistribution) ───────────
+    const overviewTierCounts = computed<Record<RiskTier, number>>(() => {
+        const counts: Record<RiskTier, number> = { critical: 0, high: 0, medium: 0, low: 0 };
+        for (const p of portfolios.value) {
+            for (const e of p.entities) {
+                if (e.scores?.tier) counts[e.scores.tier as RiskTier]++;
             }
-        },
-        { immediate: true }
+        }
+        return counts;
+    });
+
+    const DRIVER_LENS_LABEL: Record<string, string> = {
+        solvency: 'Solvency',
+        executive: 'Leadership',
+        news: 'News',
+        market: 'Market',
+        eventPressure: 'Events',
+        compliance: 'Screening',
+    };
+
+    const overviewTierDrivers = computed<Partial<Record<RiskTier, string>>>(() => {
+        const tally: Record<RiskTier, Map<string, number>> = {
+            critical: new Map(),
+            high: new Map(),
+            medium: new Map(),
+            low: new Map(),
+        };
+        for (const p of portfolios.value) {
+            for (const e of p.entities) {
+                const tier = e.scores?.tier as RiskTier | undefined;
+                if (!tier) continue;
+                const topDrivers = [...((e as any).drivers ?? [])]
+                    .sort((a: any, b: any) => b.score - a.score)
+                    .slice(0, 2);
+                for (const d of topDrivers as any[]) {
+                    const label = DRIVER_LENS_LABEL[d.lens] ?? d.lens;
+                    tally[tier].set(label, (tally[tier].get(label) ?? 0) + 1);
+                }
+            }
+        }
+        const out: Partial<Record<RiskTier, string>> = {};
+        (Object.keys(tally) as RiskTier[]).forEach((t) => {
+            const ranked = [...tally[t].entries()]
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 3)
+                .map(([label]) => label);
+            if (ranked.length) out[t] = ranked.join(' · ');
+        });
+        return out;
+    });
+
+    // ── Macro context (forwarded to PortfolioSummaryTab) ─────────────
+    const overviewMacro = computed(() =>
+        macroRegime.value
+            ? {
+                  regime: macroRegime.value.label,
+                  synthesis: macroRegime.value.synthesis,
+                  sectorTilt: macroRegime.value.sectorTilt?.map((s) => s.label).join(', '),
+                  portfolioImplication: macroRegime.value.portfolioImplication,
+              }
+            : undefined
     );
+
+    // ── Investor context (forwarded to PortfolioSummaryTab) ──────────
+    const overviewInvestor = computed(() => {
+        const u = activeUser.value;
+        if (!u) return undefined;
+        return {
+            name: u.name,
+            age: u.age,
+            retirementAge: u.retirementAge,
+            riskPreference: riskLabel(u.riskTolerance),
+            goals: portfolios.value
+                .filter((p) => p.goal)
+                .map((p) => ({ purpose: p.goal!.purpose, horizonYears: p.goal!.horizonYears })),
+        };
+    });
 </script>
 
 <style scoped>
@@ -947,5 +976,37 @@
 
     .headline-verdict {
         line-height: 1.3;
+    }
+
+    .persona-shimmer {
+        height: 14px;
+        width: 480px;
+        max-width: 100%;
+        border-radius: 6px;
+        background: rgba(var(--dynamic-fg-rgb, 128, 128, 128), 0.1);
+        background-image: linear-gradient(
+            90deg,
+            rgba(var(--dynamic-fg-rgb, 128, 128, 128), 0.05) 0%,
+            rgba(var(--dynamic-fg-rgb, 128, 128, 128), 0.15) 40%,
+            rgba(var(--dynamic-fg-rgb, 128, 128, 128), 0.05) 80%
+        );
+        background-size: 200% 100%;
+        animation: shimmer 1.6s infinite;
+        margin-top: 2px;
+    }
+
+    @keyframes shimmer {
+        0% {
+            background-position: 200% 0;
+        }
+        100% {
+            background-position: -200% 0;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .persona-shimmer {
+            animation: none;
+        }
     }
 </style>

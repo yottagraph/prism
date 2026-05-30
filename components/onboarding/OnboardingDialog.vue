@@ -76,6 +76,7 @@
 <script setup lang="ts">
     import { computed, reactive } from 'vue';
     import type { DemoUser, RiskTolerance } from '~/composables/useUser';
+    import { riskDescription } from '~/utils/goals/riskLabels';
 
     const props = defineProps<{
         modelValue: boolean;
@@ -108,15 +109,7 @@
         () => form.name.trim().length > 0 && form.age > 0 && form.retirementAge > form.age
     );
 
-    const RISK_LABELS: Record<number, string> = {
-        1: 'Very conservative — capital preservation is the priority.',
-        2: 'Conservative — modest growth, minimal risk.',
-        3: 'Moderate — balanced growth and stability.',
-        4: 'Growth-oriented — comfortable with meaningful volatility.',
-        5: 'Aggressive — maximize long-term returns, high risk tolerance.',
-    };
-
-    const riskLabel = computed(() => RISK_LABELS[form.riskTolerance] ?? '');
+    const riskLabel = computed(() => riskDescription(form.riskTolerance));
 
     function onSubmit() {
         emit('submit', {

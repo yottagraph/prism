@@ -88,11 +88,20 @@ interface GoalInput {
     horizonYears?: number;
 }
 
+interface InvestorInput {
+    name?: string;
+    age?: number;
+    retirementAge?: number;
+    riskPreference?: string;
+    goals?: GoalInput[];
+}
+
 interface GenerateRequest {
     portfolioName: string;
     entities: EntityInput[];
     macro?: MacroInput;
     goal?: GoalInput;
+    investor?: InvestorInput;
     config?: Partial<ReportConfig>;
 }
 
@@ -261,9 +270,34 @@ ${body.macro.portfolioImplication ? `Portfolio implication: ${body.macro.portfol
         ? `Bucket goal: "${body.goal.purpose}"${body.goal.horizonYears ? ` · ${body.goal.horizonYears}-year horizon` : ''}\n`
         : '';
 
+    // -- Investor context block
+    const inv = body.investor;
+    const investorBlock = inv?.name
+        ? (() => {
+              const yearsToRetirement =
+                  inv.age && inv.retirementAge ? Math.max(0, inv.retirementAge - inv.age) : null;
+              const goalsText = inv.goals
+                  ?.filter((g) => g.purpose)
+                  .map(
+                      (g) =>
+                          `${g.purpose}${g.horizonYears ? ` (${g.horizonYears}-year horizon)` : ''}`
+                  )
+                  .join('; ');
+              return `## INVESTOR CONTEXT
+Investor: ${inv.name}${inv.age ? `, age ${inv.age}` : ''}${inv.retirementAge ? ` (retiring at ${inv.retirementAge}${yearsToRetirement !== null ? `, ${yearsToRetirement} years away` : ''})` : ''}
+Risk preference: ${inv.riskPreference ?? 'not specified'}${goalsText ? `\nGoals: ${goalsText}` : ''}`;
+          })()
+        : '';
+
     const dialogueDurationMs = Date.now() - dialogueStart;
 
     // -- Build prompt
+    const relevanceTail = investorBlock
+        ? ` End with ONE sentence connecting it to ${inv!.name}'s goals/time horizon — mention their name and what they are saving for.`
+        : goalBlock
+          ? ` End with ONE sentence connecting it to the goal: "${body.goal!.purpose}".`
+          : '';
+
     const prompt = `You are a senior portfolio risk analyst writing an intelligence briefing for a financial advisor whose client owns "${portfolioName}".
 
 ## PORTFOLIO OVERVIEW
@@ -272,6 +306,8 @@ ${body.macro.portfolioImplication ? `Portfolio implication: ${body.macro.portfol
 - Coverage: SEC ${secCount}/${total} | News ${newsCount}/${total} | Stock ${stockCount}/${total} | Sanctions ${sanctionsCount}/${total} | Ownership ${ownershipCount}/${total}
 
 ${macroBlock}
+
+${investorBlock}
 
 ## ENTITY RISK DATA (${timePeriod} lookback)
 
@@ -314,6 +350,10 @@ The citations are provided in the entity data above — USE THEM. Never invent c
 ## REQUIRED OUTPUT FORMAT
 
 # Portfolio Risk Briefing — ${portfolioName}
+
+## Where Things Stand
+
+Write 2-3 sentences on the current state of these investments and how they are doing in general. Each sentence MUST include a source citation. Use specific numbers, events, and names from the entity data above — not generic observations.${relevanceTail}
 
 ## What You Need to Know
 

@@ -27,6 +27,14 @@ export interface DemoUser {
     /** True after completing onboarding questions. */
     onboarded: boolean;
     createdAt: number;
+    /** Gemini-generated 2-sentence persona blurb, cached here to avoid re-generating. */
+    personaDescription?: string;
+    /**
+     * Stable hash of the inputs used to generate personaDescription
+     * (name|age|retirementAge|riskTolerance|bucketNames). If the hash
+     * changes, the blurb is regenerated.
+     */
+    personaHash?: string;
 }
 
 interface HouseholdPrefsShape {

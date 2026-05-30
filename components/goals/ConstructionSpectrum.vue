@@ -23,14 +23,15 @@
             <div class="zone zone--balanced" title="Moderate: medium-horizon holdings" />
             <div class="zone zone--growth" title="Aggressive: long-horizon, high-growth holdings" />
 
-            <!-- Bucket dots (fanned vertically when they cluster at the same risk) -->
+            <!-- Placeholder dots while analysis is not yet complete -->
             <div
                 v-for="m in layout"
                 :key="m.id"
                 class="bucket-dot"
+                :class="{ 'bucket-dot--placeholder': !ready }"
                 :style="dotStyle(m)"
-                :title="`${m.name}: avg risk score ${m.avgRiskScore}`"
-                @click="$emit('open', m.id)"
+                :title="ready ? `${m.name}: avg risk score ${m.avgRiskScore}` : undefined"
+                @click="ready ? $emit('open', m.id) : undefined"
             />
         </div>
 
@@ -41,12 +42,16 @@
                 :key="`label-${m.id}`"
                 type="button"
                 class="bucket-label"
-                :class="labelAlignClass(m.pct)"
+                :class="[labelAlignClass(m.pct), { 'bucket-label--placeholder': !ready }]"
                 :style="labelStyle(m)"
-                :title="`${m.name}: avg risk score ${m.avgRiskScore}`"
-                @click="$emit('open', m.id)"
+                :title="ready ? `${m.name}: avg risk score ${m.avgRiskScore}` : undefined"
+                @click="ready ? $emit('open', m.id) : undefined"
             >
-                <span class="label-swatch" :style="{ background: m.color }" />
+                <span
+                    class="label-swatch"
+                    :style="{ background: ready ? m.color : undefined }"
+                    :class="{ 'label-swatch--placeholder': !ready }"
+                />
                 <span class="label-text">{{ m.name }}</span>
             </button>
         </div>
@@ -64,6 +69,15 @@
             </span>
         </div>
 
+        <!-- Pre-analysis caption -->
+        <div
+            v-if="!ready && buckets.length > 0"
+            class="text-center text-caption text-medium-emphasis mt-2"
+            style="opacity: 0.6"
+        >
+            Analyze your goals to map them by risk
+        </div>
+
         <div v-if="buckets.length === 0" class="text-center text-medium-emphasis text-caption pa-4">
             No buckets to display.
         </div>
@@ -74,9 +88,14 @@
     import { computed } from 'vue';
     import type { BucketCardViewModel } from './BucketCard.vue';
 
-    const props = defineProps<{
-        buckets: BucketCardViewModel[];
-    }>();
+    const props = withDefaults(
+        defineProps<{
+            buckets: BucketCardViewModel[];
+            /** When false (pre-analysis), show muted evenly-spaced placeholder dots. */
+            ready?: boolean;
+        }>(),
+        { ready: true }
+    );
 
     defineEmits<{
         open: [bucketId: string];
@@ -112,9 +131,26 @@
      * Assign each bucket a horizontal position and a vertical row via a greedy
      * sweep. Buckets that land too close horizontally get pushed to a lower row
      * so their dots and labels never stack on top of each other.
+     *
+     * When !ready, evenly space all buckets across [10, 90] instead.
      */
     const layout = computed<MarkerLayout[]>(() => {
         const sorted = [...props.buckets].sort((a, b) => a.avgRiskScore - b.avgRiskScore);
+        const n = sorted.length;
+        if (!props.ready) {
+            // Evenly spaced placeholder positions
+            return sorted.map((bucket, i) => {
+                const pct = n === 1 ? 50 : 10 + (i / (n - 1)) * 80;
+                return {
+                    id: bucket.id,
+                    name: bucket.name,
+                    avgRiskScore: bucket.avgRiskScore,
+                    pct,
+                    row: 0,
+                    color: 'rgba(var(--v-theme-on-surface), 0.25)',
+                };
+            });
+        }
         // Tracks the rightmost occupied pct per row.
         const rowEdges: number[] = [];
         return sorted.map((bucket) => {
@@ -142,11 +178,12 @@
     /** Fan dots vertically within the track so identical-risk buckets stay visible. */
     function dotStyle(m: MarkerLayout): Record<string, string> {
         const offset = (m.row - (labelRows.value - 1) / 2) * 11;
-        return {
+        const base: Record<string, string> = {
             left: `${m.pct}%`,
             top: `calc(50% + ${offset}px)`,
-            background: m.color,
         };
+        if (props.ready) base.background = m.color;
+        return base;
     }
 
     function labelStyle(m: MarkerLayout): Record<string, string> {
@@ -218,12 +255,59 @@
         transform: translate(-50%, -50%);
         cursor: pointer;
         z-index: 1;
-        transition: transform 0.15s;
+        transition:
+            left 0.8s cubic-bezier(0.22, 1, 0.36, 1),
+            background 0.6s ease,
+            transform 0.15s;
     }
 
     .bucket-dot:hover {
         transform: translate(-50%, -50%) scale(1.25);
         z-index: 2;
+    }
+
+    .bucket-dot--placeholder {
+        background: rgba(var(--v-theme-on-surface), 0.18) !important;
+        box-shadow: none;
+        border-color: rgba(var(--v-theme-on-surface), 0.1);
+        cursor: default;
+        animation: dot-pulse 1.8s ease-in-out infinite;
+    }
+
+    .bucket-dot--placeholder:hover {
+        transform: translate(-50%, -50%);
+    }
+
+    .label-swatch--placeholder {
+        background: rgba(var(--v-theme-on-surface), 0.2) !important;
+    }
+
+    .bucket-label--placeholder {
+        cursor: default;
+        opacity: 0.5;
+    }
+
+    .bucket-label--placeholder:hover {
+        color: rgba(var(--v-theme-on-surface), 0.85);
+    }
+
+    @keyframes dot-pulse {
+        0%,
+        100% {
+            opacity: 1;
+        }
+        50% {
+            opacity: 0.4;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .bucket-dot--placeholder {
+            animation: none;
+        }
+        .bucket-dot {
+            transition: none;
+        }
     }
 
     .label-area {
