@@ -629,7 +629,7 @@
             const topRiskyNames = (active.value?.entities ?? [])
                 .filter((e) => e.scores?.tier === worstTier)
                 .slice(0, 2)
-                .map((e) => e.name)
+                .map((e) => e.resolvedName || e.inputName)
                 .join(' and ');
             const reason = topRiskyNames
                 ? `${topRiskyNames} ${needsAttention > 1 ? 'raise' : 'raises'} near-term risk`
