@@ -1,8 +1,22 @@
 <template>
-    <v-footer v-if="configuredServers.length > 0" app height="36" class="server-status-footer">
-        <v-container fluid class="pa-0 d-flex align-center" style="height: 100%">
-            <div class="d-flex align-center">
-                <span class="text-caption mr-3">Server Status:</span>
+    <v-footer v-if="configuredServers.length > 0" app class="server-status-footer pa-0">
+        <!-- Collapsed affordance: single dot + text, click to expand -->
+        <div
+            v-if="!expanded"
+            class="d-flex align-center px-3"
+            style="height: 28px; cursor: pointer; gap: 6px"
+            @click="expanded = true"
+        >
+            <v-icon :color="overallColor" size="14">mdi-circle</v-icon>
+            <span class="text-caption text-medium-emphasis" style="font-size: 11px">
+                System status
+            </span>
+        </div>
+
+        <!-- Expanded detail row -->
+        <v-container v-else fluid class="pa-0 px-3 d-flex align-center" style="height: 36px">
+            <div class="d-flex align-center flex-grow-1">
+                <span class="text-caption mr-3" style="font-size: 11px">Server Status:</span>
 
                 <div
                     v-for="(server, index) in configuredServers"
@@ -15,36 +29,56 @@
                         size="small"
                         :class="{ rotating: server.status === 'checking' }"
                     />
-                    <span class="text-caption mx-1">{{ server.name }}:</span>
+                    <span class="text-caption mx-1" style="font-size: 11px"
+                        >{{ server.name }}:</span
+                    >
                     <span
                         class="text-caption font-weight-medium mr-3"
                         :class="getStatusTextClass(server.status)"
+                        style="font-size: 11px"
                     >
                         {{ getStatusText(server.status) }}
                     </span>
 
-                    <!-- Show address for available servers -->
                     <span
                         v-if="server.status === 'available' && server.address"
                         class="text-caption text-medium-emphasis mr-3"
+                        style="font-size: 11px"
                     >
                         ({{ formatAddress(server.address) }})
                     </span>
 
-                    <!-- Divider between servers -->
                     <v-divider v-if="index < configuredServers.length - 1" vertical class="mx-2" />
                 </div>
             </div>
+            <v-btn
+                size="x-small"
+                variant="text"
+                icon="mdi-close"
+                density="compact"
+                class="ml-2"
+                style="opacity: 0.5"
+                @click="expanded = false"
+            />
         </v-container>
     </v-footer>
 </template>
 
 <script setup lang="ts">
-    import { computed } from 'vue';
+    import { computed, ref } from 'vue';
     import { useServerStatus } from '~/composables/useServerStatus';
 
     const { getConfiguredServers } = useServerStatus();
     const configuredServers = computed(() => getConfiguredServers());
+    const expanded = ref(false);
+
+    const overallColor = computed(() => {
+        const statuses = configuredServers.value.map((s) => s.status);
+        if (statuses.some((s) => s === 'unavailable')) return 'error';
+        if (statuses.some((s) => s === 'checking')) return 'warning';
+        if (statuses.every((s) => s === 'available')) return 'success';
+        return 'grey';
+    });
 
     function getStatusColor(status: string) {
         switch (status) {
@@ -107,6 +141,8 @@
 <style scoped>
     .server-status-footer {
         border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+        min-height: 28px !important;
+        height: auto !important;
     }
 
     .rotating {

@@ -3,8 +3,7 @@
         <div class="flex-shrink-0 pa-4 page-header">
             <PageHeader title="Ask" icon="mdi-message-question-outline" />
             <div class="text-caption text-medium-emphasis mt-1">
-                Conversational interface + live pipeline view of the 4-agent Dialogue → History →
-                Query → Composition flow.
+                Ask evidence-backed questions about this customer's goals and holdings.
             </div>
         </div>
 
@@ -142,48 +141,50 @@
                 <v-col cols="12" lg="5">
                     <AgentPipelineViewer :steps="currentPipeline" class="mb-3" />
 
-                    <v-card class="pa-3 mb-3">
-                        <div class="d-flex align-center mb-2">
-                            <v-icon size="small" class="mr-2">mdi-cash-multiple</v-icon>
-                            <span class="text-subtitle-2">Cost & Performance</span>
-                        </div>
-                        <v-row dense>
-                            <v-col cols="6">
-                                <CostMetric
-                                    label="Tool calls"
-                                    :value="costSummary.elementalCalls || '—'"
-                                />
-                            </v-col>
-                            <v-col cols="6">
-                                <CostMetric
-                                    label="LLM tokens"
-                                    :value="
-                                        costSummary.llmTokens != null
-                                            ? costSummary.llmTokens.toLocaleString()
-                                            : '—'
-                                    "
-                                />
-                            </v-col>
-                            <v-col cols="6">
-                                <CostMetric
-                                    label="Est. cost"
-                                    :value="
-                                        costSummary.estimatedCostUsd != null
-                                            ? `$${costSummary.estimatedCostUsd.toFixed(2)}`
-                                            : '—'
-                                    "
-                                />
-                            </v-col>
-                            <v-col cols="6">
-                                <CostMetric
-                                    label="Duration"
-                                    :value="`${(costSummary.totalDurationMs / 1000).toFixed(1)}s`"
-                                />
-                            </v-col>
-                        </v-row>
-                    </v-card>
-
                     <v-expansion-panels variant="accordion" class="mb-3">
+                        <v-expansion-panel>
+                            <v-expansion-panel-title>
+                                <v-icon size="small" class="mr-2">mdi-cash-multiple</v-icon>
+                                <span class="text-subtitle-2">How Elemental answered</span>
+                            </v-expansion-panel-title>
+                            <v-expansion-panel-text>
+                                <v-row dense>
+                                    <v-col cols="6">
+                                        <CostMetric
+                                            label="Tool calls"
+                                            :value="costSummary.elementalCalls || '—'"
+                                        />
+                                    </v-col>
+                                    <v-col cols="6">
+                                        <CostMetric
+                                            label="LLM tokens"
+                                            :value="
+                                                costSummary.llmTokens != null
+                                                    ? costSummary.llmTokens.toLocaleString()
+                                                    : '—'
+                                            "
+                                        />
+                                    </v-col>
+                                    <v-col cols="6">
+                                        <CostMetric
+                                            label="Est. cost"
+                                            :value="
+                                                costSummary.estimatedCostUsd != null
+                                                    ? `$${costSummary.estimatedCostUsd.toFixed(2)}`
+                                                    : '—'
+                                            "
+                                        />
+                                    </v-col>
+                                    <v-col cols="6">
+                                        <CostMetric
+                                            label="Duration"
+                                            :value="`${(costSummary.totalDurationMs / 1000).toFixed(1)}s`"
+                                        />
+                                    </v-col>
+                                </v-row>
+                            </v-expansion-panel-text>
+                        </v-expansion-panel>
+
                         <v-expansion-panel>
                             <v-expansion-panel-title>
                                 <v-icon size="small" class="mr-2">mdi-tune-variant</v-icon>
@@ -358,10 +359,10 @@
     const expandedSessions = ref<string[]>([]);
 
     const suggestions = [
-        'Is my House Down Payment bucket too risky for a 4-year timeline?',
-        'Which holding is dragging down my Retirement bucket the most, and why?',
-        'If rates rise sharply, which of my goals is most exposed?',
-        'What happened to NVIDIA in the news this week?',
+        'Which goal needs review first and why?',
+        'Why is this bucket off target for its timeline?',
+        'What evidence supports the risk in my Retirement bucket?',
+        'Which holding is dragging down performance the most?',
     ];
 
     const { fetchConfig } = useTenantConfig();

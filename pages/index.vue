@@ -177,6 +177,22 @@
                 </v-expansion-panel>
             </v-expansion-panels>
 
+            <!-- Bucket recommendation verdict (post-analysis) -->
+            <v-alert
+                v-if="bucketVerdict"
+                :color="bucketVerdict.color"
+                variant="tonal"
+                density="compact"
+                class="mb-3"
+                :icon="
+                    bucketVerdict.color === 'success'
+                        ? 'mdi-check-circle-outline'
+                        : 'mdi-alert-circle-outline'
+                "
+            >
+                <span class="text-body-2">{{ bucketVerdict.message }}</span>
+            </v-alert>
+
             <!-- Two-dimension strip: A) Horizon fit · B) Holdings health -->
             <v-row v-if="active" dense class="mb-3 align-stretch">
                 <!-- Dimension A: Goal alignment -->
@@ -221,8 +237,8 @@
                             v-if="bucketHealth.scanned === 0"
                             class="text-body-2 text-medium-emphasis"
                         >
-                            Run a scan to assess holdings across SEC filings, news, and market
-                            signals.
+                            Use the Analyze button to assess holdings across SEC filings, news, and
+                            market signals.
                         </div>
 
                         <!-- Scanned -->
@@ -329,7 +345,7 @@
                         </template>
 
                         <p class="text-caption text-medium-emphasis mt-3 mb-0" style="opacity: 0.7">
-                            Multi-source fusion: SEC · news · market · sanctions
+                            Multi-source fusion: SEC · news · market · ownership
                         </p>
                     </v-card>
                 </v-col>
@@ -604,6 +620,33 @@
 
     // ── Dimension B: holdings health for the active bucket ──────────
     const bucketHealth = computed(() => bucketHoldingsHealth(active.value?.entities ?? []));
+
+    /** Short recommendation-first verdict for the active bucket. */
+    const bucketVerdict = computed(() => {
+        if (bucketHealth.value.scanned === 0) return null;
+        const { worstTier, needsAttention, avgFused } = bucketHealth.value;
+        if (worstTier === 'critical' || worstTier === 'high') {
+            const topRiskyNames = (active.value?.entities ?? [])
+                .filter((e) => e.scores?.tier === worstTier)
+                .slice(0, 2)
+                .map((e) => e.name)
+                .join(' and ');
+            const reason = topRiskyNames
+                ? `${topRiskyNames} ${needsAttention > 1 ? 'raise' : 'raises'} near-term risk`
+                : `${needsAttention} holding${needsAttention > 1 ? 's' : ''} need attention`;
+            return { color: 'error', message: reason };
+        }
+        if (needsAttention > 0) {
+            return {
+                color: 'warning',
+                message: `${needsAttention} holding${needsAttention > 1 ? 's' : ''} warrant a closer look`,
+            };
+        }
+        if (avgFused !== null && avgFused < 30) {
+            return { color: 'success', message: 'All holdings look healthy across key signals' };
+        }
+        return null;
+    });
 
     const anyLensData = computed(
         () =>

@@ -4,9 +4,7 @@
             <PageHeader title="Relationships" icon="mdi-graph-outline" />
             <div v-if="active" class="d-flex align-center mt-1" style="gap: 8px">
                 <span class="text-caption text-medium-emphasis">
-                    Connected universe of <strong>{{ active.name }}</strong> ·
-                    {{ active.entities.filter((e) => e.neid).length }} resolved entities ·
-                    {{ graph.nodes.length }} total nodes
+                    What hidden exposures connect this customer's portfolios?
                 </span>
                 <v-chip v-if="galaxyEnabled" size="x-small" color="success" variant="tonal">
                     <v-icon start size="10">mdi-lightning-bolt</v-icon>
@@ -53,6 +51,43 @@
                 closable
             />
             <v-card v-if="hasAnyScored || loading">
+                <!-- Post-analysis insight summary -->
+                <div
+                    v-if="hasAnyScored && !loading"
+                    class="pa-3 pb-0 d-flex align-center flex-wrap"
+                    style="gap: 16px"
+                >
+                    <v-chip size="small" variant="tonal" color="primary" prepend-icon="mdi-graph">
+                        {{ graph.nodes.length }} nodes in graph
+                    </v-chip>
+                    <v-chip
+                        v-if="companyCount > 0"
+                        size="small"
+                        variant="tonal"
+                        color="secondary"
+                        prepend-icon="mdi-domain"
+                    >
+                        {{ companyCount }} companies
+                    </v-chip>
+                    <v-chip
+                        v-if="locationCount > 0"
+                        size="small"
+                        variant="tonal"
+                        color="info"
+                        prepend-icon="mdi-map-marker-outline"
+                    >
+                        {{ locationCount }} locations
+                    </v-chip>
+                    <v-chip
+                        v-if="topConnectedName"
+                        size="small"
+                        variant="tonal"
+                        color="warning"
+                        prepend-icon="mdi-link-variant"
+                    >
+                        Most connected: {{ topConnectedName }}
+                    </v-chip>
+                </div>
                 <v-tabs v-model="tab" color="primary" align-tabs="start">
                     <v-tab value="companies">
                         <v-icon size="small" class="mr-2">mdi-domain</v-icon>
@@ -339,6 +374,15 @@
     function onSelectNode(n: GraphNode) {
         selectedNode.value = n;
     }
+
+    const companyCount = computed(() => companies.value.length);
+    const locationCount = computed(() => locations.value.length);
+    const topConnectedName = computed(() => {
+        const sorted = [...companies.value].sort(
+            (a, b) => (b.relationshipCount ?? 0) - (a.relationshipCount ?? 0)
+        );
+        return sorted[0]?.name ?? null;
+    });
 
     function onCompanyRowClick(_: Event, payload: { item: { raw: { neid?: string } } }) {
         const neid = payload?.item?.raw?.neid;

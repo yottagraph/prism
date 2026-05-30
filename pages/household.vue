@@ -57,6 +57,37 @@
                 <nuxt-link to="/">Goal Bucket</nuxt-link> to create one.
             </v-alert>
 
+            <!-- ── Post-analysis payoff band ──────────────────────────── -->
+            <v-card
+                v-if="analysisSummary.isComplete"
+                variant="tonal"
+                color="primary"
+                class="mb-4 pa-3"
+            >
+                <div class="d-flex align-center flex-wrap" style="gap: 12px">
+                    <v-icon size="small" class="mr-1">mdi-check-circle-outline</v-icon>
+                    <span class="text-subtitle-2 font-weight-medium mr-2">Analysis complete</span>
+                    <v-chip size="small" variant="text" class="px-1">
+                        {{ analysisSummary.analyzedBuckets }}
+                        {{ analysisSummary.analyzedBuckets === 1 ? 'goal' : 'goals' }} analyzed
+                    </v-chip>
+                    <span class="text-caption text-medium-emphasis">·</span>
+                    <v-chip size="small" variant="text" class="px-1">
+                        {{ analysisSummary.scoredHoldings }} holdings scored
+                    </v-chip>
+                    <span class="text-caption text-medium-emphasis">·</span>
+                    <v-chip size="small" variant="text" class="px-1">
+                        {{ analysisSummary.relationshipReadyCount }} entities in graph
+                    </v-chip>
+                    <template v-if="analysisSummary.needsAttention > 0">
+                        <span class="text-caption text-medium-emphasis">·</span>
+                        <v-chip size="small" variant="tonal" color="warning" class="px-2">
+                            {{ analysisSummary.needsAttention }} need attention
+                        </v-chip>
+                    </template>
+                </div>
+            </v-card>
+
             <!-- ── Two-question hero band ──────────────────────────── -->
             <v-row v-if="buckets.length > 0" dense class="mb-4">
                 <!-- Question A: Are the goals built right? -->
@@ -69,7 +100,7 @@
                         <div class="d-flex align-center mb-3">
                             <v-icon size="small" class="mr-2">mdi-bullseye-arrow</v-icon>
                             <span class="text-subtitle-2 font-weight-medium">
-                                Are the goals built right?
+                                Are portfolios built for their goals?
                             </span>
                         </div>
 
@@ -152,7 +183,7 @@
                         <div class="d-flex align-center mb-2">
                             <v-icon size="small" class="mr-2">mdi-shield-search</v-icon>
                             <span class="text-subtitle-2 font-weight-medium">
-                                Are the holdings healthy?
+                                What needs attention?
                             </span>
                         </div>
 
@@ -240,6 +271,30 @@
                 </v-col>
             </v-row>
 
+            <!-- ── Next best review ──────────────────────────────────── -->
+            <v-card
+                v-if="nextBestReview"
+                variant="outlined"
+                class="mb-4 pa-3 d-flex align-center"
+                style="gap: 12px; cursor: pointer"
+                @click="onOpenBucket(nextBestReview.id)"
+            >
+                <v-icon color="warning" size="small">mdi-alert-circle-outline</v-icon>
+                <div class="flex-grow-1">
+                    <span class="text-subtitle-2 font-weight-medium">Next best review: </span>
+                    <span class="text-body-2">{{ nextBestReview.name }}</span>
+                    <span
+                        v-if="nextBestReview.fitLabel"
+                        class="text-caption text-medium-emphasis ml-2"
+                    >
+                        · {{ nextBestReview.fitLabel }}
+                    </span>
+                </div>
+                <v-btn size="x-small" variant="text" color="primary" append-icon="mdi-arrow-right">
+                    Open bucket
+                </v-btn>
+            </v-card>
+
             <!-- ── Cross-bucket concentration ─────────────────────── -->
             <template v-if="duplicateHoldings.length > 0">
                 <h2 class="text-subtitle-1 font-weight-medium mb-2">
@@ -314,7 +369,7 @@
 
     const router = useRouter();
     const { users, activeUserId, activeUser, setActiveUser, updateUser, markOnboarded } = useUser();
-    const { portfolios, setActivePortfolio } = usePortfolio(activeUserId);
+    const { portfolios, setActivePortfolio, analysisSummary } = usePortfolio(activeUserId);
 
     const onboardingOpen = ref(false);
 
@@ -497,6 +552,21 @@
         setActivePortfolio(bucketId);
         router.push('/');
     }
+
+    /** Bucket most urgently needing review: too-aggressive first, then highest avg risk. */
+    const nextBestReview = computed(() => {
+        const cards = enrichedBuckets.value.filter((c) => c.analyzed);
+        if (cards.length === 0) return null;
+        const aggressive = cards.filter((c) => c.fit?.verdict === 'too_aggressive');
+        if (aggressive.length > 0) {
+            return aggressive.sort((a, b) => (b.avgRiskScore ?? 0) - (a.avgRiskScore ?? 0))[0];
+        }
+        const needsAttn = cards.filter((c) => c.health.needsAttention > 0);
+        if (needsAttn.length > 0) {
+            return needsAttn.sort((a, b) => (b.health.avgFused ?? 0) - (a.health.avgFused ?? 0))[0];
+        }
+        return null;
+    });
 
     // Color helpers
     function toleranceColor(t: number): string {

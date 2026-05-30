@@ -837,6 +837,59 @@ export function usePortfolio(activeUserId?: globalThis.Ref<string | null>) {
         portfolios.value.some((bucket) => bucket.entities.some((e) => e.scores))
     );
 
+    /**
+     * Shared post-analysis summary consumed by Overview, Relationships, Ask, and AppHeader.
+     * All pages should read from this instead of computing their own state.
+     */
+    const analysisSummary = computed(() => {
+        const buckets = portfolios.value;
+        let totalHoldings = 0;
+        let scoredHoldings = 0;
+        let unresolvedHoldings = 0;
+        let needsAttention = 0;
+        let analyzedBucketCount = 0;
+        let relationshipReadyCount = 0;
+        let worstScore = 0;
+        let worstBucketId: string | null = null;
+        let worstBucketName: string | null = null;
+
+        for (const bucket of buckets) {
+            const bucketAnalyzed = bucket.entities.some((e) => e.scores != null);
+            if (bucketAnalyzed) analyzedBucketCount++;
+            for (const entity of bucket.entities) {
+                totalHoldings++;
+                if (entity.scores) {
+                    scoredHoldings++;
+                    if ((entity.scores.fused ?? 0) > worstScore) {
+                        worstScore = entity.scores.fused ?? 0;
+                        worstBucketId = bucket.id;
+                        worstBucketName = bucket.name;
+                    }
+                    if ((entity.scores.fused ?? 0) >= 60) needsAttention++;
+                }
+                if (entity.resolutionError) unresolvedHoldings++;
+                if (entity.neid) relationshipReadyCount++;
+            }
+        }
+
+        const isComplete =
+            analyzedBucketCount === buckets.length && buckets.length > 0 && scoredHoldings > 0;
+
+        return {
+            totalBuckets: buckets.length,
+            analyzedBuckets: analyzedBucketCount,
+            totalHoldings,
+            scoredHoldings,
+            unresolvedHoldings,
+            needsAttention,
+            relationshipReadyCount,
+            worstBucketId,
+            worstBucketName,
+            worstScore,
+            isComplete,
+        };
+    });
+
     return {
         portfolios,
         activePortfolio,
@@ -846,6 +899,7 @@ export function usePortfolio(activeUserId?: globalThis.Ref<string | null>) {
         scanningAll: computed(() => scanningAll.value),
         scanAllProgress: computed(() => scanAllProgress.value),
         hasAnyScored,
+        analysisSummary,
         scanProgress: computed(() => scanProgress.value),
         scanStatusMessage: computed(() => scanStatusMessage.value),
         scanStatusHistory: computed(() => scanStatusHistory.value),
