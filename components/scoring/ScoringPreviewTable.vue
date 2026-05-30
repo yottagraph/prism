@@ -27,7 +27,7 @@
             </tbody>
         </v-table>
         <v-card-text v-else class="text-center text-medium-emphasis">
-            Run a scan first to see preview rankings.
+            Analyze first to see preview rankings.
         </v-card-text>
     </v-card>
 </template>

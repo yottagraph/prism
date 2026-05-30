@@ -152,7 +152,7 @@ export function targetRiskBand(horizonYears: number, riskTolerance: RiskToleranc
 // Horizon fit verdict
 // ---------------------------------------------------------------------------
 
-export type HorizonFitVerdict = 'appropriate' | 'too_aggressive' | 'too_conservative';
+export type HorizonFitVerdict = 'appropriate' | 'too_aggressive' | 'too_conservative' | 'unknown';
 
 export interface HorizonFit {
     verdict: HorizonFitVerdict;
@@ -170,6 +170,7 @@ const VERDICT_COLORS: Record<HorizonFitVerdict, string> = {
     appropriate: 'success',
     too_aggressive: 'error',
     too_conservative: 'warning',
+    unknown: 'default',
 };
 
 export { VERDICT_COLORS };
@@ -198,7 +199,11 @@ export function horizonFit(
 
     let verdict: HorizonFitVerdict;
     if (actual === 'unknown') {
-        verdict = 'appropriate';
+        // Not enough volatility data to determine the actual risk band.
+        // Return an explicit 'unknown' verdict rather than falsely claiming
+        // the bucket is "appropriate." Surfaces as a neutral/informational
+        // state in the UI rather than a green checkmark.
+        verdict = 'unknown';
     } else if (actualIdx > targetIdx) {
         verdict = 'too_aggressive';
     } else if (actualIdx < targetIdx) {
@@ -208,12 +213,7 @@ export function horizonFit(
     }
 
     const bucketLabel = bucketName ?? 'This bucket';
-    const horizonLabel =
-        horizonYears <= 3
-            ? `${horizonYears}-year`
-            : horizonYears <= 10
-              ? `${horizonYears}-year`
-              : `${horizonYears}-year`;
+    const horizonLabel = `${horizonYears}-year`;
     const reason = buildReason(
         verdict,
         bucketLabel,
@@ -241,8 +241,10 @@ function buildReason(
     aggressiveFraction: number
 ): string {
     switch (verdict) {
+        case 'unknown':
+            return `${bucketLabel} doesn't have enough market data yet to assess horizon fit — volatility signals are still loading.`;
         case 'appropriate':
-            return `${bucketLabel} holdings align well with its ${horizonLabel} horizon — the ${actual} risk profile is a good fit.`;
+            return `${bucketLabel} holdings align well with its ${horizonLabel} horizon — the ${actual} risk profile fits the timeline.`;
         case 'too_aggressive': {
             const pct = Math.round(aggressiveFraction * 100);
             return `With a ${horizonLabel} horizon, ${bucketLabel} is carrying too much risk — ${pct}% of holdings are high-volatility. Consider shifting toward ${target} positions.`;

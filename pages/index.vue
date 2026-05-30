@@ -674,7 +674,7 @@
         news: 'News',
         market: 'Market',
         eventPressure: 'Events',
-        compliance: 'Sanctions',
+        compliance: 'Screening',
     };
 
     // Per-tier "what's driving this priority": tally each entity's top driver

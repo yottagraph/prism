@@ -3,7 +3,7 @@
         <div class="d-flex align-center app-header-title">
             <img :src="logoSrc" alt="Lovelace" class="header-logo" />
             <span class="app-title-text">{{ appName }}</span>
-            <span class="app-version-text">{{ buildString }}</span>
+            <!-- build string hidden for demos -->
         </div>
 
         <v-spacer></v-spacer>

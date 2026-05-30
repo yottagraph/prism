@@ -105,7 +105,16 @@
                         </div>
 
                         <!-- Headline verdict -->
-                        <div v-if="!anyAnalyzed" class="headline-verdict mb-3">
+                        <!-- Mid-scan: show progress, not a premature verdict -->
+                        <div v-if="scanningAll" class="headline-verdict mb-3">
+                            <span class="text-h5 font-weight-bold text-medium-emphasis">
+                                Analyzing goals…
+                            </span>
+                            <div class="text-body-2 text-medium-emphasis mt-1">
+                                Elemental is fusing signals — check back in a moment.
+                            </div>
+                        </div>
+                        <div v-else-if="!anyAnalyzed" class="headline-verdict mb-3">
                             <span class="text-h5 font-weight-bold text-medium-emphasis">
                                 Analysis needed
                             </span>
@@ -130,9 +139,37 @@
                             </span>
                             <span class="text-body-1 ml-1">may be leaving growth on the table</span>
                         </div>
-                        <div v-else class="headline-verdict mb-3">
+                        <!-- "All goals aligned" only shown when scan is complete AND no
+                             holdings are flagging risk — prevents contradictory green + red states. -->
+                        <div
+                            v-else-if="
+                                allAnalyzedAndComplete && analysisSummary.needsAttention === 0
+                            "
+                            class="headline-verdict mb-3"
+                        >
                             <span class="text-h5 font-weight-bold text-success">All goals</span>
                             <span class="text-body-1 ml-1">aligned with their timelines</span>
+                        </div>
+                        <div v-else-if="anyAnalyzed" class="headline-verdict mb-3">
+                            <span class="text-h5 font-weight-bold text-success">Goals</span>
+                            <span class="text-body-1 ml-1">structurally aligned</span>
+                            <div
+                                v-if="analysisSummary.needsAttention > 0"
+                                class="text-body-2 text-warning mt-1"
+                            >
+                                but {{ analysisSummary.needsAttention }}
+                                {{
+                                    analysisSummary.needsAttention === 1
+                                        ? 'holding needs'
+                                        : 'holdings need'
+                                }}
+                                review
+                            </div>
+                        </div>
+                        <div v-else class="headline-verdict mb-3">
+                            <span class="text-h5 font-weight-bold text-medium-emphasis"
+                                >Analysis needed</span
+                            >
                         </div>
 
                         <div class="d-flex align-center" style="gap: 16px">
@@ -283,11 +320,8 @@
                 <div class="flex-grow-1">
                     <span class="text-subtitle-2 font-weight-medium">Next best review: </span>
                     <span class="text-body-2">{{ nextBestReview.name }}</span>
-                    <span
-                        v-if="nextBestReview.fitLabel"
-                        class="text-caption text-medium-emphasis ml-2"
-                    >
-                        · {{ nextBestReview.fitLabel }}
+                    <span class="text-caption text-medium-emphasis ml-2">
+                        · {{ nextBestReview.reason }}
                     </span>
                 </div>
                 <v-btn size="x-small" variant="text" color="primary" append-icon="mdi-arrow-right">
@@ -369,7 +403,8 @@
 
     const router = useRouter();
     const { users, activeUserId, activeUser, setActiveUser, updateUser, markOnboarded } = useUser();
-    const { portfolios, setActivePortfolio, analysisSummary } = usePortfolio(activeUserId);
+    const { portfolios, setActivePortfolio, analysisSummary, scanningAll } =
+        usePortfolio(activeUserId);
 
     const onboardingOpen = ref(false);
 
@@ -504,13 +539,22 @@
 
     const anyAnalyzed = computed(() => analyzedBuckets.value.length > 0);
 
+    /**
+     * True only when all buckets are analyzed and no scan is running.
+     * Gates "All goals aligned" so we don't show a premature green headline
+     * while analysis is still in progress.
+     */
+    const allAnalyzedAndComplete = computed(
+        () => analysisSummary.value.isComplete && !scanningAll.value
+    );
+
     const summaryFitColor = computed(() => {
-        if (!anyAnalyzed.value) return 'default';
-        return aggressiveBuckets.value > 0
-            ? 'error'
-            : conservativeBuckets.value > 0
-              ? 'warning'
-              : 'success';
+        if (!allAnalyzedAndComplete.value) return 'default';
+        if (aggressiveBuckets.value > 0) return 'error';
+        if (conservativeBuckets.value > 0) return 'warning';
+        // Even if bands are fine, flag attention if holdings are risky
+        if (analysisSummary.value.needsAttention > 0) return 'warning';
+        return 'success';
     });
 
     // Hero band — Dimension B color
@@ -553,18 +597,43 @@
         router.push('/');
     }
 
-    /** Bucket most urgently needing review: too-aggressive first, then highest avg risk. */
-    const nextBestReview = computed(() => {
+    /**
+     * Bucket most urgently needing review: too-aggressive first, then
+     * highest needsAttention count. Always includes a plain-language reason
+     * so the card is never contradictory (e.g. never "Retirement — On track").
+     */
+    const nextBestReview = computed((): { id: string; name: string; reason: string } | null => {
         const cards = enrichedBuckets.value.filter((c) => c.analyzed);
         if (cards.length === 0) return null;
-        const aggressive = cards.filter((c) => c.fit?.verdict === 'too_aggressive');
+
+        // Priority 1: buckets that are too-aggressive for their horizon
+        const aggressive = cards
+            .filter((c) => c.fit?.verdict === 'too_aggressive')
+            .sort((a, b) => (b.health.needsAttention ?? 0) - (a.health.needsAttention ?? 0));
         if (aggressive.length > 0) {
-            return aggressive.sort((a, b) => (b.avgRiskScore ?? 0) - (a.avgRiskScore ?? 0))[0];
+            const c = aggressive[0]!;
+            const attn = c.health.needsAttention;
+            const reason =
+                attn > 0
+                    ? `${attn} high-risk holding${attn === 1 ? '' : 's'} · too aggressive for ${c.fit?.reason ? 'its timeline' : 'the goal'}`
+                    : 'Risk profile too aggressive for the goal horizon';
+            return { id: c.id, name: c.name, reason };
         }
-        const needsAttn = cards.filter((c) => c.health.needsAttention > 0);
+
+        // Priority 2: buckets with high/critical holdings needing attention
+        const needsAttn = cards
+            .filter((c) => c.health.needsAttention > 0)
+            .sort((a, b) => (b.health.needsAttention ?? 0) - (a.health.needsAttention ?? 0));
         if (needsAttn.length > 0) {
-            return needsAttn.sort((a, b) => (b.health.avgFused ?? 0) - (a.health.avgFused ?? 0))[0];
+            const c = needsAttn[0]!;
+            const n = c.health.needsAttention;
+            return {
+                id: c.id,
+                name: c.name,
+                reason: `${n} holding${n === 1 ? '' : 's'} flagged high or critical risk`,
+            };
         }
+
         return null;
     });
 

@@ -263,7 +263,7 @@
         // Sanctions — OpenSanctions / OFAC / CSL screening hits
         rows.push({
             key: 'sanctions',
-            label: 'Sanctions',
+            label: 'Screening',
             icon: 'mdi-shield-alert-outline',
             coverage: cd.sanctions,
             denom: props.total,

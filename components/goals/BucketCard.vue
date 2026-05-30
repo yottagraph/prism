@@ -76,7 +76,7 @@
                 style="gap: 6px"
             >
                 <v-icon size="14" color="medium-emphasis">mdi-radar</v-icon>
-                Run a scan to assess holdings
+                Analyze to assess holdings
             </div>
 
             <!-- Scanned -->

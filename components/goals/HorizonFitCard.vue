@@ -5,8 +5,23 @@
             <v-icon color="primary" class="mr-2" size="small">mdi-target</v-icon>
             <span class="text-subtitle-2 font-weight-medium">Horizon fit</span>
             <v-spacer />
-            <v-chip v-if="fit" :color="verdictColor" size="small" variant="flat" label>
+            <v-chip
+                v-if="fit && fit.verdict !== 'unknown'"
+                :color="verdictColor"
+                size="small"
+                variant="flat"
+                label
+            >
                 {{ verdictLabel }}
+            </v-chip>
+            <v-chip
+                v-else-if="fit?.verdict === 'unknown'"
+                color="default"
+                size="small"
+                variant="tonal"
+                label
+            >
+                Insufficient data
             </v-chip>
             <v-chip
                 v-else-if="goal && !analyzed"
@@ -46,6 +61,11 @@
             <div class="text-body-2 text-medium-emphasis">
                 Use the Analyze button to check if this bucket's risk matches its timeline.
             </div>
+        </template>
+
+        <!-- Goal set, analyzed, insufficient volatility data (unknown verdict) -->
+        <template v-else-if="fit?.verdict === 'unknown'">
+            <p class="text-body-2 text-medium-emphasis mb-0">{{ fit.reason }}</p>
         </template>
 
         <!-- Goal set, analyzed, but no fit result -->
@@ -138,7 +158,7 @@
                 data · rest estimated from sector
             </p>
             <p v-else class="text-caption text-medium-emphasis mt-2 mb-0" style="opacity: 0.7">
-                Risk band estimated from sector — run a scan for live volatility data
+                Risk band estimated from sector — analyze for live volatility data
             </p>
         </template>
     </v-card>
@@ -199,6 +219,8 @@
                 return 'Too aggressive';
             case 'too_conservative':
                 return 'Too conservative';
+            case 'unknown':
+                return 'Insufficient data';
             default:
                 return '';
         }
@@ -223,7 +245,8 @@
     });
 
     const verdictTextClass = computed(() => {
-        if (!fit.value || fit.value.verdict === 'appropriate') return 'text-medium-emphasis';
+        if (!fit.value || fit.value.verdict === 'appropriate' || fit.value.verdict === 'unknown')
+            return 'text-medium-emphasis';
         return fit.value.verdict === 'too_aggressive' ? 'text-error' : 'text-warning';
     });
 

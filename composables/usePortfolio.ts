@@ -7,7 +7,7 @@
  * through the gateway `entities/search` endpoint.
  */
 
-import { computed, ref } from 'vue';
+import { computed, effectScope, ref, watch } from 'vue';
 
 import portfolioFixture from '~/assets/portfolios-fixture.json';
 import householdFixture from '~/assets/household-fixture.json';
@@ -337,6 +337,59 @@ function defaultPortfolios(): PortfolioDoc[] {
 // Module-scoped state so every consumer of usePortfolio() shares the same
 // portfolios + active selection.
 const prefs = ref<ReturnType<typeof useAppFeaturePrefs<PortfolioPrefsShape>> | null>(null);
+
+/**
+ * Session-scoped scan result cache.
+ * Key: `${portfolioId}::${inputName}`. Written during scans.
+ * Re-applied whenever prefs re-hydration (auth transition, slow disk read)
+ * clobbers freshly-computed in-memory scores with stale data from disk.
+ */
+const _sessionScores = new Map<string, PortfolioEntity>();
+let _sessionWatchInstalled = false;
+
+function _cacheEntityScore(portfolioId: string, entity: PortfolioEntity) {
+    if (entity.scores) {
+        _sessionScores.set(`${portfolioId}::${entity.inputName}`, { ...entity });
+    }
+}
+
+function _reapplySessionScores() {
+    if (!prefs.value || _sessionScores.size === 0) return;
+    for (const portfolio of prefs.value.portfolios ?? []) {
+        let changed = false;
+        const updatedEntities = portfolio.entities.map((entity) => {
+            if (entity.scores) return entity; // already has scores, nothing to do
+            const cached = _sessionScores.get(`${portfolio.id}::${entity.inputName}`);
+            if (cached?.scores) {
+                changed = true;
+                return { ...entity, ...cached };
+            }
+            return entity;
+        });
+        if (changed) {
+            const idx = prefs.value!.portfolios.findIndex((p) => p.id === portfolio.id);
+            if (idx >= 0) {
+                prefs.value!.portfolios[idx] = { ...portfolio, entities: updatedEntities };
+            }
+        }
+    }
+}
+
+function _installSessionWatcher() {
+    if (_sessionWatchInstalled) return;
+    _sessionWatchInstalled = true;
+    const scope = effectScope(true);
+    scope.run(() => {
+        // Watch for portfolios array reference change (signals a prefs re-hydration
+        // wholesale-replaced the array). On detection, re-apply any session scores.
+        watch(
+            () => prefs.value?.portfolios,
+            () => {
+                _reapplySessionScores();
+            }
+        );
+    });
+}
 const scanning = ref(false);
 const scanningAll = ref(false);
 const scanAllProgress = ref<{ doneBuckets: number; totalBuckets: number }>({
@@ -427,6 +480,7 @@ function ensurePrefs(activeUserId?: string) {
         }
         migratePortfolioScoring(prefs.value.portfolios, prefs.value.weights);
         migratePortfolioOwnership(prefs.value.portfolios, activeUserId ?? 'default');
+        _installSessionWatcher();
     }
     return prefs.value!;
 }
@@ -704,6 +758,7 @@ export function usePortfolio(activeUserId?: globalThis.Ref<string | null>) {
                     current.signalAgreement = payload.entity.monitor?.signalAgreement;
                     current.signalSummary = payload.entity.monitor?.signalSummary;
                     p.portfolios[idx].entities = [...ents];
+                    _cacheEntityScore(portfolioId, current);
                     if (payload.entity.resolutionError) {
                         scanStatusMessage.value = `Issue loading ${payload.entity.inputName}: ${payload.entity.resolutionError}`;
                         pushScanStatus(scanStatusMessage.value, 'warning');

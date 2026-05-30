@@ -375,6 +375,24 @@ function mergeIntoReactive(
         if (isPlainObject(v) && isPlainObject(existing)) {
             const innerDirty = mergeIntoReactive(existing, v);
             if (innerDirty) dirty = true;
+        } else if (
+            Array.isArray(v) &&
+            Array.isArray(existing) &&
+            isIdKeyedObjectArray(v) &&
+            isIdKeyedObjectArray(existing)
+        ) {
+            // Identity-preserving merge for arrays of plain objects with an `id`
+            // field. This prevents a slow or auth-triggered hydrateOnce overlay
+            // from clobbering freshly-computed in-memory state (e.g. scan scores
+            // written to entities since the last disk flush) with stale disk data.
+            // Memory wins for any key present in both — disk provides the structure,
+            // memory preserves richer computed values.
+            const mergedArr = mergeIdKeyedArrays(
+                existing as Record<string, unknown>[],
+                v as Record<string, unknown>[]
+            );
+            target[k] = mergedArr;
+            dirty = true; // conservative: mark dirty so extra in-memory keys get flushed
         } else {
             target[k] = v;
         }
@@ -388,6 +406,59 @@ function mergeIntoReactive(
         }
     }
     return dirty;
+}
+
+/** True when the array contains at least one plain object with an `id` field. */
+function isIdKeyedObjectArray(arr: unknown[]): boolean {
+    return arr.length > 0 && isPlainObject(arr[0]) && 'id' in (arr[0] as object);
+}
+
+/**
+ * Merge two arrays of id-keyed plain objects. For each item:
+ * - If only in `disk`, include as-is.
+ * - If only in `mem`, include as-is (dirty will cause it to be flushed).
+ * - If in both, take disk as the structural base but overlay any non-null
+ *   fields from `mem` that are null/missing on disk — this preserves
+ *   freshly-computed in-memory values (scores, etc.) that may not have
+ *   been flushed to disk yet. For nested objects, recurse shallowly.
+ */
+function mergeIdKeyedArrays(
+    mem: Record<string, unknown>[],
+    disk: Record<string, unknown>[]
+): Record<string, unknown>[] {
+    const memById = new Map<unknown, Record<string, unknown>>();
+    for (const item of mem) {
+        if (item.id != null) memById.set(item.id, item);
+    }
+    const result: Record<string, unknown>[] = disk.map((diskItem) => {
+        const memItem = memById.get(diskItem.id);
+        if (!memItem) return diskItem;
+        // Merge: disk base + memory overlay for null/missing disk fields
+        const merged: Record<string, unknown> = { ...diskItem };
+        for (const [mk, mv] of Object.entries(memItem)) {
+            if (mv == null) continue;
+            const dv = merged[mk];
+            if (dv == null) {
+                // Disk doesn't have this field; keep the memory value
+                merged[mk] = mv;
+            } else if (isPlainObject(mv) && isPlainObject(dv)) {
+                // Both are objects — shallow merge (memory wins for null disk fields)
+                const inner: Record<string, unknown> = { ...(dv as Record<string, unknown>) };
+                for (const [ik, iv] of Object.entries(mv as Record<string, unknown>)) {
+                    if (iv != null && inner[ik] == null) inner[ik] = iv;
+                }
+                merged[mk] = inner;
+            }
+            // scalars: disk wins (don't clobber user preferences with stale in-memory)
+        }
+        return merged;
+    });
+    // Append mem-only items
+    const diskIds = new Set(disk.map((d) => d.id));
+    for (const memItem of mem) {
+        if (!diskIds.has(memItem.id)) result.push(memItem);
+    }
+    return result;
 }
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {

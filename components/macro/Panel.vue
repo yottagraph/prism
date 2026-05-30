@@ -13,7 +13,7 @@
                 {{ regime.label }}
             </v-chip>
             <v-chip v-else size="small" variant="tonal" color="default">
-                {{ scanning ? 'Scanning…' : 'Awaiting scan' }}
+                {{ scanning ? 'Analyzing…' : 'Awaiting analysis' }}
             </v-chip>
         </div>
 
@@ -31,7 +31,7 @@
             />
             <v-icon v-else size="32" class="mb-2 text-medium-emphasis">mdi-earth</v-icon>
             <div class="text-body-2 text-medium-emphasis">
-                {{ hasScored ? 'Loading macro data…' : 'Run a scan to load the macro regime.' }}
+                {{ hasScored ? 'Loading macro data…' : 'Analyze to load the macro regime.' }}
             </div>
         </div>
 

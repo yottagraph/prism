@@ -18,7 +18,7 @@
                     class="text-body-1 text-medium-emphasis mb-6"
                     style="max-width: 480px; text-align: center"
                 >
-                    Run a scan first, then generate an AI-powered briefing with citations, risk
+                    Analyze first, then generate an AI-powered briefing with citations, risk
                     drivers, and portfolio-level themes.
                 </div>
                 <v-btn variant="outlined" @click="$emit('requestScan')">
@@ -538,7 +538,7 @@
             },
             {
                 id: 'sanctions',
-                name: 'Sanctions',
+                name: 'Screening',
                 icon: 'mdi-shield-alert-outline',
                 color: 'red',
                 available: cd
