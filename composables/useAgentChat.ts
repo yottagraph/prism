@@ -42,7 +42,7 @@ export function useAgentChat() {
         }
     }
 
-    async function sendMessage(text: string): Promise<void> {
+    async function sendMessage(text: string, opts?: { context?: string }): Promise<void> {
         if (!text.trim() || loading.value) return;
 
         const agentId = currentAgentId.value;
@@ -61,6 +61,7 @@ export function useAgentChat() {
         messages.value.push({
             id: crypto.randomUUID(),
             role: 'user',
+            // Display the clean user text in the chat bubble regardless of any grounding context.
             text,
             timestamp: Date.now(),
         });
@@ -83,7 +84,15 @@ export function useAgentChat() {
         if (accessToken.value) {
             reqHeaders['Authorization'] = `Bearer ${accessToken.value}`;
         }
-        const reqBody: any = { message: text };
+
+        // On the first message of a session, prepend portfolio grounding context so the
+        // agent can answer portfolio questions without needing to call back into a server
+        // route for scored data. On subsequent turns the agent's own session memory carries
+        // the context forward, so we only attach it once (when sessionId is null).
+        const wireMessage =
+            opts?.context && !sessionId.value ? `${opts.context}\n\nUser question: ${text}` : text;
+
+        const reqBody: any = { message: wireMessage };
         if (sessionId.value) {
             reqBody.session_id = sessionId.value;
         }

@@ -426,6 +426,63 @@
         { deep: true }
     );
 
+    /**
+     * Build a compact grounding context string from the active portfolio.
+     * Sent only on the first turn of a fresh session so the agent can answer
+     * portfolio questions without needing to call back into a server route.
+     * Capped at 20 entities to stay comfortably within token limits.
+     */
+    function buildPortfolioContext(): string | undefined {
+        const portfolio = active.value;
+        if (!portfolio) return undefined;
+
+        const scored = portfolio.entities.filter((e) => e.scores && e.neid);
+        if (!scored.length) {
+            return (
+                `Portfolio: "${portfolio.name}" (id: ${portfolio.id})\n` +
+                'No analysis has been run yet — use the Analyze button on Goal Bucket first.'
+            );
+        }
+
+        const lines: string[] = [
+            `Portfolio: "${portfolio.name}" (id: ${portfolio.id})`,
+            `Entities (${scored.length} scored, showing up to 20):`,
+        ];
+
+        scored.slice(0, 20).forEach((e) => {
+            const s = e.scores!;
+            const tier = s.tier.toUpperCase();
+            const fused = s.fused.toFixed(2);
+            const subScores = [
+                `solvency=${s.solvency.toFixed(2)}`,
+                `executive=${s.executive.toFixed(2)}`,
+                `news=${s.news.toFixed(2)}`,
+                `market=${s.market.toFixed(2)}`,
+            ].join(', ');
+
+            const topDrivers = (e.drivers ?? [])
+                .slice(0, 3)
+                .map((d) => `${d.lens}(${d.score.toFixed(2)}): ${d.finding.text.slice(0, 120)}`)
+                .join('; ');
+
+            lines.push(
+                `- ${e.resolvedName} [neid:${e.neid}] tier=${tier} score=${fused} (${subScores})` +
+                    (topDrivers ? ` | top drivers: ${topDrivers}` : '')
+            );
+        });
+
+        if (portfolio.goal) {
+            lines.push(
+                `Goal: ${portfolio.goal.purpose}, horizon ${portfolio.goal.horizonYears}yr` +
+                    (portfolio.goal.targetAmount
+                        ? `, target $${portfolio.goal.targetAmount.toLocaleString()}`
+                        : '')
+            );
+        }
+
+        return lines.join('\n');
+    }
+
     async function sendChat(text: string) {
         if (!text.trim() || loading.value) return;
         draft.value = '';
@@ -433,7 +490,7 @@
             trigger: active.value?.name ?? 'portfolio',
             entityCount: active.value?.entities.length ?? 1,
         });
-        await sendMessage(text);
+        await sendMessage(text, { context: buildPortfolioContext() });
         // If done/error events didn't fire, close the session now.
         if (_pipelineUpdater) {
             _pipelineUpdater.onDone(
