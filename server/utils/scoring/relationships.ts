@@ -1,7 +1,7 @@
 import type { H3Event } from 'h3';
 
 import { findEntities, getEntityName, getSchema, normalizePidMap } from './elemental';
-import { getEntityQuads, getEntityInfo, isGalaxyEnabled } from './galaxy';
+import { getEntityQuads, getEntityInfo, isGalaxyEnabled, type GalaxyQuad } from './galaxy';
 
 export interface PortfolioEntitySeed {
     neid: string;
@@ -114,7 +114,8 @@ function kindPrefix(kind: NodeKind): string {
 
 async function buildFromGalaxy(
     event: H3Event,
-    entities: PortfolioEntitySeed[]
+    entities: PortfolioEntitySeed[],
+    preloadedQuads?: Map<string, GalaxyQuad[]>
 ): Promise<ReturnType<typeof assembleUniverse>> {
     const portfolioNodes: GraphNode[] = entities.map((e) => ({
         id: `p-${e.neid}`,
@@ -135,10 +136,13 @@ async function buildFromGalaxy(
 
     const portfolioNeidSet = new Set(entities.map((e) => e.neid));
 
-    // Fetch all entity quads in parallel — no per-entity cap; Galaxy returns all quads
+    // Fetch all entity quads in parallel — use preloaded quads from scan context when
+    // available to avoid redundant Galaxy calls after scoring has already fetched them.
     const quadsPerEntity = await Promise.all(
         entities.map(async (entity) => {
-            const quads = await getEntityQuads(entity.neid).catch(() => []);
+            const quads =
+                preloadedQuads?.get(entity.neid) ??
+                (await getEntityQuads(entity.neid).catch(() => []));
             return { entity, quads };
         })
     );
@@ -427,11 +431,12 @@ async function buildFromElemental(event: H3Event, entities: PortfolioEntitySeed[
 
 export async function buildRelationshipUniverse(
     event: H3Event,
-    entities: PortfolioEntitySeed[]
+    entities: PortfolioEntitySeed[],
+    preloadedQuads?: Map<string, GalaxyQuad[]>
 ): Promise<ReturnType<typeof assembleUniverse>> {
     const galaxyEnabled = await isGalaxyEnabled(event).catch(() => false);
     if (galaxyEnabled) {
-        return buildFromGalaxy(event, entities);
+        return buildFromGalaxy(event, entities, preloadedQuads);
     }
     return buildFromElemental(event, entities);
 }

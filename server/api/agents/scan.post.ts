@@ -19,6 +19,9 @@ import {
     searchEntitiesByName,
     searchEntitiesByNames,
 } from '~/server/utils/scoring/elemental';
+import { buildRelationshipUniverse } from '~/server/utils/scoring/relationships';
+import type { GalaxyQuad } from '~/server/utils/scoring/galaxy';
+import { getEntityProfile } from '~/server/utils/scoring/profile';
 
 interface ScanEntityInput {
     inputName: string;
@@ -576,12 +579,42 @@ export default defineEventHandler(async (event) => {
                             ? `Scan complete with ${failedEntities} unresolved/scoring issues`
                             : `Scan complete (${done}/${total})`,
                 });
+
+                // Build relationship universe reusing Galaxy quads already fetched
+                // during scoring — avoids a second round of getEntityQuads calls.
+                const contextPackages = (event.context as any).__contextPackages as
+                    | Map<string, Promise<any>>
+                    | undefined;
+                const preloadedQuads = new Map<string, GalaxyQuad[]>();
+                if (contextPackages) {
+                    for (const [neid, pkgPromise] of contextPackages) {
+                        const pkg = await pkgPromise.catch(() => null);
+                        if (pkg?.rawQuads?.length) preloadedQuads.set(neid, pkg.rawQuads);
+                    }
+                }
+                const resolvedSeeds = output
+                    .filter((e: any) => e?.neid)
+                    .map((e: any) => ({ neid: e.neid as string, name: e.resolvedName }));
+                let universe: Awaited<ReturnType<typeof buildRelationshipUniverse>> | null = null;
+                if (resolvedSeeds.length > 0) {
+                    try {
+                        universe = await buildRelationshipUniverse(
+                            event,
+                            resolvedSeeds,
+                            preloadedQuads
+                        );
+                    } catch (err) {
+                        console.warn('[scan] relationship universe build failed', err);
+                    }
+                }
+
                 const summary = summarizeDiagnostics(diagnostics, total, done);
                 emit('done', {
                     entities: output,
                     coverage,
                     coverageDetail,
                     failedEntities,
+                    universe,
                     ...(diagnosticsEnabled ? { diagnostics: summary } : {}),
                 });
                 if (diagnosticsEnabled) {
@@ -590,6 +623,19 @@ export default defineEventHandler(async (event) => {
                 if (summary.totalRequests > 1000) {
                     console.warn(
                         `[scan] request budget exceeded: ${summary.totalRequests} requests for ${total} entities (threshold: 1000)`
+                    );
+                }
+
+                // Pre-build entity profiles in parallel while the stream is still
+                // open. Passes precomputed scoring so getEntityProfile skips
+                // re-running scoreEntity. Client already has the done payload and
+                // will see near-instant cache hits when it navigates to a profile.
+                const profileEntities = output.filter((e: any) => e?.neid && e?.scores);
+                if (profileEntities.length > 0) {
+                    await Promise.allSettled(
+                        profileEntities.map((e: any) =>
+                            getEntityProfile(event, body.portfolioId, e.neid, e).catch(() => null)
+                        )
                     );
                 }
             } catch (error: any) {

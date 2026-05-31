@@ -22,6 +22,7 @@ import {
     type ScoringSettings,
     type SourceFusionWeights,
 } from './useFusedScoring';
+import { primeRelationshipCache, type RelationshipUniverse } from './useRelationships';
 
 export interface SourceCoverageDetail {
     sec: { filings: number; earliest: string | null; latest: string | null };
@@ -166,6 +167,27 @@ export interface PortfolioEntity extends Pick<MonitorEntity, 'signalAgreement' |
         finding: { text: string; date?: string; citations: CitationRef[] };
     }>;
     conflicts?: Array<{ lens: string; delta: number }>;
+    /** Full lens breakdown from scan — drives FHS/ERS/ACS detail tabs without re-fetching. */
+    lensDetails?: Partial<
+        Record<
+            string,
+            {
+                metrics: Array<{ label: string; value: string; ref?: string }>;
+                findings: Array<{
+                    text: string;
+                    date?: string;
+                    citations: Array<{
+                        ref?: string;
+                        url?: string;
+                        title?: string;
+                        source?: string;
+                        date?: string;
+                        snippet?: string;
+                    }>;
+                }>;
+            }
+        >
+    >;
 }
 
 export interface GoalMeta {
@@ -240,6 +262,7 @@ interface ScanEntityEventPayload {
         coverage?: PortfolioEntity['coverage'];
         coverageDetail?: SourceCoverageDetail;
         resolutionError?: string;
+        lensDetails?: PortfolioEntity['lensDetails'];
     };
 }
 
@@ -918,6 +941,7 @@ export function usePortfolio(activeUserId?: globalThis.Ref<string | null>) {
                     current.confidenceLevel = payload.entity.confidenceLevel;
                     current.coverage = payload.entity.coverage;
                     current.coverageDetail = payload.entity.coverageDetail;
+                    current.lensDetails = payload.entity.lensDetails;
                     current.signalAgreement = payload.entity.monitor?.signalAgreement;
                     current.signalSummary = payload.entity.monitor?.signalSummary;
                     p.portfolios[idx].entities = [...ents];
@@ -965,6 +989,7 @@ export function usePortfolio(activeUserId?: globalThis.Ref<string | null>) {
                             entityOut.confidenceLevel ?? current.confidenceLevel;
                         current.coverage = entityOut.coverage ?? current.coverage;
                         current.coverageDetail = entityOut.coverageDetail ?? current.coverageDetail;
+                        current.lensDetails = entityOut.lensDetails ?? current.lensDetails;
                         current.signalAgreement =
                             entityOut.monitor?.signalAgreement ?? current.signalAgreement;
                         current.signalSummary =
@@ -989,6 +1014,26 @@ export function usePortfolio(activeUserId?: globalThis.Ref<string | null>) {
                     if (!lastScanError.value) {
                         scanStatusMessage.value = 'Scan complete.';
                         pushScanStatus(scanStatusMessage.value, 'complete');
+                    }
+
+                    // Relationship universe was built server-side during scan — prime
+                    // client cache so the Relationship tab is instant on first open.
+                    if (data?.universe) {
+                        primeRelationshipCache(portfolioId, data.universe as RelationshipUniverse);
+                    }
+
+                    // Mark scan complete now so the UI unlocks immediately; the
+                    // stream stays open while the server pre-warms profile caches.
+                    scanning.value = false;
+                    scanCompletedAt.value = Date.now();
+
+                    // Fire-and-forget stock profile fetches so the Stock tab is
+                    // populated from cache when the user clicks it.
+                    const stockEntities = ents.filter((e) => e.neid);
+                    for (const entity of stockEntities) {
+                        fetch(
+                            `/api/portfolios/${portfolioId}/entity/${entity.neid}/stock?name=${encodeURIComponent(entity.resolvedName)}`
+                        ).catch(() => undefined);
                     }
 
                     // Fire-and-forget per-entity AI headline summaries so they
@@ -1066,8 +1111,11 @@ export function usePortfolio(activeUserId?: globalThis.Ref<string | null>) {
             }
             p.portfolios[idx].entities = [...ents];
         } finally {
-            scanning.value = false;
-            scanCompletedAt.value = Date.now();
+            // Safety net: the done handler sets these immediately, but if the
+            // stream closes without a done event (network drop, error) we still
+            // need to clear the spinner.
+            if (scanning.value) scanning.value = false;
+            if (!scanCompletedAt.value) scanCompletedAt.value = Date.now();
             if (!lastScanError.value && scanStatusMessage.value === 'Idle') {
                 scanStatusMessage.value = 'Scan complete.';
             }

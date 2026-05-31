@@ -6,6 +6,7 @@ import { resolveRefs } from './citations';
 import { findEntities, getEntityName, getSchema, normalizePidMap } from './elemental';
 import { callMcpTool, extractMcpStructuredContent } from './mcpGateway';
 import { scoreEntity } from './scoreEntity';
+import type { ScoreComputationResult } from './types';
 
 async function resolveNeighborNames(event: H3Event, eids: string[], limit = 10): Promise<string[]> {
     const trimmed = eids.slice(0, limit);
@@ -119,7 +120,12 @@ function buildStatusSummary(scored: any, name: string): string | null {
     return parts.join(' ');
 }
 
-export async function getEntityProfile(event: H3Event, portfolioId: string, neid: string) {
+export async function getEntityProfile(
+    event: H3Event,
+    portfolioId: string,
+    neid: string,
+    precomputedScoring?: ScoreComputationResult
+) {
     const cacheKey = makeCacheKey(portfolioId, neid, 'profile');
     const cached = await readScoringCache<any>(event, cacheKey);
     if (cached) return cached;
@@ -226,7 +232,8 @@ export async function getEntityProfile(event: H3Event, portfolioId: string, neid
         instruments: [],
         locations: [],
     }));
-    const scored = await scoreEntity(event, portfolioId, neid).catch(() => null);
+    const scored =
+        precomputedScoring ?? (await scoreEntity(event, portfolioId, neid).catch(() => null));
 
     const headquarters = headquartersRaw ?? headquartersFromRelationships;
 

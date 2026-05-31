@@ -76,6 +76,15 @@ const EMPTY_UNIVERSE: RelationshipUniverse = {
 // The server has its own TTL cache; this client-side cache prevents redundant
 // fetches when the user navigates away and back.
 const clientCache = new Map<string, RelationshipUniverse>();
+
+/**
+ * Pre-populate the relationship client cache with data already computed during
+ * a scan. Calling this in the `done` SSE handler means the Relationship tab is
+ * served from cache immediately instead of re-fetching Galaxy quads.
+ */
+export function primeRelationshipCache(portfolioId: string, universe: RelationshipUniverse): void {
+    clientCache.set(portfolioId, universe);
+}
 // Track in-flight fetches to avoid duplicate requests for the same portfolio.
 const inflight = new Map<string, Promise<{ data: RelationshipUniverse; error: string | null }>>();
 
