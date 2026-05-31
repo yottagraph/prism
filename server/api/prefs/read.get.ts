@@ -1,6 +1,7 @@
 import { unsealCookie } from '../../utils/cookies';
 import { getFirestoreDb, shouldUseLocalFsFallback } from '../../utils/firestore';
 import { localFsReadDoc, prefsDocPath } from '../../utils/localFsPrefsStore';
+import { getRedis, toRedisKey } from '../../utils/redis';
 
 /**
  * GET /api/prefs/read?scope=app|global
@@ -42,6 +43,12 @@ export default defineEventHandler(async (event) => {
         const snap = await db.doc(docPath).get();
         if (!snap.exists) return {};
         return snap.data() || {};
+    }
+
+    const redis = getRedis();
+    if (redis) {
+        const val = await redis.get<Record<string, unknown>>(toRedisKey(docPath));
+        return val ?? {};
     }
 
     if (shouldUseLocalFsFallback()) {

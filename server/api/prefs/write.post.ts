@@ -1,6 +1,7 @@
 import { unsealCookie } from '../../utils/cookies';
 import { getFirestoreDb, shouldUseLocalFsFallback } from '../../utils/firestore';
 import { localFsWriteDoc, prefsDocPath } from '../../utils/localFsPrefsStore';
+import { getRedis, toRedisKey } from '../../utils/redis';
 
 /**
  * POST /api/prefs/write
@@ -60,6 +61,12 @@ export default defineEventHandler(async (event) => {
         return { ok: true };
     }
 
+    const redis = getRedis();
+    if (redis) {
+        await redis.set(toRedisKey(docPath), state);
+        return { ok: true };
+    }
+
     if (shouldUseLocalFsFallback()) {
         localFsWriteDoc(docPath, state);
         return { ok: true };
@@ -71,6 +78,7 @@ export default defineEventHandler(async (event) => {
         error: 'no_backend',
         message:
             'No prefs backend is configured. In production, set NUXT_PUBLIC_FIRESTORE_ENABLED ' +
-            '+ NUXT_FIRESTORE_SA_KEY + NUXT_PUBLIC_FIRESTORE_PROJECT_ID.',
+            '+ NUXT_FIRESTORE_SA_KEY + NUXT_PUBLIC_FIRESTORE_PROJECT_ID, or ensure KV_REST_API_URL ' +
+            '+ KV_REST_API_TOKEN are set.',
     };
 });

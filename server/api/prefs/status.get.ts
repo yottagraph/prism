@@ -1,4 +1,5 @@
 import { isFirestoreConfigured, shouldUseLocalFsFallback } from '../../utils/firestore';
+import { isKVConfigured } from '../../utils/redis';
 
 /**
  * Reports whether a prefs backend is wired up for this tenant. The
@@ -18,6 +19,9 @@ import { isFirestoreConfigured, shouldUseLocalFsFallback } from '../../utils/fir
 export default defineEventHandler(() => {
     if (isFirestoreConfigured()) {
         return { available: true, backend: 'firestore' as const };
+    }
+    if (isKVConfigured()) {
+        return { available: true, backend: 'kv' as const };
     }
     if (shouldUseLocalFsFallback()) {
         return { available: true, backend: 'localfs' as const };
