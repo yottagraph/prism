@@ -285,7 +285,7 @@ function assembleUniverse(
 // entity names but represent SEC filing documents, not meaningful graph nodes.
 const EDGAR_ACCESSION_RE = /^\d{10}-\d{2}-\d{6}/;
 
-async function resolveNames(event: H3Event, eids: string[], limit = 20) {
+async function resolveNames(event: H3Event, eids: string[], limit = 40) {
     const trimmed = eids.slice(0, limit);
     const results = await Promise.all(
         trimmed.map(async (eid) => {
@@ -324,7 +324,7 @@ async function linked(
                     direction,
                 },
             },
-            20,
+            30,
             event
         );
     } catch {
@@ -350,8 +350,17 @@ async function buildFromElemental(event: H3Event, entities: PortfolioEntitySeed[
 
     const schema = await getSchema(event).catch(() => ({ flavors: [], properties: [] }));
     const pid = normalizePidMap(schema);
+    // Collect all company-related PIDs we know about; query each in both
+    // directions so we get subsidiaries, parents, peers, and affiliates.
+    const companyPids = [
+        pid.subsidiary_of,
+        pid.compensation_peer_of,
+        pid.affiliate_of,
+        pid.parent_of,
+        pid.investor_in,
+    ].filter((p): p is string => Boolean(p));
+
     const pids = {
-        company: pid.subsidiary_of ?? pid.compensation_peer_of,
         people: pid.is_officer ?? pid.is_director ?? pid.officer_of ?? pid.director_of,
         owner: pid.is_beneficial_owner ?? pid.beneficial_owner_of,
         instrument: pid.issued_by ?? pid.lender_of ?? pid.holds_position,
@@ -359,15 +368,29 @@ async function buildFromElemental(event: H3Event, entities: PortfolioEntitySeed[
     };
 
     for (const entity of entities) {
-        const [companyIds, personIds, ownerIds, instrumentIds, locationIds] = await Promise.all([
-            linked(event, entity.neid, pids.company, 'outgoing'),
+        // Query each company PID in both directions and deduplicate
+        const companyIdSet = new Set<string>();
+        await Promise.all(
+            companyPids.flatMap((cpid) => [
+                linked(event, entity.neid, cpid, 'outgoing').then((ids) =>
+                    ids.forEach((id) => companyIdSet.add(id))
+                ),
+                linked(event, entity.neid, cpid, 'incoming').then((ids) =>
+                    ids.forEach((id) => companyIdSet.add(id))
+                ),
+            ])
+        );
+        // Remove the entity itself from its own company connections
+        companyIdSet.delete(entity.neid);
+
+        const [personIds, ownerIds, instrumentIds, locationIds] = await Promise.all([
             linked(event, entity.neid, pids.people, 'incoming'),
             linked(event, entity.neid, pids.owner, 'incoming'),
             linked(event, entity.neid, pids.instrument, 'incoming'),
             linked(event, entity.neid, pids.location, 'outgoing'),
         ]);
 
-        const companies = await resolveNames(event, companyIds);
+        const companies = await resolveNames(event, [...companyIdSet]);
         const people = await resolveNames(event, [...personIds, ...ownerIds]);
         const instruments = await resolveNames(event, instrumentIds);
         const locations = await resolveNames(event, locationIds);
@@ -383,7 +406,7 @@ async function buildFromElemental(event: H3Event, entities: PortfolioEntitySeed[
                     neid: row.eid,
                 });
             companyMap.get(id)!.connectsTo.push(`p-${entity.neid}`);
-            edges.push({ source: `p-${entity.neid}`, target: id, relationship: 'subsidiary_of' });
+            edges.push({ source: `p-${entity.neid}`, target: id, relationship: 'related_company' });
         }
         for (const row of people) {
             const id = `pp-${row.eid}`;
