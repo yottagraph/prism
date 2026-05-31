@@ -68,6 +68,18 @@
             <div v-if="loading" class="d-flex align-center justify-center fill-height">
                 <v-progress-circular indeterminate size="32" />
             </div>
+
+            <div
+                v-if="!loading && props.galaxyEnabled === false"
+                class="d-flex flex-column align-center justify-center fill-height text-medium-emphasis"
+            >
+                <v-icon size="48" class="mb-3 opacity-40">mdi-graph-off-outline</v-icon>
+                <div class="text-subtitle-2">Relationship data unavailable</div>
+                <div class="text-caption mt-1 text-center" style="max-width: 320px">
+                    The Galaxy data source is currently offline. Relationship graphs require Galaxy
+                    and will populate automatically once it recovers.
+                </div>
+            </div>
         </div>
     </v-card>
 </template>
@@ -85,6 +97,7 @@
         nodes: GraphNode[];
         edges: GraphEdge[];
         loading?: boolean;
+        galaxyEnabled?: boolean;
     }>();
 
     const emit = defineEmits<{

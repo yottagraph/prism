@@ -350,6 +350,7 @@
                                         :nodes="graph.nodes"
                                         :edges="graph.edges"
                                         :loading="relLoading"
+                                        :galaxy-enabled="relGalaxyEnabled"
                                         @select-node="selectedNode = $event"
                                     />
                                     <v-card
@@ -533,7 +534,11 @@
     const { currentPipeline, runPipeline, pushActivity } = useAgentPipeline();
 
     // ── Relationships ────────────────────────────────────────────────
-    const { loading: relLoading, graph } = useRelationships(active, scanning);
+    const {
+        loading: relLoading,
+        graph,
+        galaxyEnabled: relGalaxyEnabled,
+    } = useRelationships(active, scanning);
 
     const selectedNode = ref<GraphNode | null>(null);
 

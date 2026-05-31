@@ -47,16 +47,26 @@ export default defineEventHandler(async (event) => {
         };
     }
 
+    const galaxyEnabled = await isGalaxyEnabled(event).catch(() => false);
+    if (!galaxyEnabled) {
+        return {
+            nodes: [],
+            edges: [],
+            companies: [],
+            people: [],
+            instruments: [],
+            locations: [],
+            galaxyEnabled: false,
+        };
+    }
+
     const key = cacheKey(entities);
     const cached = universeCache.get(key);
     if (cached && cached.expiresAt > Date.now()) {
         return cached.result;
     }
 
-    const [universe, galaxyEnabled] = await Promise.all([
-        buildRelationshipUniverse(event, entities),
-        isGalaxyEnabled(event).catch(() => false),
-    ]);
+    const universe = await buildRelationshipUniverse(event, entities);
 
     const portfolioNameMap = new Map(entities.map((e) => [`p-${e.neid}`, e.name]));
     function resolvePortfolioNames(ids: string[]): string[] {

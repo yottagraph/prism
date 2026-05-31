@@ -1,7 +1,7 @@
 import type { H3Event } from 'h3';
 
 import { findEntities, getEntityName, getSchema, normalizePidMap } from './elemental';
-import { getEntityQuads, getEntityInfo, isGalaxyEnabled, type GalaxyQuad } from './galaxy';
+import { getEntityQuads, getEntityInfo, type GalaxyQuad } from './galaxy';
 
 export interface PortfolioEntitySeed {
     neid: string;
@@ -469,11 +469,7 @@ export async function buildRelationshipUniverse(
     entities: PortfolioEntitySeed[],
     preloadedQuads?: Map<string, GalaxyQuad[]>
 ): Promise<ReturnType<typeof assembleUniverse>> {
-    const galaxyEnabled = await isGalaxyEnabled(event).catch(() => false);
-    if (galaxyEnabled) {
-        return buildFromGalaxy(event, entities, preloadedQuads);
-    }
-    return buildFromElemental(event, entities);
+    return buildFromGalaxy(event, entities, preloadedQuads);
 }
 
 export function detectPatterns(
