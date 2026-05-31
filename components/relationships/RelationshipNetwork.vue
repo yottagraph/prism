@@ -262,9 +262,15 @@
             highlightedNode = node;
             neighborSet.clear();
             graph.neighbors(node).forEach((n) => neighborSet.add(n));
+            const lc = labelColor();
 
             sigmaInstance!.setSetting('nodeReducer', (n, data) => {
-                if (n === highlightedNode || neighborSet.has(n)) return data;
+                if (n === highlightedNode || neighborSet.has(n)) {
+                    // Explicitly carry the correct label color through the hover
+                    // reducer — Sigma's highlighted ring can otherwise wash out
+                    // labels in dark mode.
+                    return { ...data, labelColor: lc };
+                }
                 return { ...data, color: 'rgba(150,150,150,0.15)', label: '' };
             });
             sigmaInstance!.setSetting('edgeReducer', (e, data) => {
