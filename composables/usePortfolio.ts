@@ -732,6 +732,44 @@ export function usePortfolio(activeUserId?: globalThis.Ref<string | null>) {
         return portfolio;
     }
 
+    /**
+     * Create an institutional book for the agent-builder Workspace. Parallels
+     * `createPortfolioFromEntities` but stamps the institutional sentinel owner
+     * and `kind` so it surfaces on the Workspace surface (and never in retail
+     * per-user bucket lists), and carries a mandate instead of a savings goal.
+     */
+    function createInstitutionalBook(
+        name: string,
+        entities: ResolvedEntityInput[],
+        mandate?: MandateMeta
+    ): PortfolioDoc {
+        const now = Date.now();
+        const id = `${slugify(name)}-${now.toString(36)}`;
+        const portfolio: PortfolioDoc = {
+            id,
+            name,
+            description: '',
+            createdAt: now,
+            ownerUserId: INSTITUTIONAL_OWNER,
+            kind: 'institutional',
+            ...(mandate ? { mandate } : {}),
+            entities: entities
+                .filter((e) => e.inputName?.trim())
+                .map((e) => ({
+                    inputName: e.inputName.trim(),
+                    resolvedName: e.resolvedName || e.inputName.trim(),
+                    neid: e.neid ?? null,
+                    ticker: e.ticker,
+                    addedAt: now,
+                    scores: null,
+                })),
+        };
+        p.portfolios = [...p.portfolios, portfolio];
+        p.activePortfolioId = id;
+        resetScanGateAndMacro();
+        return portfolio;
+    }
+
     function addResolvedEntities(portfolioId: string, entities: ResolvedEntityInput[]) {
         const idx = p.portfolios.findIndex((pp) => pp.id === portfolioId);
         if (idx < 0) return;
@@ -1173,6 +1211,7 @@ export function usePortfolio(activeUserId?: globalThis.Ref<string | null>) {
         setActivePortfolio,
         createPortfolio,
         createPortfolioFromEntities,
+        createInstitutionalBook,
         deletePortfolio,
         addEntities,
         addResolvedEntities,

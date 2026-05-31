@@ -28,6 +28,14 @@
                         prepend-inner-icon="mdi-book-open-outline"
                         @update:model-value="onBookChange"
                     />
+                    <v-btn
+                        icon="mdi-plus"
+                        variant="tonal"
+                        size="small"
+                        density="comfortable"
+                        aria-label="Create new book"
+                        @click="newBookOpen = true"
+                    />
                 </div>
 
                 <!-- Mandate selector -->
@@ -144,9 +152,39 @@
                         </v-chip>
                         <v-chip v-if="scanning" size="x-small" variant="tonal" color="warning">
                             <v-progress-circular indeterminate size="10" width="2" class="mr-1" />
-                            Analyzing…
+                            {{
+                                scanProgress.total
+                                    ? `Analyzing ${scanProgress.done}/${scanProgress.total}`
+                                    : 'Analyzing…'
+                            }}
                         </v-chip>
                     </div>
+
+                    <!-- Live scan status / error surfacing -->
+                    <div
+                        v-if="scanning && scanStatusMessage && scanStatusMessage !== 'Idle'"
+                        class="px-3 pb-2 text-caption text-medium-emphasis d-flex align-center"
+                        style="gap: 6px"
+                    >
+                        <v-icon size="x-small">mdi-information-outline</v-icon>
+                        {{ scanStatusMessage }}
+                    </div>
+                    <div
+                        v-if="scanning && scanWatchdog"
+                        class="px-3 pb-2 text-caption text-warning d-flex align-center"
+                        style="gap: 6px"
+                    >
+                        <v-icon size="x-small" color="warning">mdi-clock-alert-outline</v-icon>
+                        {{ scanWatchdog }}
+                    </div>
+                    <v-alert
+                        v-if="lastScanError && !scanning"
+                        type="error"
+                        density="compact"
+                        variant="tonal"
+                        class="mx-3 mb-3"
+                        :text="lastScanError"
+                    />
 
                     <v-divider />
 
@@ -225,133 +263,147 @@
                     </div>
                 </v-card>
 
-                <!-- ── Four renders ──────────────────────────────────── -->
-                <div class="renders-grid">
-                    <!-- Table -->
-                    <v-card class="render-card">
-                        <div class="render-label pa-3 d-flex align-center" style="gap: 8px">
-                            <v-icon size="small" color="primary">mdi-table</v-icon>
-                            <span class="text-subtitle-2">Issuer table</span>
-                            <span class="text-caption text-medium-emphasis">
-                                — FHS · ERS · ACS · News · Market
-                            </span>
-                        </div>
-                        <v-divider />
-                        <div class="render-body overflow-auto">
-                            <MonitorMonitorTable
-                                v-if="active"
-                                :entities="sortedEntities"
-                                :loading="scanning"
-                                @open="goToEntity"
-                                @assess="() => {}"
-                                @remove="() => {}"
-                            />
-                        </div>
-                    </v-card>
-
-                    <!-- Narrative -->
-                    <v-card class="render-card">
-                        <div class="render-label pa-3 d-flex align-center" style="gap: 8px">
-                            <v-icon size="small" color="secondary">mdi-text-long</v-icon>
-                            <span class="text-subtitle-2">Diligence brief</span>
-                            <span class="text-caption text-medium-emphasis">
-                                — composition agent
-                            </span>
-                        </div>
-                        <v-divider />
-                        <div class="render-body overflow-auto">
-                            <SummaryPortfolioSummaryTab
-                                v-if="active"
-                                :entities="sortedEntities"
-                                :portfolio-id="active.id"
-                                :portfolio-name="active.name"
-                                :active="true"
-                                :scan-completed-at="scanCompletedAt"
-                                :coverage-detail="lastScanCoverageDetail"
-                                @request-scan="onAnalyze"
-                            />
-                        </div>
-                    </v-card>
-
-                    <!-- Graph -->
-                    <v-card class="render-card">
-                        <div class="render-label pa-3 d-flex align-center" style="gap: 8px">
-                            <v-icon size="small" color="info">mdi-graph-outline</v-icon>
-                            <span class="text-subtitle-2">Entity network</span>
-                            <span class="text-caption text-medium-emphasis">
-                                — companies · people · instruments · locations
-                            </span>
-                        </div>
-                        <v-divider />
-                        <div class="render-body overflow-hidden">
-                            <div
-                                v-if="!activeBookScored && !scanning"
-                                class="d-flex flex-column align-center justify-center pa-8 text-center text-medium-emphasis"
-                                style="height: 100%"
+                <!-- ── Four renders (tabbed) ─────────────────────────── -->
+                <v-card class="render-card" variant="outlined">
+                    <v-tabs v-model="activeRender" density="compact" color="primary">
+                        <v-tab value="table">
+                            <v-icon size="small" color="primary" class="mr-2">mdi-table</v-icon>
+                            Issuer table
+                        </v-tab>
+                        <v-tab value="brief">
+                            <v-icon size="small" color="secondary" class="mr-2"
+                                >mdi-text-long</v-icon
                             >
-                                <v-icon size="40" class="mb-2">mdi-graph-outline</v-icon>
-                                <span class="text-body-2">
-                                    Run analysis to populate the connected universe.
-                                </span>
-                            </div>
-                            <div v-else class="pa-2" style="height: 100%">
-                                <RelationshipsRelationshipNetwork
-                                    :nodes="graph.nodes"
-                                    :edges="graph.edges"
-                                    :loading="relLoading"
-                                    @select-node="selectedNode = $event"
-                                />
-                                <v-card
-                                    v-if="selectedNode"
-                                    class="mt-2 pa-2"
-                                    variant="outlined"
-                                    density="compact"
-                                >
-                                    <div class="text-body-2 font-weight-medium">
-                                        {{ selectedNode.label }}
-                                    </div>
-                                    <div class="text-caption text-medium-emphasis">
-                                        {{ selectedNode.kind }} · connected to
-                                        {{ selectedNode.connectsTo.length }} issuer{{
-                                            selectedNode.connectsTo.length === 1 ? '' : 's'
-                                        }}
-                                    </div>
-                                </v-card>
-                            </div>
-                        </div>
-                    </v-card>
-
-                    <!-- Chat -->
-                    <v-card class="render-card">
-                        <div class="render-label pa-3 d-flex align-center" style="gap: 8px">
-                            <v-icon size="small" color="warning"
+                            Diligence brief
+                        </v-tab>
+                        <v-tab value="network">
+                            <v-icon size="small" color="info" class="mr-2"
+                                >mdi-graph-outline</v-icon
+                            >
+                            Entity network
+                        </v-tab>
+                        <v-tab value="chat">
+                            <v-icon size="small" color="warning" class="mr-2"
                                 >mdi-message-question-outline</v-icon
                             >
-                            <span class="text-subtitle-2">Ask the book</span>
-                            <span class="text-caption text-medium-emphasis">
-                                — agent-backed Q&A
-                            </span>
-                        </div>
-                        <v-divider />
-                        <div class="render-body overflow-auto">
-                            <SummaryChatSection
-                                endpoint="/api/portfolio-summary/chat"
-                                :request-body="chatContext"
-                                :suggestions="chatSuggestions"
-                                placeholder="Ask anything about this diligence book…"
-                            />
-                        </div>
-                    </v-card>
-                </div>
+                            Ask the book
+                        </v-tab>
+                    </v-tabs>
+
+                    <v-divider />
+
+                    <v-tabs-window v-model="activeRender">
+                        <!-- Table -->
+                        <v-tabs-window-item value="table">
+                            <div class="render-caption px-3 pt-2 text-caption text-medium-emphasis">
+                                FHS · ERS · ACS · News · Market
+                            </div>
+                            <div class="render-body overflow-auto">
+                                <MonitorTable
+                                    v-if="active"
+                                    :entities="sortedEntities"
+                                    :loading="scanning"
+                                    @open="goToEntity"
+                                    @assess="() => {}"
+                                    @remove="() => {}"
+                                />
+                            </div>
+                        </v-tabs-window-item>
+
+                        <!-- Narrative -->
+                        <v-tabs-window-item value="brief">
+                            <div class="render-caption px-3 pt-2 text-caption text-medium-emphasis">
+                                Composition agent
+                            </div>
+                            <div class="render-body overflow-auto">
+                                <SummaryPortfolioSummaryTab
+                                    v-if="active"
+                                    :entities="sortedEntities"
+                                    :portfolio-id="active.id"
+                                    :portfolio-name="active.name"
+                                    :active="true"
+                                    :scan-completed-at="scanCompletedAt"
+                                    :coverage-detail="lastScanCoverageDetail"
+                                    @request-scan="onAnalyze"
+                                />
+                            </div>
+                        </v-tabs-window-item>
+
+                        <!-- Graph -->
+                        <v-tabs-window-item value="network">
+                            <div class="render-caption px-3 pt-2 text-caption text-medium-emphasis">
+                                Companies · people · instruments · locations
+                            </div>
+                            <div class="render-body overflow-hidden">
+                                <div
+                                    v-if="!activeBookScored && !scanning"
+                                    class="d-flex flex-column align-center justify-center pa-8 text-center text-medium-emphasis"
+                                    style="height: 100%"
+                                >
+                                    <v-icon size="40" class="mb-2">mdi-graph-outline</v-icon>
+                                    <span class="text-body-2">
+                                        Run analysis to populate the connected universe.
+                                    </span>
+                                </div>
+                                <div v-else class="pa-2" style="height: 100%">
+                                    <RelationshipsRelationshipNetwork
+                                        :nodes="graph.nodes"
+                                        :edges="graph.edges"
+                                        :loading="relLoading"
+                                        @select-node="selectedNode = $event"
+                                    />
+                                    <v-card
+                                        v-if="selectedNode"
+                                        class="mt-2 pa-2"
+                                        variant="outlined"
+                                        density="compact"
+                                    >
+                                        <div class="text-body-2 font-weight-medium">
+                                            {{ selectedNode.label }}
+                                        </div>
+                                        <div class="text-caption text-medium-emphasis">
+                                            {{ selectedNode.kind }} · connected to
+                                            {{ selectedNode.connectsTo.length }} issuer{{
+                                                selectedNode.connectsTo.length === 1 ? '' : 's'
+                                            }}
+                                        </div>
+                                    </v-card>
+                                </div>
+                            </div>
+                        </v-tabs-window-item>
+
+                        <!-- Chat -->
+                        <v-tabs-window-item value="chat">
+                            <div class="render-caption px-3 pt-2 text-caption text-medium-emphasis">
+                                Agent-backed Q&A
+                            </div>
+                            <div class="render-body overflow-auto">
+                                <SummaryChatSection
+                                    endpoint="/api/portfolio-summary/chat"
+                                    :request-body="chatContext"
+                                    :suggestions="chatSuggestions"
+                                    placeholder="Ask anything about this diligence book…"
+                                />
+                            </div>
+                        </v-tabs-window-item>
+                    </v-tabs-window>
+                </v-card>
             </div>
         </div>
+
+        <PortfolioAddEntitiesDialog v-model="newBookOpen" mode="create" @submit="onCreateBook" />
     </div>
 </template>
 
 <script setup lang="ts">
     import { computed, onMounted, ref, watch } from 'vue';
 
-    import { INSTITUTIONAL_OWNER, type PortfolioEntity } from '~/composables/usePortfolio';
+    import {
+        INSTITUTIONAL_OWNER,
+        type PortfolioEntity,
+        type ResolvedEntityInput,
+        type MandateMeta,
+    } from '~/composables/usePortfolio';
     import { usePortfolio } from '~/composables/usePortfolio';
     import { useScoringSettings, type MandateId } from '~/composables/useScoringSettings';
     import { useAgentPipeline } from '~/composables/useAgentPipeline';
@@ -365,9 +417,13 @@
         portfolios,
         activePortfolio: active,
         setActivePortfolio,
+        createInstitutionalBook,
         scanPortfolio,
         scanning,
+        scanProgress,
+        scanStatusMessage,
         scanCompletedAt,
+        lastScanError,
         lastScanCoverage,
         lastScanCoverageDetail,
     } = usePortfolio();
@@ -401,6 +457,25 @@
 
     function onBookChange(id: string) {
         setActivePortfolio(id);
+    }
+
+    // ── Create a new institutional book ──────────────────────────────
+    const newBookOpen = ref(false);
+
+    function onCreateBook(payload: { name?: string; entities: ResolvedEntityInput[] }) {
+        if (!payload.name?.trim()) return;
+        // Seed the new book with the currently selected mandate so the agents
+        // have a policy to operate under from the start.
+        const mandate: MandateMeta | undefined = activeMandate.value
+            ? {
+                  pack: activeMandate.value.pack,
+                  question: activeMandate.value.question,
+                  primaryModules: activeMandate.value.primaryModules,
+              }
+            : undefined;
+        const book = createInstitutionalBook(payload.name.trim(), payload.entities, mandate);
+        setActivePortfolio(book.id);
+        activeBookId.value = book.id;
     }
 
     // Keep selector in sync if active changes externally
@@ -462,7 +537,32 @@
 
     const selectedNode = ref<GraphNode | null>(null);
 
+    // ── Active render tab ────────────────────────────────────────────
+    const activeRender = ref<'table' | 'brief' | 'network' | 'chat'>('table');
+
     // ── Analysis ────────────────────────────────────────────────────
+    // Client-side watchdog: the server now bounds every Elemental call, but as
+    // a belt-and-suspenders we surface a hint if a scan runs unusually long so
+    // the UI can never look like a silent hang.
+    const scanWatchdog = ref<string | null>(null);
+    let watchdogTimer: ReturnType<typeof setTimeout> | null = null;
+
+    watch(scanning, (isScanning) => {
+        if (watchdogTimer) {
+            clearTimeout(watchdogTimer);
+            watchdogTimer = null;
+        }
+        scanWatchdog.value = null;
+        if (isScanning) {
+            watchdogTimer = setTimeout(() => {
+                if (scanning.value) {
+                    scanWatchdog.value =
+                        'This scan is taking longer than usual — some issuers may be slow to resolve. It will finish or report an error shortly.';
+                }
+            }, 60_000);
+        }
+    });
+
     async function onAnalyze() {
         if (!active.value) return;
         pushActivity('Monitoring Agent', active.value.name, 'Analysis triggered from Workspace');
@@ -582,33 +682,19 @@
         background: rgba(var(--v-theme-success), 0.04);
     }
 
-    /* 2×2 renders grid */
-    .renders-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        grid-template-rows: auto auto;
-        gap: 16px;
-    }
-
+    /* Tabbed render card — each tab body gets a defined height so the
+       network canvas and tables render correctly inside the window item. */
     .render-card {
         display: flex;
         flex-direction: column;
-        min-height: 520px;
     }
 
-    .render-label {
+    .render-caption {
         flex-shrink: 0;
-        border-bottom: none;
     }
 
     .render-body {
-        flex: 1;
-        min-height: 0;
-    }
-
-    @media (max-width: 1200px) {
-        .renders-grid {
-            grid-template-columns: 1fr;
-        }
+        min-height: 600px;
+        height: 600px;
     }
 </style>

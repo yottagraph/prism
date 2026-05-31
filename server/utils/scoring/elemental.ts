@@ -40,6 +40,13 @@ export interface ElementalSchema {
 const SCHEMA_TTL_MS = 5 * 60_000;
 let schemaCache: { schema: ElementalSchema; expiresAt: number } | null = null;
 
+// Hard ceiling for a single Elemental gateway request. Without this, a gateway
+// that accepts the connection but never responds hangs the awaiting caller
+// forever — e.g. entity resolution at the start of a scan, which would leave
+// the scan SSE stream open (kept alive by ping frames) and the client spinning
+// indefinitely. The gateway's own budget is ~30s, so anything past that is dead.
+const ELEMENTAL_FETCH_TIMEOUT_MS = 30_000;
+
 type DiagnosticCall = {
     endpoint: string;
     method: 'GET' | 'POST';
@@ -137,12 +144,26 @@ async function fetchJsonBig<T = any>(
                   reqBody: init.body,
               })
             : null;
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), ELEMENTAL_FETCH_TIMEOUT_MS);
         try {
-            const response = await fetch(url, {
-                method,
-                headers: init?.headers,
-                body: init?.body,
-            });
+            let response: Response;
+            try {
+                response = await fetch(url, {
+                    method,
+                    headers: init?.headers,
+                    body: init?.body,
+                    signal: controller.signal,
+                });
+            } catch (fetchError) {
+                if ((fetchError as any)?.name === 'AbortError') {
+                    throw createError({
+                        statusCode: 504,
+                        statusMessage: `Elemental request timed out after ${ELEMENTAL_FETCH_TIMEOUT_MS}ms (${method} ${init?.log?.endpoint ?? url})`,
+                    });
+                }
+                throw fetchError;
+            }
             const text = await response.text();
             if (!response.ok) {
                 logCtx?.finish({
@@ -177,6 +198,8 @@ async function fetchJsonBig<T = any>(
                 error,
             });
             throw error;
+        } finally {
+            clearTimeout(timer);
         }
     });
 }
