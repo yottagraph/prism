@@ -286,9 +286,16 @@ async function resolveNames(event: H3Event, eids: string[], limit = 20) {
     return await Promise.all(
         trimmed.map(async (eid) => {
             try {
-                return { eid, name: await getEntityName(eid, event) };
+                const name = await getEntityName(eid, event);
+                // getEntityName returns the NEID itself when lookup fails — treat that
+                // as a fallback and show a short truncated form rather than a raw
+                // 20-digit ID.
+                if (name === eid && eid.length > 12) {
+                    return { eid, name: `…${eid.slice(-6)}` };
+                }
+                return { eid, name };
             } catch {
-                return { eid, name: eid };
+                return { eid, name: `…${eid.slice(-6)}` };
             }
         })
     );

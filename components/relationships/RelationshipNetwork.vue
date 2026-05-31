@@ -71,6 +71,7 @@
 
 <script setup lang="ts">
     import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
+    import { useTheme } from 'vuetify';
     import 'leaflet/dist/leaflet.css';
     import Graph from 'graphology';
     import Sigma from 'sigma';
@@ -86,6 +87,9 @@
     const emit = defineEmits<{
         'select-node': [node: GraphNode];
     }>();
+
+    const theme = useTheme();
+    const isDark = computed(() => theme.global.current.value.dark);
 
     const graphMode = ref<'force' | 'geographic'>('force');
     const activeKinds = ref<string[]>(['portfolio', 'company', 'person', 'instrument', 'location']);
@@ -149,10 +153,19 @@
         }
     }
 
+    function edgeColor(): string {
+        return isDark.value ? 'rgba(200,200,200,0.35)' : 'rgba(60,60,60,0.4)';
+    }
+
+    function labelColor(): string {
+        return isDark.value ? '#ffffff' : '#111111';
+    }
+
     function buildGraph(): Graph {
         const graph = new Graph({ multi: false });
         const nodeSet = visibleNodes.value;
         const edgeSet = visibleEdges.value;
+        const ec = edgeColor();
 
         // Precompute degree map in O(edges) to avoid O(nodes × edges) inner loop.
         const degreeMap = new Map<string, number>();
@@ -179,16 +192,14 @@
             });
         }
 
-        let edgeIndex = 0;
         for (const edge of edgeSet) {
             if (!graph.hasNode(edge.source) || !graph.hasNode(edge.target)) continue;
             if (graph.hasEdge(edge.source, edge.target)) continue;
             graph.addEdge(edge.source, edge.target, {
                 label: edge.relationship,
                 size: 1,
-                color: 'rgba(150,150,150,0.3)',
+                color: ec,
             });
-            edgeIndex++;
         }
 
         return graph;
@@ -236,6 +247,7 @@
             maxCameraRatio: 10,
             labelRenderedSizeThreshold: 6,
             labelDensity: 0.8,
+            labelColor: { color: labelColor() },
         });
 
         let highlightedNode: string | null = null;
@@ -326,12 +338,13 @@
         }
 
         // Add edges between portfolio and location
+        const ec = edgeColor();
         for (const loc of locationNodes) {
             for (const portId of loc.connectsTo) {
                 if (graph.hasNode(portId) && !graph.hasEdge(portId, loc.id)) {
                     graph.addEdge(portId, loc.id, {
                         size: 1,
-                        color: 'rgba(150,150,150,0.3)',
+                        color: ec,
                     });
                 }
             }
@@ -344,6 +357,7 @@
             minCameraRatio: 0.001,
             maxCameraRatio: 100,
             labelRenderedSizeThreshold: 4,
+            labelColor: { color: labelColor() },
         });
 
         sigmaInstance.on('clickNode', ({ node }: { node: string }) => {
@@ -380,7 +394,7 @@
     });
 
     watch(
-        [graphMode, activeKinds, () => props.nodes, () => props.edges],
+        [graphMode, activeKinds, isDark, () => props.nodes, () => props.edges],
         () => {
             void rebuild();
         },
