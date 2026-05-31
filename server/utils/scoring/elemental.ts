@@ -419,12 +419,34 @@ function summarizeFindExpression(expression: any): Record<string, unknown> {
     return out;
 }
 
-// Encode a `linked.pids` style expression where PIDs may be string-form int64
-// values. We JSON.stringify, then unquote any "<digits>" that sits inside a
-// numeric context so the backend parses them as int64.
+// Keys whose values must be emitted as bare int64 literals (not quoted strings).
+// `pids` arrays contain int64 property IDs; `pid` / `fid` are scalar int64s in
+// comparison / is_type expressions. Everything else — including to_entity NEIDs
+// — must stay as a quoted JSON string.
+const _PID_ARRAY_KEYS = new Set(['pids']);
+const _PID_SCALAR_KEYS = new Set(['pid', 'fid']);
+
 function encodeExpressionPreservingBigInts(expression: object): string {
-    const text = JSON.stringify(expression);
-    return text.replace(/"(-?\d{16,})"/g, (_m, digits) => digits);
+    return _encodeFindValue(expression);
+}
+
+function _encodeFindValue(value: unknown, key?: string): string {
+    if (Array.isArray(value)) {
+        if (key && _PID_ARRAY_KEYS.has(key)) {
+            return `[${value.map((v) => String(v)).join(',')}]`;
+        }
+        return `[${value.map((v) => _encodeFindValue(v)).join(',')}]`;
+    }
+    if (value !== null && typeof value === 'object') {
+        const parts = Object.entries(value as Record<string, unknown>).map(
+            ([k, v]) => `${JSON.stringify(k)}:${_encodeFindValue(v, k)}`
+        );
+        return `{${parts.join(',')}}`;
+    }
+    if (key && _PID_SCALAR_KEYS.has(key)) {
+        return String(value);
+    }
+    return JSON.stringify(value);
 }
 
 export async function getPropertyValues(
