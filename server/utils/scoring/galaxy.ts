@@ -105,6 +105,15 @@ async function galaxyFetch<T = any>(
 let galaxyEnabledCache: { value: boolean; expiresAt: number } | null = null;
 const GALAXY_PROBE_TTL_MS = 5 * 60_000;
 
+/**
+ * Immediately expire the enabled-cache so the next `isGalaxyEnabled` call
+ * re-probes instead of returning a stale "true". Call this when a Galaxy
+ * request fails at runtime to speed up the switch to the Elemental fallback.
+ */
+export function invalidateGalaxyEnabledCache(): void {
+    if (galaxyEnabledCache) galaxyEnabledCache.expiresAt = 0;
+}
+
 export async function isGalaxyEnabled(event?: H3Event): Promise<boolean> {
     if (galaxyEnabledCache && galaxyEnabledCache.expiresAt > Date.now()) {
         return galaxyEnabledCache.value;

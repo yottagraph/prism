@@ -3,7 +3,12 @@ import type { H3Event } from 'h3';
 import { getSchema, normalizePidMap, getPropertyValues, extractPropertyFacts } from './elemental';
 import type { ElementalPropertyFact, ElementalSchema } from './elemental';
 import { callMcpTool, extractMcpStructuredContent } from './mcpGateway';
-import { getEntityQuads, isGalaxyEnabled, type GalaxyQuad } from './galaxy';
+import {
+    getEntityQuads,
+    isGalaxyEnabled,
+    invalidateGalaxyEnabledCache,
+    type GalaxyQuad,
+} from './galaxy';
 import { normalizeArticleDate } from './newsSummary24h';
 
 export interface ContextEvent {
@@ -139,7 +144,17 @@ async function buildContextPackage(event: H3Event, neid: string): Promise<Contex
     const galaxyEnabled = await isGalaxyEnabled(event);
 
     if (galaxyEnabled) {
-        return buildFromGalaxy(event, neid, schema, pidMap);
+        try {
+            return await buildFromGalaxy(event, neid, schema, pidMap);
+        } catch (err: any) {
+            // Galaxy quad fetch failed (e.g. 502, cold service) — invalidate
+            // the enabled-cache so the next request re-probes instead of
+            // retrying a known-down service, then fall back to Elemental MCP.
+            invalidateGalaxyEnabledCache();
+            console.warn(
+                `[contextPackage] Galaxy failed for ${neid} (${err?.statusCode ?? err?.message ?? 'error'}), falling back to Elemental`
+            );
+        }
     }
     return buildFromLegacy(event, neid, schema, pidMap);
 }
