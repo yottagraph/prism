@@ -306,10 +306,10 @@ export async function scoreEntity(
             hasRealData: false,
             detail: { metrics: [{ label: 'Status', value: 'timeout' }], findings: [] },
         }),
-        // The stocks MCP cold path exceeds the gateway's 30s ceiling and
-        // is pre-warmed in the background by prewarmStocks. A 6s cap lets
-        // the lens fall back fast while warm-cache hits still land.
-        withTimeout(computeMarketSignalScore(event, portfolioId, neid, ctx), 6_000, {
+        // Path B (stocks MCP) is capped at 4s internally so it fails fast
+        // on cold cache. Path C (Elemental close_price) runs after and takes
+        // ~3-4s. 15s gives the full chain room to complete.
+        withTimeout(computeMarketSignalScore(event, portfolioId, neid, ctx), 15_000, {
             score: 0,
             hasRealData: false,
             priceCount: 0,

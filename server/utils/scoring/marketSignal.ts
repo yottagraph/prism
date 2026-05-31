@@ -135,15 +135,25 @@ export async function computeMarketSignalScore(
     if (!hasRealData) {
         try {
             const companyName = await getEntityName(neid, event);
-            const result = await callMcpTool(
-                'stocks',
-                'get_daily_stock_prices',
-                {
-                    company_name: companyName,
-                    lookback_days: 45,
-                },
-                event
+            // Cap the stocks MCP call at 4s so a cold-cache upstream doesn't
+            // consume the outer withTimeout budget before Path C (Elemental
+            // close_price) has a chance to run. On a warm cache this resolves
+            // in 2-3s; on a cold cache it throws and we fall through cleanly.
+            const stocksTimeout = new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error('stocks MCP fast-timeout')), 4_000)
             );
+            const result = await Promise.race([
+                callMcpTool(
+                    'stocks',
+                    'get_daily_stock_prices',
+                    {
+                        company_name: companyName,
+                        lookback_days: 45,
+                    },
+                    event
+                ),
+                stocksTimeout,
+            ]);
             const structured = extractMcpStructuredContent<{
                 found?: boolean;
                 ticker_info?: { ticker?: string };
