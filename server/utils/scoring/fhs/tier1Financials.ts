@@ -283,9 +283,30 @@ export async function computeTier1Financials(
         latestFact(facts.netIncome)?.ref,
     ].filter((ref): ref is string => Boolean(ref));
     const citationMap = await resolveRefs(refs, event, ctx);
-    const citations = refs
+    let citations = refs
         .map((ref) => citationMap.get(ref))
         .filter((citation): citation is NonNullable<typeof citation> => Boolean(citation));
+
+    // In Galaxy mode facts have no provenance refs, so citations will be empty.
+    // Build a synthetic citation from the form_type and filing_date in the
+    // context package so the LLM has a real source to cite.
+    if (citations.length === 0 && ctx) {
+        const formTypeFacts = ctx.seriesByPid['form_type'] ?? ctx.financials['form_type'] ?? [];
+        const filingDateFact = latestFact(facts.filingDate);
+        const formType = latestFact(formTypeFacts)?.value;
+        const filingTitle =
+            typeof formType === 'string' && formType.trim()
+                ? formType.trim().toUpperCase()
+                : '10-K';
+        citations = [
+            {
+                source: 'SEC',
+                title: filingTitle,
+                date: filingDateFact?.date ?? undefined,
+                url: undefined,
+            },
+        ];
+    }
 
     if (signals.length) {
         findings.push({

@@ -175,11 +175,16 @@ function buildEntityBlock(e: EntityInput, idx: number): string {
         for (const d of topDrivers) {
             const citeParts: string[] = [];
             for (const c of (d.finding.citations ?? []).slice(0, 2)) {
-                const parts: string[] = [];
-                if (c.source) parts.push(c.source);
-                if (c.date) parts.push(c.date);
-                if (c.title) parts.push(`"${c.title}"`);
-                if (parts.length) citeParts.push(parts.join(', '));
+                // Build a human-readable citation. Prefer title (e.g. "10-K", "10-Q")
+                // over source. Never surface the internal "Elemental" label.
+                const sourceLabel = c.source && c.source !== 'Elemental' ? c.source : undefined;
+                const label = c.title ?? sourceLabel ?? null;
+                if (!label && !c.date) continue; // skip empty citations
+                const displayLabel = c.url
+                    ? `[${label ?? 'Source'}](${c.url})`
+                    : (label ?? 'Source');
+                const datePart = c.date ? `, ${c.date}` : '';
+                citeParts.push(`${displayLabel}${datePart}`);
             }
             const cite = citeParts.length ? ` *(${citeParts.join('; ')})*` : '';
             const dateTag = d.finding.date ? ` [${d.finding.date}]` : '';
@@ -338,14 +343,19 @@ STYLE RULES:
 
 ## CITATION REQUIREMENTS
 
-Every finding MUST cite its source. Use this exact format:
-- For SEC data: *(SEC Filing, [date])*
-- For news: *(News, [source], [date])*
-- For stock data: *(Stock data, [date])*
+Every finding MUST cite its source using ONE of these exact formats:
+- For SEC filings: *(10-K, [date])* or *(10-Q, [date])* — use the specific form type from the citation title if provided; default to 10-K for annual data
+- For news: *(News, [outlet/source], [date])*
+- For stock/market data: *(Market data, [date])*
 - For compliance/ACS: *(Compliance screening, [source])*
 - For ownership: *(Ownership graph, [date])*
 
-The citations are provided in the entity data above — USE THEM. Never invent citations.
+CITATION RULES:
+- NEVER use "Elemental" as a citation source — it is an internal data platform, not a publishable source
+- For SEC citations: use the form type (10-K, 10-Q, NT 10-K) and the filing date — e.g. *(10-Q, Mar 2025)*
+- If a citation title contains a form type, use that form type; if no form type is available default to the appropriate filing type for the data
+- If a URL is available in the citation data, format the citation as a markdown link: *([form type](URL), [date])*
+- The citations are provided in the entity data above — USE THEM. If citation data is empty, omit the citation rather than inventing one
 
 ## REQUIRED OUTPUT FORMAT
 

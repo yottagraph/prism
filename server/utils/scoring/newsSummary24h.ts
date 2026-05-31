@@ -97,13 +97,24 @@ export async function computeNewsSummary24h(
 
         let articleRows: ArticleRow[] = [];
 
+        // Galaxy article quads only carry a timestamp (no headline/sentiment).
+        // Use them as a first pass; if they yield no usable headline data, fall
+        // through to the Elemental MCP call which returns rich article metadata.
         if (ctx) {
-            articleRows = ctx.articles.map((a) => ({
+            const ctxRows = ctx.articles.map((a) => ({
                 publishedDate: a.publishedDate,
                 headline: a.headline,
                 sentiment: a.sentiment,
             }));
-        } else {
+            const hasHeadlines = ctxRows.some((r) => r.headline?.trim());
+            if (hasHeadlines) {
+                articleRows = ctxRows;
+            }
+        }
+
+        if (articleRows.length === 0) {
+            // Either no ctx (legacy mode) or Galaxy ctx had no article headlines —
+            // fetch rich article metadata from Elemental.
             const relatedResult = await callMcpTool(
                 'elemental',
                 'elemental_get_related',
