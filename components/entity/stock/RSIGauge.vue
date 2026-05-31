@@ -2,6 +2,11 @@
     <v-card class="pa-3 indicator-card">
         <div class="d-flex align-center mb-2">
             <div class="text-subtitle-2">RSI (14)</div>
+            <HelpTooltip
+                title="Relative Strength Index (14-day)"
+                text="RSI measures the speed and magnitude of recent price changes. Below 30 = oversold (may bounce), above 70 = overbought (may pull back). Source: stock market data via Elemental."
+                :size="13"
+            />
             <v-spacer />
             <v-chip size="x-small" :color="statusColor" variant="tonal">{{ statusLabel }}</v-chip>
         </div>

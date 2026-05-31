@@ -2,6 +2,11 @@
     <v-card class="pa-3 indicator-card">
         <div class="d-flex align-center mb-2">
             <div class="text-subtitle-2">MACD</div>
+            <HelpTooltip
+                title="Moving Average Convergence Divergence"
+                text="MACD compares two exponential moving averages (12-day vs 26-day). When MACD crosses above the signal line it suggests upward momentum; below suggests downward. Source: stock market data via Elemental."
+                :size="13"
+            />
             <v-spacer />
             <v-chip size="x-small" :color="isBullish ? 'success' : 'error'" variant="tonal">
                 {{ isBullish ? 'Bullish' : 'Bearish' }}

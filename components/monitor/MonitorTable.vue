@@ -9,20 +9,38 @@
                 @update:search="search = $event"
                 @update:rows-per-page="rowsPerPage = $event"
             />
-            <div class="d-flex flex-wrap ga-2 mb-2">
-                <v-chip size="x-small" color="primary" variant="tonal" label
-                    >SEC — financial strength · leadership</v-chip
-                >
-                <v-chip size="x-small" color="info" variant="tonal" label
-                    >News — headlines · events</v-chip
-                >
-                <v-chip size="x-small" color="success" variant="tonal" label
-                    >Market — price · trend</v-chip
-                >
-                <v-chip size="x-small" color="purple" variant="tonal" label
-                    >Prediction markets</v-chip
-                >
-                <v-chip size="x-small" color="error" variant="tonal" label>Ownership flags</v-chip>
+            <div class="d-flex flex-wrap ga-2 mb-2 align-center">
+                <span class="text-caption text-medium-emphasis mr-1">Sources:</span>
+                <SourceBadge
+                    source="SEC"
+                    :show-icon="true"
+                    :clickable="true"
+                    :show-learn-more="true"
+                />
+                <SourceBadge
+                    source="NEWS"
+                    :show-icon="true"
+                    :clickable="true"
+                    :show-learn-more="true"
+                />
+                <SourceBadge
+                    source="STOCK"
+                    :show-icon="true"
+                    :clickable="true"
+                    :show-learn-more="true"
+                />
+                <SourceBadge
+                    source="POLY"
+                    :show-icon="true"
+                    :clickable="true"
+                    :show-learn-more="true"
+                />
+                <SourceBadge
+                    source="CSL"
+                    :show-icon="true"
+                    :clickable="true"
+                    :show-learn-more="true"
+                />
             </div>
             <div class="overflow-x-auto">
                 <v-data-table
@@ -36,6 +54,62 @@
                     style="min-width: 1360px"
                     @click:row="onRowClick"
                 >
+                    <!-- Custom header tooltips for key columns -->
+                    <template #header.solvency="{ column }">
+                        <span class="d-inline-flex align-center">
+                            {{ column.title }}
+                            <HelpTooltip
+                                text="Assesses balance-sheet health from SEC filings — leverage, equity, distress events."
+                                :size="11"
+                            />
+                        </span>
+                    </template>
+                    <template #header.executive="{ column }">
+                        <span class="d-inline-flex align-center">
+                            {{ column.title }}
+                            <HelpTooltip
+                                text="Tracks officer and director departures and governance concentration from SEC filings."
+                                :size="11"
+                            />
+                        </span>
+                    </template>
+                    <template #header.newsActivity="{ column }">
+                        <span class="d-inline-flex align-center">
+                            {{ column.title }}
+                            <HelpTooltip
+                                text="Measures negative news sentiment and mention velocity from Elemental's news graph."
+                                :size="11"
+                            />
+                        </span>
+                    </template>
+                    <template #header.polymarket="{ column }">
+                        <span class="d-inline-flex align-center">
+                            {{ column.title }}
+                            <HelpTooltip
+                                text="Active Polymarket prediction contracts related to this entity — real-money market-implied probabilities."
+                                :size="11"
+                            />
+                        </span>
+                    </template>
+                    <template #header.acsScore="{ column }">
+                        <span class="d-inline-flex align-center">
+                            {{ column.title }}
+                            <HelpTooltip
+                                text="Ownership screening: checks the entity's beneficial ownership path against OFAC, OpenSanctions, and CSL."
+                                :size="11"
+                            />
+                        </span>
+                    </template>
+                    <template #header.signalAgreement="{ column }">
+                        <span class="d-inline-flex align-center">
+                            {{ column.title }}
+                            <HelpTooltip
+                                text="Whether SEC, News, and Market signals point in the same direction. Conflict means the sources disagree."
+                                :size="11"
+                            />
+                        </span>
+                    </template>
+
                     <template #item.rank="{ index }">
                         <span class="text-caption font-mono">#{{ index + 1 }}</span>
                     </template>

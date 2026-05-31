@@ -80,20 +80,11 @@
             <span class="dimension-label text-body-2 text-medium-emphasis">
                 <v-icon size="14" class="mr-1">mdi-shield-search</v-icon>
                 Holdings health
-                <v-tooltip
-                    location="top"
-                    text="Fused from SEC filings, news events, 30-day market signals, and ownership screening"
-                >
-                    <template #activator="{ props: ttProps }">
-                        <v-icon
-                            v-bind="ttProps"
-                            size="14"
-                            class="ml-1"
-                            style="cursor: default; opacity: 0.5"
-                            >mdi-information-outline</v-icon
-                        >
-                    </template>
-                </v-tooltip>
+                <HelpTooltip
+                    text="Fused from SEC filings, news events, 30-day market signals, and ownership screening. Click 'Data sources' in the sidebar for details on each source."
+                    title="Holdings health"
+                    :size="14"
+                />
             </span>
 
             <!-- Not yet scanned -->
@@ -152,36 +143,45 @@
                     </template>
                 </div>
 
-                <!-- Lens worst scores -->
-                <div class="d-flex align-center mt-2" style="gap: 8px">
-                    <v-tooltip
-                        location="top"
-                        text="Financial Health Score — balance sheet strength and earnings quality"
-                    >
+                <!-- Lens worst scores with source attribution -->
+                <div class="d-flex align-center flex-wrap mt-2" style="gap: 8px">
+                    <v-tooltip location="top" :text="LENS_META.solvency.description">
                         <template #activator="{ props: ttProps }">
-                            <span v-bind="ttProps">
+                            <span
+                                v-bind="ttProps"
+                                class="d-inline-flex align-center"
+                                style="gap: 3px"
+                            >
                                 <LensScore label="Fin. strength" :score="health.lensWorst.fhs" />
+                                <SourceBadge :source="LENS_META.solvency.source" />
                             </span>
                         </template>
                     </v-tooltip>
-                    <v-tooltip
-                        location="top"
-                        text="Executive Risk Score — governance, leadership turnover, and stability signals"
-                    >
+                    <v-tooltip location="top" :text="LENS_META.executive.description">
                         <template #activator="{ props: ttProps }">
-                            <span v-bind="ttProps">
+                            <span
+                                v-bind="ttProps"
+                                class="d-inline-flex align-center"
+                                style="gap: 3px"
+                            >
                                 <LensScore label="Leadership" :score="health.lensWorst.ers" />
+                                <SourceBadge :source="LENS_META.executive.source" />
                             </span>
                         </template>
                     </v-tooltip>
                     <v-tooltip
                         v-if="health.lensWorst.acs !== null"
                         location="top"
-                        text="Ownership & Compliance Screening — sanctions, beneficial ownership, and ACS flags"
+                        :text="LENS_META.compliance.description"
                     >
                         <template #activator="{ props: ttProps }">
-                            <span v-bind="ttProps">
+                            <span
+                                v-bind="ttProps"
+                                class="d-inline-flex align-center"
+                                style="gap: 3px"
+                            >
                                 <LensScore label="Ownership" :score="health.lensWorst.acs" />
+                                <SourceBadge :source="LENS_META.compliance.source" />
                             </span>
                         </template>
                     </v-tooltip>
@@ -227,7 +227,7 @@
 <script setup lang="ts">
     import { computed } from 'vue';
     import type { RiskTier } from '~/composables/useFusedScoring';
-    import { tierColor, tierLabel } from '~/composables/useFusedScoring';
+    import { tierColor, tierLabel, LENS_META } from '~/composables/useFusedScoring';
     import type { HorizonFit, RiskBand } from '~/utils/goals/riskFit';
     import type { BucketHoldingsHealth } from '~/utils/goals/holdingsHealth';
     import type { GoalMeta } from '~/composables/usePortfolio';

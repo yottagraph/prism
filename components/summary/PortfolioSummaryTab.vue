@@ -175,6 +175,20 @@
                 <div class="summary-scroll flex-grow-1 overflow-y-auto d-flex flex-column">
                     <div class="pa-4">
                         <!-- Source coverage cards -->
+                        <div class="d-flex align-center mb-2">
+                            <span class="text-caption text-medium-emphasis"
+                                >Sources used in this briefing</span
+                            >
+                            <v-btn
+                                variant="text"
+                                size="x-small"
+                                class="ml-1 text-caption"
+                                style="opacity: 0.7; text-transform: none; letter-spacing: normal"
+                                @click="openSourcesDialog"
+                            >
+                                What are these?
+                            </v-btn>
+                        </div>
                         <div class="sources-grid mb-5">
                             <div
                                 v-for="src in sourceSummaries"
@@ -401,6 +415,9 @@
         type SummaryHistoryItem,
     } from '~/composables/usePortfolioSummary';
     import type { GenerationStep } from '~/components/summary/AgentSteps.vue';
+    import { useSourcesDialog } from '~/composables/useSourcesDialog';
+
+    const { openSourcesDialog } = useSourcesDialog();
 
     interface EntityProp {
         resolvedName: string;

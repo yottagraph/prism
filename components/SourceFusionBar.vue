@@ -18,9 +18,14 @@
                 v-for="src in sources"
                 :key="src.key"
                 class="source-row"
-                :class="{ 'source-row--empty': src.tooltip }"
+                :class="{ 'source-row--empty': src.emptyTooltip }"
             >
-                <v-tooltip location="top" :disabled="!src.tooltip" :text="src.tooltip ?? ''">
+                <v-tooltip
+                    v-if="src.emptyTooltip"
+                    location="top"
+                    :text="src.emptyTooltip"
+                    :max-width="320"
+                >
                     <template #activator="{ props: tooltipProps }">
                         <div v-bind="tooltipProps" class="source-row-inner">
                             <div class="source-header">
@@ -40,26 +45,52 @@
                                 height="4"
                                 rounded
                                 class="mb-1 fusion-bar"
-                                :class="{ 'fusion-bar--live': scanning && src.coverage > 0 }"
                             />
-                            <div
-                                v-if="src.detail.length"
-                                class="d-flex align-center flex-wrap source-detail"
-                            >
-                                <span
-                                    v-for="(seg, i) in src.detail"
-                                    :key="i"
-                                    class="text-caption text-medium-emphasis"
-                                >
-                                    <template v-if="i > 0">
-                                        <span class="detail-sep mx-1">·</span>
-                                    </template>
-                                    {{ seg }}
-                                </span>
-                            </div>
                         </div>
                     </template>
                 </v-tooltip>
+                <div v-else class="source-row-inner">
+                    <div class="source-header">
+                        <div class="d-flex align-center source-label">
+                            <v-icon :color="src.color" size="18" class="mr-2">{{
+                                src.icon
+                            }}</v-icon>
+                            <span class="text-body-2">{{ src.label }}</span>
+                            <HelpTooltip
+                                :title="src.methodologyTitle"
+                                :text="src.methodologyText"
+                                :size="12"
+                                location="right"
+                            />
+                        </div>
+                        <span class="text-body-2 text-medium-emphasis coverage-count">
+                            <AnimatedNumber :value="src.coverage" />/{{ src.denom }}
+                        </span>
+                    </div>
+                    <v-progress-linear
+                        :model-value="(src.coverage / Math.max(1, src.denom)) * 100"
+                        :color="src.color"
+                        height="4"
+                        rounded
+                        class="mb-1 fusion-bar"
+                        :class="{ 'fusion-bar--live': scanning && src.coverage > 0 }"
+                    />
+                    <div
+                        v-if="src.detail.length"
+                        class="d-flex align-center flex-wrap source-detail"
+                    >
+                        <span
+                            v-for="(seg, i) in src.detail"
+                            :key="i"
+                            class="text-caption text-medium-emphasis"
+                        >
+                            <template v-if="i > 0">
+                                <span class="detail-sep mx-1">·</span>
+                            </template>
+                            {{ seg }}
+                        </span>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -81,6 +112,7 @@
 <script setup lang="ts">
     import { computed } from 'vue';
     import type { PortfolioCoverageDetail } from '~/composables/usePortfolio';
+    import { SOURCE_META } from '~/composables/useDataSources';
 
     const props = withDefaults(
         defineProps<{
@@ -145,7 +177,12 @@
         /** Denominator for the coverage fraction (entity total, or series total for FRED). */
         denom: number;
         color: string;
-        tooltip?: string;
+        /** Empty-state explanation shown when coverage === 0. */
+        emptyTooltip?: string;
+        /** Bold heading for the methodology tooltip (populated rows). */
+        methodologyTitle: string;
+        /** Body text for the methodology tooltip. */
+        methodologyText: string;
         detail: string[];
     }
 
@@ -164,11 +201,13 @@
         if (secSpan) secDetail.push(secSpan);
         rows.push({
             key: 'sec',
-            label: 'SEC',
-            icon: 'mdi-file-document-outline',
+            label: 'SEC filings',
+            icon: SOURCE_META.SEC.icon,
             coverage: props.coverage.sec,
             denom: props.total,
-            color: 'primary',
+            color: SOURCE_META.SEC.color,
+            methodologyTitle: SOURCE_META.SEC.label,
+            methodologyText: `${SOURCE_META.SEC.whatItIs} ${SOURCE_META.SEC.whatWeUseItFor}`,
             detail: secDetail,
         });
 
@@ -176,10 +215,12 @@
         rows.push({
             key: 'fdic',
             label: 'FDIC',
-            icon: 'mdi-bank',
+            icon: SOURCE_META.FDIC.icon,
             coverage: cd.fdic,
             denom: props.total,
-            color: 'cyan',
+            color: SOURCE_META.FDIC.color,
+            methodologyTitle: SOURCE_META.FDIC.label,
+            methodologyText: `${SOURCE_META.FDIC.whatItIs} ${SOURCE_META.FDIC.whatWeUseItFor}`,
             detail: cd.fdic > 0 ? ['bank financials'] : [],
         });
 
@@ -194,11 +235,13 @@
         if (newsSpan) newsDetail.push(newsSpan);
         rows.push({
             key: 'news',
-            label: 'News',
-            icon: 'mdi-newspaper-variant-outline',
+            label: 'News & sentiment',
+            icon: SOURCE_META.NEWS.icon,
             coverage: props.coverage.news,
             denom: props.total,
-            color: 'info',
+            color: SOURCE_META.NEWS.color,
+            methodologyTitle: SOURCE_META.NEWS.label,
+            methodologyText: `${SOURCE_META.NEWS.whatItIs} ${SOURCE_META.NEWS.whatWeUseItFor}`,
             detail: newsDetail,
         });
 
@@ -215,11 +258,13 @@
         if (stockSpan) stockDetail.push(stockSpan);
         rows.push({
             key: 'stock',
-            label: 'Stock',
-            icon: 'mdi-chart-line',
+            label: 'Stock market',
+            icon: SOURCE_META.STOCK.icon,
             coverage: props.coverage.stock,
             denom: props.total,
-            color: 'success',
+            color: SOURCE_META.STOCK.color,
+            methodologyTitle: SOURCE_META.STOCK.label,
+            methodologyText: `${SOURCE_META.STOCK.whatItIs} ${SOURCE_META.STOCK.whatWeUseItFor}`,
             detail: stockDetail,
         });
 
@@ -231,11 +276,13 @@
         }
         rows.push({
             key: 'poly',
-            label: 'Polymarket',
-            icon: 'mdi-crystal-ball',
+            label: 'Prediction markets',
+            icon: SOURCE_META.POLY.icon,
             coverage: props.coverage.poly,
             denom: props.total,
-            color: 'warning',
+            color: SOURCE_META.POLY.color,
+            methodologyTitle: SOURCE_META.POLY.label,
+            methodologyText: `${SOURCE_META.POLY.whatItIs} ${SOURCE_META.POLY.whatWeUseItFor}`,
             detail: polyDetail,
         });
 
@@ -252,22 +299,26 @@
         }
         rows.push({
             key: 'fred',
-            label: 'FRED',
-            icon: 'mdi-bank-outline',
+            label: 'FRED macro',
+            icon: SOURCE_META.FRED.icon,
             coverage: fredLive,
             denom: fredTotal,
-            color: 'blue-grey',
+            color: SOURCE_META.FRED.color,
+            methodologyTitle: SOURCE_META.FRED.label,
+            methodologyText: `${SOURCE_META.FRED.whatItIs} ${SOURCE_META.FRED.whatWeUseItFor}`,
             detail: fredDetail,
         });
 
         // Sanctions — OpenSanctions / OFAC / CSL screening hits
         rows.push({
             key: 'sanctions',
-            label: 'Screening',
-            icon: 'mdi-shield-alert-outline',
+            label: 'Ownership screening',
+            icon: SOURCE_META.CSL.icon,
             coverage: cd.sanctions,
             denom: props.total,
-            color: 'red',
+            color: SOURCE_META.CSL.color,
+            methodologyTitle: SOURCE_META.CSL.label,
+            methodologyText: `${SOURCE_META.CSL.whatItIs} ${SOURCE_META.CSL.whatWeUseItFor}`,
             detail: cd.sanctions > 0 ? ['flagged'] : [],
         });
 
@@ -281,7 +332,7 @@
             }
             return {
                 ...src,
-                tooltip: src.coverage === 0 && props.total > 0 ? explanation : undefined,
+                emptyTooltip: src.coverage === 0 && props.total > 0 ? explanation : undefined,
             };
         });
     });

@@ -2,94 +2,116 @@
     <div class="regime-visuals">
         <!-- Tiles grouped by source: Polymarket on one row, FRED on the next -->
         <div v-if="statTiles.length" class="tile-groups mb-4">
-            <div
-                v-for="group in tileGroups"
-                :key="group.source"
-                class="signal-tiles"
-                :class="{ 'poly-row': group.source === 'polymarket' }"
-            >
-                <template v-for="tile in group.tiles" :key="tile.label">
-                    <v-tooltip location="top" max-width="320" theme="dark" :open-delay="200">
-                        <template #activator="{ props: tp }">
-                            <div
-                                v-bind="tp"
-                                class="signal-tile"
-                                :class="{ 'poly-tile': tile.source === 'polymarket' }"
-                            >
-                                <!-- Row 1: label only -->
-                                <div class="tile-header">
-                                    <span class="tile-label">{{ tile.label }}</span>
-                                </div>
-
-                                <!-- Row 2: value (left) + trend icon (right) — baseline-aligned -->
-                                <div class="tile-value-row">
-                                    <span class="tile-value" :class="tile.colorClass">{{
-                                        tile.display
-                                    }}</span>
-                                    <v-icon
-                                        v-if="tile.trend === 'up'"
-                                        size="13"
-                                        class="tile-trend"
-                                        :class="tile.colorClass"
-                                        >mdi-trending-up</v-icon
-                                    >
-                                    <v-icon
-                                        v-else-if="tile.trend === 'down'"
-                                        size="13"
-                                        class="tile-trend"
-                                        :class="tile.colorClass"
-                                        >mdi-trending-down</v-icon
-                                    >
-                                    <span v-else class="tile-trend-placeholder" />
-                                </div>
-
-                                <!-- Row 3: probability bar (PM) or sparkline (FRED) -->
-                                <div class="tile-bottom">
-                                    <!-- PM probability bar -->
-                                    <div v-if="tile.pct != null" class="tile-bar">
-                                        <div
-                                            class="tile-bar-fill"
-                                            :class="tile.colorClass"
-                                            :style="{ width: `${tile.pct}%` }"
-                                        />
-                                    </div>
-                                    <!-- FRED sparkline -->
-                                    <svg
-                                        v-else-if="tile.sparkline"
-                                        class="sparkline"
-                                        :viewBox="`0 0 ${SPARK_W} ${SPARK_H}`"
-                                        preserveAspectRatio="none"
-                                    >
-                                        <polyline
-                                            :points="tile.sparkline"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            stroke-width="1.5"
-                                            stroke-linejoin="round"
-                                            stroke-linecap="round"
-                                            :class="tile.colorClass"
-                                            style="opacity: 0.65"
-                                        />
-                                    </svg>
-                                    <div v-else class="tile-bar-placeholder" />
-                                </div>
-                                <!-- PM badge — absolutely anchored bottom-right -->
-                                <span v-if="tile.source === 'polymarket'" class="poly-badge"
-                                    >PM</span
+            <div v-for="group in tileGroups" :key="group.source">
+                <div class="d-flex align-center mb-1" style="gap: 6px">
+                    <SourceBadge
+                        :source="group.source === 'polymarket' ? 'POLY' : 'FRED'"
+                        :show-icon="true"
+                        :clickable="true"
+                        size="x-small"
+                    />
+                    <span class="text-caption text-medium-emphasis">
+                        {{
+                            group.source === 'polymarket'
+                                ? 'Prediction market probabilities'
+                                : 'FRED macro indicators'
+                        }}
+                    </span>
+                </div>
+                <div
+                    class="signal-tiles mb-3"
+                    :class="{ 'poly-row': group.source === 'polymarket' }"
+                >
+                    <template v-for="tile in group.tiles" :key="tile.label">
+                        <v-tooltip location="top" max-width="320" theme="dark" :open-delay="200">
+                            <template #activator="{ props: tp }">
+                                <div
+                                    v-bind="tp"
+                                    class="signal-tile"
+                                    :class="{ 'poly-tile': tile.source === 'polymarket' }"
                                 >
+                                    <!-- Row 1: label only -->
+                                    <div class="tile-header">
+                                        <span class="tile-label">{{ tile.label }}</span>
+                                    </div>
+
+                                    <!-- Row 2: value (left) + trend icon (right) — baseline-aligned -->
+                                    <div class="tile-value-row">
+                                        <span class="tile-value" :class="tile.colorClass">{{
+                                            tile.display
+                                        }}</span>
+                                        <v-icon
+                                            v-if="tile.trend === 'up'"
+                                            size="13"
+                                            class="tile-trend"
+                                            :class="tile.colorClass"
+                                            >mdi-trending-up</v-icon
+                                        >
+                                        <v-icon
+                                            v-else-if="tile.trend === 'down'"
+                                            size="13"
+                                            class="tile-trend"
+                                            :class="tile.colorClass"
+                                            >mdi-trending-down</v-icon
+                                        >
+                                        <span v-else class="tile-trend-placeholder" />
+                                    </div>
+
+                                    <!-- Row 3: probability bar (PM) or sparkline (FRED) -->
+                                    <div class="tile-bottom">
+                                        <!-- PM probability bar -->
+                                        <div v-if="tile.pct != null" class="tile-bar">
+                                            <div
+                                                class="tile-bar-fill"
+                                                :class="tile.colorClass"
+                                                :style="{ width: `${tile.pct}%` }"
+                                            />
+                                        </div>
+                                        <!-- FRED sparkline -->
+                                        <svg
+                                            v-else-if="tile.sparkline"
+                                            class="sparkline"
+                                            :viewBox="`0 0 ${SPARK_W} ${SPARK_H}`"
+                                            preserveAspectRatio="none"
+                                        >
+                                            <polyline
+                                                :points="tile.sparkline"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="1.5"
+                                                stroke-linejoin="round"
+                                                stroke-linecap="round"
+                                                :class="tile.colorClass"
+                                                style="opacity: 0.65"
+                                            />
+                                        </svg>
+                                        <div v-else class="tile-bar-placeholder" />
+                                    </div>
+                                </div>
+                            </template>
+                            <!-- Tooltip content -->
+                            <div class="tooltip-inner">
+                                <div class="font-weight-medium mb-1" style="font-size: 0.78rem">
+                                    {{ tile.tooltipTitle }}
+                                </div>
+                                <div
+                                    v-if="tile.tooltipDetail"
+                                    style="font-size: 0.73rem; opacity: 0.8"
+                                >
+                                    {{ tile.tooltipDetail }}
+                                </div>
+                                <div style="font-size: 0.7rem; opacity: 0.55; margin-top: 4px">
+                                    Source:
+                                    {{
+                                        tile.source === 'polymarket'
+                                            ? 'Polymarket prediction markets'
+                                            : 'FRED (Federal Reserve)'
+                                    }}
+                                </div>
                             </div>
-                        </template>
-                        <!-- Tooltip content -->
-                        <div class="tooltip-inner">
-                            <div class="font-weight-medium mb-1" style="font-size: 0.78rem">
-                                {{ tile.tooltipTitle }}
-                            </div>
-                            <div v-if="tile.tooltipDetail" style="font-size: 0.73rem; opacity: 0.8">
-                                {{ tile.tooltipDetail }}
-                            </div>
-                        </div>
-                    </v-tooltip>
-                </template>
+                        </v-tooltip>
+                    </template>
+                </div>
             </div>
         </div>
 

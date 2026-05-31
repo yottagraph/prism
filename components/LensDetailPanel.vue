@@ -3,9 +3,7 @@
         <v-expansion-panel v-for="lens in lensDefs" :key="lens.key">
             <v-expansion-panel-title>
                 <div class="d-flex align-center" style="width: 100%">
-                    <v-chip size="x-small" variant="tonal" :color="lens.color" label class="mr-3">
-                        {{ lens.source }}
-                    </v-chip>
+                    <SourceBadge :source="lens.source" class="mr-3" />
                     <span class="text-body-1">{{ lens.label }}</span>
                     <v-spacer />
                     <v-chip
@@ -33,10 +31,9 @@
                     </div>
                     <v-divider class="my-3" />
                     <div class="d-flex align-center mb-2">
-                        <span class="type-label text-medium-emphasis">Traced to source</span>
-                        <v-chip size="x-small" variant="outlined" class="ml-2" style="opacity: 0.6">
-                            via Elemental
-                        </v-chip>
+                        <span class="type-label text-medium-emphasis mr-2">Traced to source</span>
+                        <SourceBadge :source="lens.source" :show-icon="true" :clickable="true" />
+                        <SourceBadge source="ELEMENTAL" class="ml-1" />
                     </div>
                     <div v-if="lens.findings.length" class="finding-list">
                         <v-card

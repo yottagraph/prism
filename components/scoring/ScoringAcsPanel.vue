@@ -1,7 +1,8 @@
 <template>
     <v-card variant="outlined" class="mb-4">
-        <v-card-title class="text-subtitle-1">
-            Adversarial Capital Screening (ACS) Settings
+        <v-card-title class="text-subtitle-1 d-flex align-center ga-2 flex-wrap">
+            Ownership flags (ACS) Settings
+            <SourceBadge source="CSL" :show-icon="true" :clickable="true" />
         </v-card-title>
         <v-card-subtitle>
             Sub-weights controlling how each screening layer contributes to the compliance

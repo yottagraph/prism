@@ -3,8 +3,12 @@
         <!-- Score header -->
         <v-card class="pa-4 mb-3">
             <div class="d-flex align-center mb-3">
-                <v-chip size="x-small" color="primary" label class="mr-2">SEC</v-chip>
-                <span class="text-subtitle-2">Financial Health Score (FHS)</span>
+                <SourceBadge source="SEC" class="mr-2" :clickable="true" :show-learn-more="true" />
+                <span class="text-subtitle-2">Financial strength</span>
+                <HelpTooltip
+                    title="Financial strength (FHS)"
+                    text="Assesses balance-sheet health using SEC filings — leverage, equity ratios, coverage, and distress events like missed filings or auditor changes."
+                />
                 <v-spacer />
                 <v-chip
                     v-if="scores?.solvency != null"

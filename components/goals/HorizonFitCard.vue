@@ -4,6 +4,11 @@
         <div class="d-flex align-center mb-3">
             <v-icon color="primary" class="mr-2" size="small">mdi-target</v-icon>
             <span class="text-subtitle-2 font-weight-medium">Horizon fit</span>
+            <HelpTooltip
+                title="Horizon fit"
+                text="Compares when you need this money (the time horizon) against how volatile your holdings actually are. A short-horizon bucket with aggressive holdings is a mismatch — you could be forced to sell at a loss."
+                :size="14"
+            />
             <v-spacer />
             <v-chip
                 v-if="fit && fit.verdict !== 'unknown'"
@@ -166,17 +171,31 @@
                 <span class="text-body-2">{{ drawdownWarning }}</span>
             </v-alert>
 
-            <!-- Vol coverage note -->
+            <!-- Vol coverage note with provenance -->
             <p
                 v-if="fit.volCoverage > 0"
-                class="text-caption text-medium-emphasis mt-2 mb-0"
+                class="text-caption text-medium-emphasis mt-2 mb-0 d-flex align-center"
                 style="opacity: 0.7"
             >
+                <SourceBadge source="STOCK" class="mr-1" />
                 {{ Math.round(fit.volCoverage * 100) }}% of holdings scored with live volatility
                 data · rest estimated from sector
+                <HelpTooltip
+                    text="Live volatility is the annualised 30-day price volatility sourced from Elemental's market data layer. Where it's unavailable, we fall back to a sector-typical estimate."
+                    :size="12"
+                />
             </p>
-            <p v-else class="text-caption text-medium-emphasis mt-2 mb-0" style="opacity: 0.7">
+            <p
+                v-else
+                class="text-caption text-medium-emphasis mt-2 mb-0 d-flex align-center"
+                style="opacity: 0.7"
+            >
+                <SourceBadge source="STOCK" class="mr-1" />
                 Risk band estimated from sector — analyze for live volatility data
+                <HelpTooltip
+                    text="Volatility data requires a completed scan. Sector estimates are used as a fallback when live stock data is unavailable."
+                    :size="12"
+                />
             </p>
         </template>
     </v-card>

@@ -3,16 +3,9 @@
         <div v-for="lens in lenses" :key="lens.key" class="lens-row">
             <div class="d-flex justify-space-between align-center mb-1">
                 <div class="d-flex align-center">
-                    <v-chip
-                        size="x-small"
-                        variant="tonal"
-                        :color="sourceColor(lens.source)"
-                        label
-                        class="mr-2"
-                    >
-                        {{ lens.source }}
-                    </v-chip>
+                    <SourceBadge :source="lens.source" class="mr-2" />
                     <span class="text-body-2">{{ lens.label }}</span>
+                    <HelpTooltip :text="lens.description" :size="13" />
                 </div>
                 <v-chip
                     v-if="scores[lens.key] != null"
@@ -91,6 +84,7 @@
     const lenses = LENS_ORDER.map((key) => ({
         key,
         label: LENS_META[key].label,
+        description: LENS_META[key].description,
         source: LENS_META[key].source,
     }));
 
@@ -99,24 +93,6 @@
         if (v >= 65) return 'warning';
         if (v >= 50) return 'info';
         return 'success';
-    }
-
-    function sourceColor(src: string) {
-        switch (src) {
-            case 'SEC':
-                return 'primary';
-            case 'NEWS':
-                return 'info';
-            case 'STOCK':
-                return 'success';
-            case 'POLY':
-                return 'warning';
-            case 'CSL':
-            case 'OFAC':
-                return 'error';
-            default:
-                return 'grey';
-        }
     }
 
     const conflictSummary = computed(() =>

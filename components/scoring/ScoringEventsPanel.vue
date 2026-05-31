@@ -1,6 +1,9 @@
 <template>
     <v-card variant="outlined" class="mb-4">
-        <v-card-title class="text-subtitle-1">Event Pressure Settings</v-card-title>
+        <v-card-title class="text-subtitle-1 d-flex align-center ga-2">
+            Material events Settings
+            <SourceBadge source="SEC" :show-icon="true" :clickable="true" />
+        </v-card-title>
         <v-card-subtitle>
             Controls how 8-K and other SEC events contribute to the Event Pressure lens score.
         </v-card-subtitle>

@@ -45,6 +45,20 @@
             </v-card>
         </v-menu>
 
+        <!-- Data Sources -->
+        <v-tooltip text="What data sources does Prism use?">
+            <template v-slot:activator="{ props: tooltipProps }">
+                <v-btn
+                    icon
+                    v-bind="tooltipProps"
+                    class="ml-1 header-icon-btn"
+                    @click="openSourcesDialog"
+                >
+                    <v-icon icon="mdi-database-eye-outline" class="header-icon"></v-icon>
+                </v-btn>
+            </template>
+        </v-tooltip>
+
         <!-- Settings Gear -->
         <v-tooltip :text="`Settings (${modKey}G)`">
             <template v-slot:activator="{ props: tooltipProps }">
@@ -110,6 +124,9 @@
     import { useUser } from '~/composables/useUser';
     import ThemePresetPicker from '~/components/ThemePresetPicker.vue';
     import { state } from '~/utils/appState';
+    import { useSourcesDialog } from '~/composables/useSourcesDialog';
+
+    const { openSourcesDialog } = useSourcesDialog();
 
     const { isDark } = useLovelaceTheme();
     const { logoSrc } = useBrandLogo();

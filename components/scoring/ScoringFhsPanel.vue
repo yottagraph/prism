@@ -1,6 +1,9 @@
 <template>
     <v-card variant="outlined" class="mb-4">
-        <v-card-title class="text-subtitle-1">Financial Health (FHS) Thresholds</v-card-title>
+        <v-card-title class="text-subtitle-1 d-flex align-center ga-2">
+            Financial strength (FHS) Thresholds
+            <SourceBadge source="SEC" :show-icon="true" :clickable="true" />
+        </v-card-title>
         <v-card-subtitle>
             Metric thresholds that determine when financial signals trigger elevated concern, plus
             tier sub-weights controlling how much each FHS tier contributes.

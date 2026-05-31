@@ -11,6 +11,12 @@
                     Galaxy
                 </v-chip>
                 <v-chip v-else-if="!loading" size="x-small" variant="tonal">Elemental</v-chip>
+                <HelpTooltip
+                    title="Source: Elemental relationship graph"
+                    text="Every link in this graph — companies, officers, instruments, locations — comes from Elemental's knowledge graph. No local data is stored. Click 'Data sources' in the sidebar to learn more."
+                    :size="13"
+                    location="right"
+                />
             </div>
         </div>
 

@@ -63,6 +63,15 @@
 
         <template #append>
             <div class="pa-3 footer-block">
+                <v-btn
+                    variant="text"
+                    size="x-small"
+                    prepend-icon="mdi-database-eye-outline"
+                    class="footer-sources-btn mb-2"
+                    @click="openSourcesDialog"
+                >
+                    Data sources
+                </v-btn>
                 <div class="text-caption footer-label">Powered by</div>
                 <div class="d-flex align-center mt-1">
                     <img :src="logoSrc" alt="Lovelace" class="footer-logo" />
@@ -74,8 +83,10 @@
 
 <script setup lang="ts">
     import { useBrandLogo } from '~/composables/useBrandLogo';
+    import { useSourcesDialog } from '~/composables/useSourcesDialog';
 
     const { logoSrc } = useBrandLogo();
+    const { openSourcesDialog } = useSourcesDialog();
 
     const workspaceItems = [
         {
@@ -188,5 +199,18 @@
     .footer-logo {
         height: 0.85rem;
         opacity: 0.5;
+    }
+
+    .footer-sources-btn {
+        width: 100%;
+        justify-content: flex-start;
+        color: rgba(var(--dynamic-sidebar-fg-rgb), 0.6) !important;
+        font-size: var(--type-caption-size);
+        letter-spacing: normal;
+        text-transform: none;
+    }
+
+    .footer-sources-btn:hover {
+        color: rgba(var(--dynamic-sidebar-fg-rgb), 0.9) !important;
     }
 </style>

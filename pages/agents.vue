@@ -2,8 +2,14 @@
     <div class="d-flex flex-column fill-height">
         <div class="flex-shrink-0 pa-4 page-header">
             <PageHeader title="Ask" icon="mdi-message-question-outline" />
-            <div class="text-caption text-medium-emphasis mt-1">
+            <div class="text-caption text-medium-emphasis mt-1 d-flex align-center">
                 Ask evidence-backed questions about this customer's goals and holdings.
+                <HelpTooltip
+                    title="Evidence-backed answers"
+                    text="Every answer is grounded in specific citations from SEC filings, news articles, stock data, and prediction markets — you can trace each claim back to its source."
+                    :size="13"
+                    location="right"
+                />
             </div>
         </div>
 
@@ -299,8 +305,12 @@
                                                 <div class="text-caption mt-1">
                                                     Status: <strong>{{ step.status }}</strong>
                                                 </div>
-                                                <div class="text-caption">
+                                                <div class="text-caption d-flex align-center">
                                                     Evidence: {{ step.evidenceCount ?? 0 }}
+                                                    <HelpTooltip
+                                                        text="Number of source citations (SEC filings, news articles, market readings) gathered during this pipeline step."
+                                                        :size="11"
+                                                    />
                                                 </div>
                                             </v-sheet>
                                         </v-col>

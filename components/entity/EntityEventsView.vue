@@ -35,14 +35,7 @@
                                 <div class="text-caption font-mono text-medium-emphasis">
                                     {{ ev.date || '—' }}
                                 </div>
-                                <v-chip
-                                    :color="sourceColor(ev.source)"
-                                    size="x-small"
-                                    label
-                                    class="mt-1"
-                                >
-                                    {{ ev.source }}
-                                </v-chip>
+                                <SourceBadge :source="ev.source || 'SEC'" class="mt-1" />
                             </div>
                             <div class="flex-grow-1">
                                 <div class="d-flex align-start ga-2">
@@ -136,19 +129,6 @@
             return true;
         })
     );
-
-    function sourceColor(source?: string) {
-        switch (source) {
-            case 'NEWS':
-                return 'info';
-            case 'STOCK':
-                return 'success';
-            case 'POLY':
-                return 'purple';
-            default:
-                return 'primary';
-        }
-    }
 
     function severityColor(severity: string) {
         switch (severity) {

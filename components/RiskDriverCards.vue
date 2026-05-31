@@ -3,17 +3,11 @@
         <v-col v-for="(d, i) in drivers" :key="i" cols="12" md="6">
             <v-card class="pa-3 driver-card" :class="{ top: i === 0 }">
                 <div class="d-flex justify-space-between align-start mb-2">
-                    <div>
-                        <v-chip
-                            size="x-small"
-                            variant="tonal"
-                            :color="sourceColor(d.source)"
-                            label
-                            class="mr-2"
-                        >
-                            {{ d.source }}
-                        </v-chip>
-                        <span class="text-overline text-medium-emphasis">{{ d.lens }}</span>
+                    <div class="d-flex align-center">
+                        <SourceBadge :source="d.source" class="mr-2" />
+                        <span class="text-overline text-medium-emphasis">{{
+                            LENS_META[d.lens]?.label ?? d.lens
+                        }}</span>
                     </div>
                     <v-chip :color="scoreLabelColor(d.score)" size="small" label>{{
                         tierLabel(scoreToLabel(d.score))
@@ -39,33 +33,10 @@
         scoreToLabel,
         scoreLabelColor,
         tierLabel,
+        LENS_META,
     } from '~/composables/useFusedScoring';
 
     defineProps<{ drivers: RiskDriver[] }>();
-
-    function sourceColor(src: string) {
-        switch (src) {
-            case 'SEC':
-                return 'primary';
-            case 'NEWS':
-                return 'info';
-            case 'STOCK':
-                return 'success';
-            case 'POLY':
-                return 'warning';
-            case 'CSL':
-            case 'OFAC':
-                return 'error';
-            case 'GLEIF':
-                return 'primary';
-            case 'ownership_graph':
-                return 'deep-purple';
-            case 'jurisdiction':
-                return 'orange';
-            default:
-                return 'grey';
-        }
-    }
 </script>
 
 <style scoped>

@@ -1,6 +1,12 @@
 <template>
     <v-card variant="outlined" class="mb-4">
-        <v-card-title class="text-subtitle-1">Source Fusion Weights</v-card-title>
+        <v-card-title class="text-subtitle-1 d-flex align-center ga-2 flex-wrap">
+            Source Fusion Weights
+            <HelpTooltip
+                title="How fusion weights work"
+                text="Each lens score is multiplied by its weight, then summed to produce the Overall risk score (0–100). Weights should sum to 1.0. Lenses backed by different sources (SEC, News, Stock) can be tuned independently."
+            />
+        </v-card-title>
         <v-card-subtitle>
             How much each lens contributes to the fused risk score. Values should sum close to 1.0.
         </v-card-subtitle>

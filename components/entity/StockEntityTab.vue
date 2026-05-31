@@ -1,7 +1,12 @@
 <template>
     <div>
         <div class="d-flex align-center mb-3">
-            <div class="text-subtitle-1">Stock Entity</div>
+            <div class="text-subtitle-1">Price stability</div>
+            <SourceBadge source="STOCK" class="ml-2" :clickable="true" :show-learn-more="true" />
+            <HelpTooltip
+                title="Price stability"
+                text="Summarises 30-day price trend, volatility, and technical signals (RSI, MACD) from Elemental's market data layer."
+            />
             <v-spacer />
             <v-btn
                 size="small"
@@ -179,7 +184,13 @@
                     </v-card>
 
                     <v-card class="pa-4 stock-card">
-                        <div class="text-subtitle-2 mb-3">Provenance</div>
+                        <div class="text-subtitle-2 mb-3 d-flex align-center">
+                            Stock data sources
+                            <HelpTooltip
+                                text="These are the specific data references that provided the stock prices, analytics, and signals above — sourced via Elemental's market data layer."
+                                :size="13"
+                            />
+                        </div>
                         <div v-if="stock.citations.length" class="d-flex flex-wrap ga-2">
                             <CitationChip
                                 v-for="(citation, idx) in stock.citations"
@@ -246,7 +257,13 @@
                     </v-card>
 
                     <v-card class="pa-4 stock-card">
-                        <div class="text-subtitle-2 mb-3">Fundamentals Provenance</div>
+                        <div class="text-subtitle-2 mb-3 d-flex align-center">
+                            Fundamentals sources
+                            <HelpTooltip
+                                text="Citations for the P/E, market cap, dividend yield, and other fundamental metrics displayed above."
+                                :size="13"
+                            />
+                        </div>
                         <div
                             v-if="stock.fundamentals.citations.length"
                             class="d-flex flex-wrap ga-2"

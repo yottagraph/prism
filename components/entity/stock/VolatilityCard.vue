@@ -1,6 +1,13 @@
 <template>
     <v-card class="pa-3 indicator-card">
-        <div class="text-subtitle-2 mb-2">Volatility (20-day annualized)</div>
+        <div class="d-flex align-center mb-2">
+            <div class="text-subtitle-2">Volatility (20-day annualized)</div>
+            <HelpTooltip
+                title="Annualised 20-day volatility"
+                text="The annualised standard deviation of daily returns over the past 20 trading days. Higher values mean the stock price swings more. Used to classify holdings as conservative, moderate, or aggressive. Source: stock market data via Elemental."
+                :size="13"
+            />
+        </div>
         <div class="text-h5 font-mono" :class="valueClass">{{ valueText }}</div>
         <v-progress-linear
             :model-value="Math.min(100, Math.max(0, value ?? 0))"

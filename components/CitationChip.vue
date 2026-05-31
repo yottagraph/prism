@@ -20,6 +20,7 @@
 
 <script setup lang="ts">
     import { computed } from 'vue';
+    import { sourceColor } from '~/composables/useDataSources';
 
     const props = defineProps<{
         citation: {
@@ -39,15 +40,7 @@
         return source;
     });
 
-    const chipColor = computed(() => {
-        const source = (props.citation.source || '').toLowerCase();
-        if (source.includes('screening') || source.includes('ofac') || source.includes('csl')) {
-            return 'error';
-        }
-        if (source.includes('news')) return 'info';
-        if (source.includes('stock')) return 'success';
-        return 'info';
-    });
+    const chipColor = computed(() => sourceColor(props.citation.source));
 </script>
 
 <style scoped>

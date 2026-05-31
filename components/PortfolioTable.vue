@@ -10,6 +10,43 @@
             class="portfolio-table"
             @click:row="onRowClick"
         >
+            <!-- Custom header slots add HelpTooltip to lens columns -->
+            <template
+                v-for="lh in lensHeaders"
+                :key="lh.key"
+                v-slot:[`header.${lh.key}`]="{ column }"
+            >
+                <span class="d-inline-flex align-center">
+                    {{ column.title }}
+                    <HelpTooltip
+                        :text="lh.description"
+                        :title="lh.fullLabel"
+                        :size="12"
+                        location="top"
+                    />
+                </span>
+            </template>
+            <template v-slot:header.fused="{ column }">
+                <span class="d-inline-flex align-center">
+                    {{ column.title }}
+                    <HelpTooltip
+                        title="Overall risk"
+                        text="A weighted blend of Financial strength (35%), Material events (25%), Leadership stability (25%), and Headline risk (15%). Higher = more risk."
+                        :size="12"
+                        location="top"
+                    />
+                </span>
+            </template>
+            <template v-slot:header.trend="{ column }">
+                <span class="d-inline-flex align-center">
+                    {{ column.title }}
+                    <HelpTooltip
+                        text="Risk trend since the last scan: up means risk increased, down means it decreased."
+                        :size="12"
+                        location="top"
+                    />
+                </span>
+            </template>
             <template v-slot:item.rank="{ index }">
                 <span class="text-caption text-medium-emphasis font-mono">{{ index + 1 }}</span>
             </template>
@@ -96,6 +133,7 @@
         tierLabel,
         scoreToLabel,
         scoreLabelColor,
+        LENS_META,
     } from '~/composables/useFusedScoring';
 
     const props = defineProps<{
@@ -109,14 +147,39 @@
 
     const lenses = ['solvency', 'executive', 'news', 'market'] as const;
 
+    /** Metadata for lens columns used to render header tooltips. */
+    const lensHeaders = lenses.map((key) => ({
+        key,
+        fullLabel: LENS_META[key].label,
+        description: LENS_META[key].description,
+    }));
+
     const headers = [
         { title: '#', key: 'rank', sortable: false, width: 40 },
         { title: 'Name', key: 'resolvedName', sortable: true },
-        { title: 'FHS', key: 'solvency', sortable: true, align: 'end' as const, width: 80 },
-        { title: 'ERS', key: 'executive', sortable: true, align: 'end' as const, width: 80 },
-        { title: 'News', key: 'news', sortable: true, align: 'end' as const, width: 80 },
-        { title: 'Mkt', key: 'market', sortable: true, align: 'end' as const, width: 80 },
-        { title: 'Fused', key: 'fused', sortable: true, align: 'end' as const, width: 130 },
+        {
+            title: 'Fin. strength',
+            key: 'solvency',
+            sortable: true,
+            align: 'end' as const,
+            width: 100,
+        },
+        {
+            title: 'Leadership',
+            key: 'executive',
+            sortable: true,
+            align: 'end' as const,
+            width: 100,
+        },
+        { title: 'Headline risk', key: 'news', sortable: true, align: 'end' as const, width: 100 },
+        {
+            title: 'Price stability',
+            key: 'market',
+            sortable: true,
+            align: 'end' as const,
+            width: 105,
+        },
+        { title: 'Overall risk', key: 'fused', sortable: true, align: 'end' as const, width: 130 },
         { title: 'Trend', key: 'trend', sortable: false, width: 70 },
         { title: '', key: 'actions', sortable: false, width: 40 },
     ];

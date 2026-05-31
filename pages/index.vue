@@ -351,23 +351,21 @@
                         </template>
 
                         <div class="mt-3">
-                            <v-tooltip
-                                location="top"
-                                text="Powered by Elemental: SEC filings · news pressure · market signals · ownership screening"
+                            <v-btn
+                                variant="text"
+                                size="x-small"
+                                prepend-icon="mdi-database-eye-outline"
+                                class="text-medium-emphasis px-0"
+                                style="
+                                    font-size: 11px;
+                                    letter-spacing: normal;
+                                    text-transform: none;
+                                    opacity: 0.7;
+                                "
+                                @click="openSourcesDialog"
                             >
-                                <template #activator="{ props: ttProps }">
-                                    <span
-                                        v-bind="ttProps"
-                                        class="text-caption text-medium-emphasis"
-                                        style="cursor: default"
-                                    >
-                                        <v-icon size="12" class="mr-1"
-                                            >mdi-lightning-bolt-circle</v-icon
-                                        >
-                                        Powered by Elemental
-                                    </span>
-                                </template>
-                            </v-tooltip>
+                                SEC · News · Stock · Polymarket · more
+                            </v-btn>
                         </div>
                     </v-card>
                 </v-col>
@@ -498,6 +496,9 @@
     import { useRouter } from 'vue-router';
     import { useUser } from '~/composables/useUser';
     import { usePortfolio } from '~/composables/usePortfolio';
+    import { useSourcesDialog } from '~/composables/useSourcesDialog';
+
+    const { openSourcesDialog } = useSourcesDialog();
     import { riskLabel, riskDescription } from '~/utils/goals/riskLabels';
     import type { RiskTier } from '~/composables/useFusedScoring';
     import { tierColor, tierLabel } from '~/composables/useFusedScoring';

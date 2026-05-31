@@ -412,9 +412,9 @@ export const LENS_META: Record<LensKey, LensMeta> = {
         label: 'Material events',
         labelAdvanced: 'Event pressure',
         description:
-            'Scores the recency and severity of SEC 8-K material events — bankruptcies, restructurings, executive departures, and impairments.',
-        source: 'NEWS',
-        sourceColor: 'info',
+            'Scores the recency and severity of SEC 8-K material events — bankruptcies, restructurings, executive departures, and impairments. Events are cross-referenced with news coverage.',
+        source: 'SEC',
+        sourceColor: 'primary',
     },
     compliance: {
         label: 'Ownership flags',

@@ -361,23 +361,21 @@
                         </template>
 
                         <div class="mt-3">
-                            <v-tooltip
-                                location="top"
-                                text="Fused from SEC filings, news events, 30-day market signals, and ownership screening"
+                            <v-btn
+                                variant="text"
+                                size="x-small"
+                                prepend-icon="mdi-database-eye-outline"
+                                class="text-medium-emphasis px-0"
+                                style="
+                                    font-size: 11px;
+                                    letter-spacing: normal;
+                                    text-transform: none;
+                                    opacity: 0.7;
+                                "
+                                @click="openSourcesDialog"
                             >
-                                <template #activator="{ props: ttProps }">
-                                    <span
-                                        v-bind="ttProps"
-                                        class="text-caption text-medium-emphasis"
-                                        style="cursor: default"
-                                    >
-                                        <v-icon size="12" class="mr-1"
-                                            >mdi-lightning-bolt-circle</v-icon
-                                        >
-                                        Multi-source fusion
-                                    </span>
-                                </template>
-                            </v-tooltip>
+                                SEC · News · Stock · more
+                            </v-btn>
                         </div>
                     </v-card>
                 </v-col>
@@ -549,6 +547,9 @@
     } from '~/composables/usePortfolio';
     import type { RiskTier } from '~/composables/useFusedScoring';
     import { tierColor, tierLabel, scoreToLabel } from '~/composables/useFusedScoring';
+    import { useSourcesDialog } from '~/composables/useSourcesDialog';
+
+    const { openSourcesDialog } = useSourcesDialog();
     import { bucketHoldingsHealth } from '~/utils/goals/holdingsHealth';
     import { usePortfolio } from '~/composables/usePortfolio';
     import { useUser } from '~/composables/useUser';

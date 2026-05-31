@@ -3,8 +3,12 @@
         <!-- Score header -->
         <v-card class="pa-4 mb-3">
             <div class="d-flex align-center mb-3">
-                <v-chip size="x-small" color="primary" label class="mr-2">SEC</v-chip>
-                <span class="text-subtitle-2">Executive Risk Score (ERS)</span>
+                <SourceBadge source="SEC" class="mr-2" :clickable="true" :show-learn-more="true" />
+                <span class="text-subtitle-2">Leadership stability</span>
+                <HelpTooltip
+                    title="Leadership stability (ERS)"
+                    text="Tracks officer and director departures, board composition, and key-person concentration using SEC filings. High turnover or thin leadership teams raise this score."
+                />
                 <v-spacer />
                 <v-chip
                     v-if="scores?.executive != null"

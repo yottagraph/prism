@@ -15,6 +15,9 @@
                 <SettingsDialog />
             </v-dialog>
 
+            <!-- Sources Legend Dialog (global, opened from any surface) -->
+            <SourcesLegendDialog />
+
             <!-- Global Notifications -->
             <NotificationContainer />
 

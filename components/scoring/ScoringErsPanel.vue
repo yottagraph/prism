@@ -1,6 +1,9 @@
 <template>
     <v-card variant="outlined" class="mb-4">
-        <v-card-title class="text-subtitle-1">Executive Risk (ERS) Thresholds</v-card-title>
+        <v-card-title class="text-subtitle-1 d-flex align-center ga-2">
+            Leadership stability (ERS) Thresholds
+            <SourceBadge source="SEC" :show-icon="true" :clickable="true" />
+        </v-card-title>
         <v-card-subtitle>
             Governance stability thresholds that determine when leadership signals trigger elevated
             concern.

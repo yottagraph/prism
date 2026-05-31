@@ -3,8 +3,12 @@
         <!-- Score header -->
         <v-card class="pa-4 mb-3">
             <div class="d-flex align-center mb-3">
-                <v-chip size="x-small" color="error" label class="mr-2">CSL</v-chip>
-                <span class="text-subtitle-2">Adversarial Capital Screening (ACS)</span>
+                <SourceBadge source="CSL" class="mr-2" :clickable="true" :show-learn-more="true" />
+                <span class="text-subtitle-2">Ownership flags</span>
+                <HelpTooltip
+                    title="Ownership flags (ACS)"
+                    text="Screens the entity's ownership graph for sanctions lists (OFAC, OpenSanctions, CSL), high-risk jurisdictions, and foreign-influence indicators."
+                />
                 <v-spacer />
                 <v-chip
                     v-if="scores?.compliance != null"

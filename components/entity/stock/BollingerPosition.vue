@@ -1,6 +1,13 @@
 <template>
     <v-card class="pa-3 indicator-card">
-        <div class="text-subtitle-2 mb-2">Bollinger Position</div>
+        <div class="d-flex align-center mb-2">
+            <div class="text-subtitle-2">Bollinger Position</div>
+            <HelpTooltip
+                title="Bollinger Bands %B"
+                text="%B shows where the current price sits relative to the upper and lower Bollinger Bands. Below 0% = price is below the lower band (oversold territory); above 100% = above the upper band (overbought). Source: stock market data via Elemental."
+                :size="13"
+            />
+        </div>
         <div class="track">
             <div class="zone lower" />
             <div class="zone middle" />
