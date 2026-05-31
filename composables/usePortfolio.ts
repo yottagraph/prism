@@ -1023,13 +1023,33 @@ export function usePortfolio(activeUserId?: globalThis.Ref<string | null>) {
                     scanning.value = false;
                     scanCompletedAt.value = Date.now();
 
-                    // Fire-and-forget stock profile fetches so the Stock tab is
-                    // populated from cache when the user clicks it.
+                    // Fetch stock profiles for each entity. This warms the
+                    // server-side cache AND writes price data back into the
+                    // entity monitor so the $ / 30d table columns populate
+                    // without a separate request.
                     const stockEntities = ents.filter((e) => e.neid);
-                    for (const entity of stockEntities) {
+                    for (const stockEntity of stockEntities) {
                         fetch(
-                            `/api/portfolios/${portfolioId}/entity/${entity.neid}/stock?name=${encodeURIComponent(entity.resolvedName)}`
-                        ).catch(() => undefined);
+                            `/api/portfolios/${portfolioId}/entity/${stockEntity.neid}/stock?name=${encodeURIComponent(stockEntity.resolvedName)}`
+                        )
+                            .then((res) => (res.ok ? res.json() : null))
+                            .then((stockData: any) => {
+                                if (!stockData || !stockEntity.monitor) return;
+                                stockEntity.monitor = {
+                                    ...stockEntity.monitor,
+                                    stockChange30dPercent:
+                                        stockData.returnPct ??
+                                        stockEntity.monitor.stockChange30dPercent,
+                                    stockChangePercent:
+                                        stockData.analytics?.roc10 ??
+                                        stockEntity.monitor.stockChangePercent,
+                                    stockTrendSignal:
+                                        stockData.analytics?.trend ??
+                                        stockEntity.monitor.stockTrendSignal,
+                                };
+                                p.portfolios[idx].entities = [...ents];
+                            })
+                            .catch(() => undefined);
                     }
 
                     // Fire-and-forget per-entity AI headline summaries so they
