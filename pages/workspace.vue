@@ -95,7 +95,7 @@
         <div class="flex-grow-1 overflow-y-auto">
             <!-- Empty state before first scan of this book -->
             <div
-                v-if="!activeBookScored && !scanning"
+                v-if="!scanning && !scanCompletedAt"
                 class="d-flex flex-column align-center justify-center pa-12"
                 style="min-height: 400px; gap: 16px"
             >
@@ -119,7 +119,7 @@
             </div>
 
             <div
-                v-else-if="activeBookScored || scanning"
+                v-else-if="scanning || scanCompletedAt"
                 class="pa-4 d-flex flex-column"
                 style="gap: 16px"
             >
@@ -336,7 +336,7 @@
                             </div>
                             <div class="render-body overflow-hidden">
                                 <div
-                                    v-if="!activeBookScored && !scanning"
+                                    v-if="!scanning && !scanCompletedAt"
                                     class="d-flex flex-column align-center justify-center pa-8 text-center text-medium-emphasis"
                                     style="height: 100%"
                                 >

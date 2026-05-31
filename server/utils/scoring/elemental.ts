@@ -44,8 +44,9 @@ let schemaCache: { schema: ElementalSchema; expiresAt: number } | null = null;
 // that accepts the connection but never responds hangs the awaiting caller
 // forever — e.g. entity resolution at the start of a scan, which would leave
 // the scan SSE stream open (kept alive by ping frames) and the client spinning
-// indefinitely. The gateway's own budget is ~30s, so anything past that is dead.
-const ELEMENTAL_FETCH_TIMEOUT_MS = 30_000;
+// indefinitely. Set to 90s to give production calls room for cold-start latency
+// while still guarding against truly hung connections.
+const ELEMENTAL_FETCH_TIMEOUT_MS = 90_000;
 
 type DiagnosticCall = {
     endpoint: string;
