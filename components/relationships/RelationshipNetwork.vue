@@ -21,8 +21,11 @@
                     :value="k.value"
                     size="x-small"
                     variant="outlined"
-                    :prepend-icon="k.icon"
                 >
+                    <span
+                        class="legend-dot mr-1"
+                        :style="{ background: nodeColor(k.value as any) }"
+                    />
                     {{ k.label }}
                 </v-chip>
             </v-chip-group>
@@ -426,5 +429,13 @@
             rgba(var(--dynamic-primary-rgb), 0.04),
             transparent 70%
         );
+    }
+
+    .legend-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
     }
 </style>

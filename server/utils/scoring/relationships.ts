@@ -281,15 +281,18 @@ function assembleUniverse(
 
 // ─── Elemental fallback ────────────────────────────────────────────────────────
 
+// EDGAR accession numbers look like 0001209191-20-032244. They resolve as valid
+// entity names but represent SEC filing documents, not meaningful graph nodes.
+const EDGAR_ACCESSION_RE = /^\d{10}-\d{2}-\d{6}/;
+
 async function resolveNames(event: H3Event, eids: string[], limit = 20) {
     const trimmed = eids.slice(0, limit);
-    return await Promise.all(
+    const results = await Promise.all(
         trimmed.map(async (eid) => {
             try {
                 const name = await getEntityName(eid, event);
-                // getEntityName returns the NEID itself when lookup fails — treat that
-                // as a fallback and show a short truncated form rather than a raw
-                // 20-digit ID.
+                // getEntityName returns the NEID itself when lookup fails — treat
+                // that as a fallback and show a short truncated form.
                 if (name === eid && eid.length > 12) {
                     return { eid, name: `…${eid.slice(-6)}` };
                 }
@@ -299,6 +302,8 @@ async function resolveNames(event: H3Event, eids: string[], limit = 20) {
             }
         })
     );
+    // Drop SEC filing accession numbers — they aren't useful graph nodes.
+    return results.filter((r) => !EDGAR_ACCESSION_RE.test(r.name));
 }
 
 async function linked(
