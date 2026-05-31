@@ -94,6 +94,60 @@
     const theme = useTheme();
     const isDark = computed(() => theme.global.current.value.dark);
 
+    // Sigma hardcodes a white (#FFF) background in its drawDiscNodeHover, which
+    // makes white label text invisible in dark mode. This replacement reads the
+    // labelColor setting to pick a contrasting background at draw time.
+    function drawNodeHover(context: CanvasRenderingContext2D, data: any, settings: any): void {
+        const textColor: string = settings.labelColor?.color ?? '#000000';
+        const isLightText = textColor === '#ffffff' || textColor === '#fff' || textColor === '#FFF';
+        const bgColor = isLightText ? '#1a1a1a' : '#ffffff';
+        const size: number = settings.labelSize;
+        const font: string = settings.labelFont;
+        const weight: string = settings.labelWeight;
+
+        context.font = `${weight} ${size}px ${font}`;
+        context.fillStyle = bgColor;
+        context.shadowOffsetX = 0;
+        context.shadowOffsetY = 0;
+        context.shadowBlur = 8;
+        context.shadowColor = isLightText ? '#000' : '#999';
+
+        const PADDING = 2;
+        if (typeof data.label === 'string') {
+            const textWidth = context.measureText(data.label).width;
+            const boxWidth = Math.round(textWidth + 5);
+            const boxHeight = Math.round(size + 2 * PADDING);
+            const radius = Math.max(data.size, size / 2) + PADDING;
+            const angleRadian = Math.asin(boxHeight / 2 / radius);
+            const xDeltaCoord = Math.sqrt(Math.abs(radius ** 2 - (boxHeight / 2) ** 2));
+
+            context.beginPath();
+            context.moveTo(data.x + xDeltaCoord, data.y + boxHeight / 2);
+            context.lineTo(data.x + radius + boxWidth, data.y + boxHeight / 2);
+            context.lineTo(data.x + radius + boxWidth, data.y - boxHeight / 2);
+            context.lineTo(data.x + xDeltaCoord, data.y - boxHeight / 2);
+            context.arc(data.x, data.y, radius, angleRadian, -angleRadian);
+            context.closePath();
+            context.fill();
+        } else {
+            context.beginPath();
+            context.arc(data.x, data.y, data.size + PADDING, 0, Math.PI * 2);
+            context.closePath();
+            context.fill();
+        }
+
+        context.shadowOffsetX = 0;
+        context.shadowOffsetY = 0;
+        context.shadowBlur = 0;
+
+        // Draw label text in the correct contrasting color
+        if (data.label) {
+            context.fillStyle = textColor;
+            context.font = `${weight} ${size}px ${font}`;
+            context.fillText(data.label, data.x + data.size + 3, data.y + size / 3);
+        }
+    }
+
     const graphMode = ref<'force' | 'geographic'>('force');
     const activeKinds = ref<string[]>(['portfolio', 'company', 'person', 'instrument', 'location']);
 
@@ -251,6 +305,7 @@
             labelRenderedSizeThreshold: 6,
             labelDensity: 0.8,
             labelColor: { color: labelColor() },
+            defaultDrawNodeHover: drawNodeHover,
         });
 
         let highlightedNode: string | null = null;
@@ -367,6 +422,7 @@
             maxCameraRatio: 100,
             labelRenderedSizeThreshold: 4,
             labelColor: { color: labelColor() },
+            defaultDrawNodeHover: drawNodeHover,
         });
 
         sigmaInstance.on('clickNode', ({ node }: { node: string }) => {
