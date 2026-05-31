@@ -385,8 +385,22 @@ async function ensureSession(serverName: string) {
 }
 
 export interface CallMcpToolOptions {
-    /** Skip the circuit breaker (used by background prewarm). */
+    /** Skip the circuit breaker check — call fires even when the breaker is open. */
     bypassBreaker?: boolean;
+    /**
+     * Don't record the result (success or failure) into the circuit breaker.
+     * Used by background prewarm calls whose 502s are expected and must not
+     * trip the breaker before the real scoring calls have a chance to run.
+     */
+    silentBreaker?: boolean;
+    /**
+     * Skip the per-server concurrency semaphore.
+     * Used by background prewarm calls so they don't occupy semaphore slots
+     * that the actual scoring calls need. Without this, all 5 stock semaphore
+     * slots get held by 30-second cold-start prewarm calls and scoring calls
+     * queue behind them, hitting the 6s withTimeout before any slot opens.
+     */
+    bypassSemaphore?: boolean;
 }
 
 export async function callMcpTool(
@@ -447,7 +461,7 @@ export async function callMcpTool(
     }
 
     const sem = getSemaphore(serverName);
-    await sem.acquire();
+    if (!opts.bypassSemaphore) await sem.acquire();
     try {
         const sessionId = await ensureSession(serverName);
         let result;
@@ -465,7 +479,7 @@ export async function callMcpTool(
                 throw error;
             }
         }
-        recordBreakerResult(serverName, false);
+        if (!opts.silentBreaker) recordBreakerResult(serverName, false);
         // Capture provenance trails from elemental responses for citation resolution.
         if (serverName === 'elemental' && result && _event) {
             const trails = extractMcpProvenance(result);
@@ -474,10 +488,10 @@ export async function callMcpTool(
         return result;
     } catch (error: any) {
         const code = error?.statusCode ?? error?.status;
-        recordBreakerResult(serverName, isBreakerTrippingStatus(code));
+        if (!opts.silentBreaker) recordBreakerResult(serverName, isBreakerTrippingStatus(code));
         throw error;
     } finally {
-        sem.release();
+        if (!opts.bypassSemaphore) sem.release();
     }
 }
 
@@ -506,7 +520,7 @@ export function prewarmStocks(companyNames: string[], event?: H3Event): void {
             'get_daily_stock_prices',
             { company_name: name, lookback_days: 45 },
             event,
-            { bypassBreaker: true }
+            { bypassBreaker: true, silentBreaker: true, bypassSemaphore: true }
         ).catch(() => undefined);
     }
 }
