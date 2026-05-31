@@ -580,8 +580,30 @@ export default defineEventHandler(async (event) => {
                             : `Scan complete (${done}/${total})`,
                 });
 
-                // Build relationship universe reusing Galaxy quads already fetched
-                // during scoring — avoids a second round of getEntityQuads calls.
+                const summary = summarizeDiagnostics(diagnostics, total, done);
+                // Emit done immediately — the universe build and profile pre-warm
+                // happen AFTER so they never delay the client seeing results.
+                emit('done', {
+                    entities: output,
+                    coverage,
+                    coverageDetail,
+                    failedEntities,
+                    ...(diagnosticsEnabled ? { diagnostics: summary } : {}),
+                });
+                if (diagnosticsEnabled) {
+                    console.info('[scan diagnostics]', JSON.stringify(summary));
+                }
+                if (summary.totalRequests > 1000) {
+                    console.warn(
+                        `[scan] request budget exceeded: ${summary.totalRequests} requests for ${total} entities (threshold: 1000)`
+                    );
+                }
+
+                // ── Post-done background work ────────────────────────────────
+                // The client has already received `done` and shown results.
+                // Build the relationship universe reusing Galaxy quads already
+                // fetched during scoring, then send it as a separate `universe`
+                // event so the client can prime its cache without a second fetch.
                 const contextPackages = (event.context as any).__contextPackages as
                     | Map<string, Promise<any>>
                     | undefined;
@@ -595,41 +617,21 @@ export default defineEventHandler(async (event) => {
                 const resolvedSeeds = output
                     .filter((e: any) => e?.neid)
                     .map((e: any) => ({ neid: e.neid as string, name: e.resolvedName }));
-                let universe: Awaited<ReturnType<typeof buildRelationshipUniverse>> | null = null;
                 if (resolvedSeeds.length > 0) {
                     try {
-                        universe = await buildRelationshipUniverse(
+                        const universe = await buildRelationshipUniverse(
                             event,
                             resolvedSeeds,
                             preloadedQuads
                         );
+                        emit('universe', { universe });
                     } catch (err) {
                         console.warn('[scan] relationship universe build failed', err);
                     }
                 }
 
-                const summary = summarizeDiagnostics(diagnostics, total, done);
-                emit('done', {
-                    entities: output,
-                    coverage,
-                    coverageDetail,
-                    failedEntities,
-                    universe,
-                    ...(diagnosticsEnabled ? { diagnostics: summary } : {}),
-                });
-                if (diagnosticsEnabled) {
-                    console.info('[scan diagnostics]', JSON.stringify(summary));
-                }
-                if (summary.totalRequests > 1000) {
-                    console.warn(
-                        `[scan] request budget exceeded: ${summary.totalRequests} requests for ${total} entities (threshold: 1000)`
-                    );
-                }
-
-                // Pre-build entity profiles in parallel while the stream is still
-                // open. Passes precomputed scoring so getEntityProfile skips
-                // re-running scoreEntity. Client already has the done payload and
-                // will see near-instant cache hits when it navigates to a profile.
+                // Pre-build entity profiles in parallel. Passes precomputed
+                // scoring so getEntityProfile skips re-running scoreEntity.
                 const profileEntities = output.filter((e: any) => e?.neid && e?.scores);
                 if (profileEntities.length > 0) {
                     await Promise.allSettled(

@@ -1016,14 +1016,10 @@ export function usePortfolio(activeUserId?: globalThis.Ref<string | null>) {
                         pushScanStatus(scanStatusMessage.value, 'complete');
                     }
 
-                    // Relationship universe was built server-side during scan — prime
-                    // client cache so the Relationship tab is instant on first open.
-                    if (data?.universe) {
-                        primeRelationshipCache(portfolioId, data.universe as RelationshipUniverse);
-                    }
-
                     // Mark scan complete now so the UI unlocks immediately; the
-                    // stream stays open while the server pre-warms profile caches.
+                    // stream stays open while the server pre-warms profile caches
+                    // and builds the relationship universe (delivered via a
+                    // separate `universe` event).
                     scanning.value = false;
                     scanCompletedAt.value = Date.now();
 
@@ -1075,6 +1071,12 @@ export function usePortfolio(activeUserId?: globalThis.Ref<string | null>) {
                                 }
                             )
                             .catch(() => undefined);
+                    }
+                } else if (event === 'universe') {
+                    // Relationship universe built server-side after done — prime
+                    // client cache so the Relationship tab is a near-instant hit.
+                    if (data?.universe) {
+                        primeRelationshipCache(portfolioId, data.universe as RelationshipUniverse);
                     }
                 } else if (event === 'error') {
                     throw new Error(data?.message || 'Scan pipeline failed');
