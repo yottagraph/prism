@@ -89,7 +89,7 @@
     import { useTheme } from 'vuetify';
     import 'leaflet/dist/leaflet.css';
     import Graph from 'graphology';
-    import Sigma from 'sigma';
+    import Sigma, { type NodeDisplayData } from 'sigma';
     import forceAtlas2 from 'graphology-layout-forceatlas2';
     import type { GraphNode, GraphEdge } from '~/composables/useRelationships';
 
@@ -335,7 +335,7 @@
             graph.neighbors(node).forEach((n) => neighborSet.add(n));
             const lc = labelColor();
 
-            sigmaInstance!.setSetting('nodeReducer', (n, data) => {
+            sigmaInstance!.setSetting('nodeReducer', (n, data): Partial<NodeDisplayData> => {
                 if (n === highlightedNode || neighborSet.has(n)) {
                     // Explicitly carry the correct label color through the hover
                     // reducer — Sigma's highlighted ring can otherwise wash out

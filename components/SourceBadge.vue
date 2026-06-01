@@ -1,5 +1,5 @@
 <template>
-    <v-tooltip :location="location" :max-width="340" content-class="lv-tooltip">
+    <v-tooltip :location="location as any" :max-width="340" content-class="lv-tooltip">
         <template #activator="{ props: ttProps }">
             <v-chip
                 v-bind="ttProps"
