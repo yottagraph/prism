@@ -149,7 +149,7 @@
                         <span class="d-inline-flex align-center">
                             {{ column.title }}
                             <HelpTooltip
-                                text="AI-generated summary of the most material headlines from the last 24 hours."
+                                text="AI-generated summary of the most material headlines from the last 7 days."
                                 :size="11"
                             />
                         </span>
@@ -352,15 +352,14 @@
     const headers = [
         { title: '#', key: 'rank', sortable: false, width: 50 },
         { title: 'Holding', key: 'name', sortable: true },
-        { title: 'Value', key: 'currentValue', sortable: true, width: 120 },
-        { title: 'Return', key: 'holdingReturn', sortable: true, width: 90 },
+        // Value/Return columns temporarily hidden to free space for the News column.
         { title: 'Signals', key: 'signalAgreement', sortable: true, width: 120 },
         // SEC lens
         { title: 'Fin. strength', key: 'solvency', sortable: true, width: 120 },
         { title: 'Leadership', key: 'executive', sortable: true, width: 120 },
         { title: 'Filing activity', key: 'cikVelocity', sortable: true, width: 120 },
         // News lens
-        { title: 'News (24h)', key: 'newsSummary', sortable: false, width: 240 },
+        { title: 'News (7d)', key: 'newsSummary', sortable: false, width: 440 },
         { title: 'Headline risk', key: 'newsActivity', sortable: true, width: 120 },
         // Stock lens
         { title: '10d', key: 'stockChangePercent', sortable: true, width: 80 },

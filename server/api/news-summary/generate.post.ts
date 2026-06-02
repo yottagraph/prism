@@ -46,13 +46,13 @@ async function buildHeadlineSummary(neid: string, resolvedName: string): Promise
         const rows = Array.isArray(structured?.relationships) ? structured!.relationships : [];
 
         const nowMs = Date.now();
-        const since24h = nowMs - 24 * 60 * 60 * 1000;
+        const since7d = nowMs - 7 * 24 * 60 * 60 * 1000;
         const since30d = nowMs - 30 * 24 * 60 * 60 * 1000;
 
         const headlines: string[] = [];
         const sentimentScores: number[] = [];
         let mentions30d = 0;
-        let mentionCount24h = 0;
+        let mentionCount7d = 0;
 
         for (const row of rows) {
             const rawDate = row?.properties?.published_date?.value
@@ -74,8 +74,8 @@ async function buildHeadlineSummary(neid: string, resolvedName: string): Promise
                 if (s !== null) sentimentScores.push(s);
             }
 
-            if (ts >= since24h) {
-                mentionCount24h++;
+            if (ts >= since7d) {
+                mentionCount7d++;
                 const h = row?.properties?.headline?.value
                     ? String(row.properties.headline.value).trim()
                     : null;
@@ -85,8 +85,8 @@ async function buildHeadlineSummary(neid: string, resolvedName: string): Promise
 
         if (mentions30d === 0) return null;
 
-        if (mentionCount24h === 0 || headlines.length === 0) {
-            return 'No recent news coverage in the last 24 hours.';
+        if (mentionCount7d === 0 || headlines.length === 0) {
+            return 'No recent news coverage in the last 7 days.';
         }
 
         const sentimentAvg =
@@ -106,7 +106,7 @@ async function buildHeadlineSummary(neid: string, resolvedName: string): Promise
         const prompt =
             `You are a financial risk analyst writing a brief for a risk dashboard table cell. ` +
             `Write exactly 2-3 sentences (50-80 words) summarizing the key developments from ` +
-            `these ${mentionCount24h} news headlines about ${resolvedName} from the last 24 hours. ` +
+            `these ${mentionCount7d} news headlines about ${resolvedName} from the last 7 days. ` +
             `Be direct and specific — lead with what happened, not with an article count. ` +
             `Do not start with "Based on" or "According to" or "The headlines".` +
             `${sentimentNote}\n\nHeadlines:\n${headlineList}`;
@@ -123,7 +123,7 @@ async function buildHeadlineSummary(neid: string, resolvedName: string): Promise
             return geminiResult.text.trim().replace(/^["']|["']$/g, '');
         }
 
-        return `${mentionCount24h} article${mentionCount24h === 1 ? '' : 's'} in the last 24h. Top: ${headlines.slice(0, 2).join(' | ')}.`;
+        return `${mentionCount7d} article${mentionCount7d === 1 ? '' : 's'} in the last 7d. Top: ${headlines.slice(0, 2).join(' | ')}.`;
     } catch {
         return null;
     }
