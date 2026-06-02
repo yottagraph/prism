@@ -1,16 +1,40 @@
 <template>
-    <v-navigation-drawer permanent app width="240" class="sidebar-nav">
-        <div class="brand-block d-flex align-center pa-4">
-            <div class="brand-icon mr-2">P</div>
-            <div>
+    <v-navigation-drawer
+        permanent
+        app
+        width="240"
+        rail-width="72"
+        :rail="isCollapsed"
+        class="sidebar-nav"
+    >
+        <div
+            class="brand-block d-flex align-center pa-4"
+            :class="{ 'brand-block--collapsed flex-column pa-2': isCollapsed }"
+        >
+            <div class="brand-icon" :class="{ 'mr-2': !isCollapsed }">P</div>
+            <div v-if="!isCollapsed" class="brand-copy">
                 <div class="brand-name">Prism</div>
                 <div class="brand-tag text-caption">Elemental · Agent-builder demo</div>
             </div>
+            <v-btn
+                icon
+                variant="text"
+                size="small"
+                class="collapse-btn"
+                :class="{ 'ml-auto': !isCollapsed, 'mt-2': isCollapsed }"
+                :aria-label="collapseLabel"
+                @click.stop="toggleCollapsed"
+            >
+                <v-icon size="18">{{ collapseIcon }}</v-icon>
+            </v-btn>
         </div>
         <v-divider />
 
         <!-- Agent-builder surface — the primary demo entry point -->
-        <div class="nav-section-label px-4 pt-3 pb-1 text-caption text-medium-emphasis">
+        <div
+            v-if="!isCollapsed"
+            class="nav-section-label px-4 pt-3 pb-1 text-caption text-medium-emphasis"
+        >
             Agent workspace
         </div>
         <v-list nav density="compact" class="pb-0">
@@ -28,7 +52,10 @@
         <v-divider class="mt-2" />
 
         <!-- Retail goals-based path (same engine, retail mandate) -->
-        <div class="nav-section-label px-4 pt-3 pb-1 text-caption text-medium-emphasis">
+        <div
+            v-if="!isCollapsed"
+            class="nav-section-label px-4 pt-3 pb-1 text-caption text-medium-emphasis"
+        >
             Retail demo
         </div>
         <v-list nav density="compact" class="pb-0">
@@ -46,7 +73,10 @@
         <v-divider class="mt-2" />
 
         <!-- Engine internals -->
-        <div class="nav-section-label px-4 pt-3 pb-1 text-caption text-medium-emphasis">
+        <div
+            v-if="!isCollapsed"
+            class="nav-section-label px-4 pt-3 pb-1 text-caption text-medium-emphasis"
+        >
             Elemental internals
         </div>
         <v-list nav density="compact" class="pb-0">
@@ -62,18 +92,21 @@
         </v-list>
 
         <template #append>
-            <div class="pa-3 footer-block">
+            <div class="pa-3 footer-block" :class="{ 'footer-block--collapsed': isCollapsed }">
                 <v-btn
                     variant="text"
-                    size="x-small"
-                    prepend-icon="mdi-database-eye-outline"
+                    :size="isCollapsed ? 'small' : 'x-small'"
+                    :icon="isCollapsed"
+                    :prepend-icon="isCollapsed ? undefined : 'mdi-database-eye-outline'"
                     class="footer-sources-btn mb-2"
+                    :aria-label="isCollapsed ? 'Data sources' : undefined"
                     @click="openSourcesDialog"
                 >
-                    Data sources
+                    <v-icon v-if="isCollapsed">mdi-database-eye-outline</v-icon>
+                    <template v-else>Data sources</template>
                 </v-btn>
-                <div class="text-caption footer-label">Powered by</div>
-                <div class="d-flex align-center mt-1">
+                <div v-if="!isCollapsed" class="text-caption footer-label">Powered by</div>
+                <div v-if="!isCollapsed" class="d-flex align-center mt-1">
                     <img :src="logoSrc" alt="Lovelace" class="footer-logo" />
                 </div>
             </div>
@@ -87,6 +120,27 @@
 
     const { logoSrc } = useBrandLogo();
     const { openSourcesDialog } = useSourcesDialog();
+
+    const STORAGE_KEY = 'prism-sidebar-collapsed';
+    const isCollapsed = ref(false);
+    const collapseIcon = computed(() =>
+        isCollapsed.value ? 'mdi-chevron-right' : 'mdi-chevron-left'
+    );
+    const collapseLabel = computed(() =>
+        isCollapsed.value ? 'Expand navigation' : 'Collapse navigation'
+    );
+
+    function toggleCollapsed() {
+        isCollapsed.value = !isCollapsed.value;
+    }
+
+    onMounted(() => {
+        isCollapsed.value = window.localStorage.getItem(STORAGE_KEY) === 'true';
+    });
+
+    watch(isCollapsed, (value) => {
+        window.localStorage.setItem(STORAGE_KEY, String(value));
+    });
 
     const workspaceItems = [
         {
@@ -145,6 +199,15 @@
         background: linear-gradient(135deg, rgba(var(--dynamic-primary-rgb), 0.08), transparent);
     }
 
+    .brand-block--collapsed {
+        min-height: 88px;
+        justify-content: center;
+    }
+
+    .brand-copy {
+        min-width: 0;
+    }
+
     .brand-icon {
         width: 32px;
         height: 32px;
@@ -157,6 +220,14 @@
         font-family: var(--font-primary, sans-serif);
         font-weight: 600;
         font-size: 1.1rem;
+    }
+
+    .collapse-btn {
+        color: rgba(var(--dynamic-sidebar-fg-rgb), 0.65) !important;
+    }
+
+    .collapse-btn:hover {
+        color: rgba(var(--dynamic-sidebar-fg-rgb), 0.95) !important;
     }
 
     .brand-name {
@@ -187,6 +258,11 @@
         border-top: 1px solid var(--dynamic-sidebar-border);
     }
 
+    .footer-block--collapsed {
+        display: flex;
+        justify-content: center;
+    }
+
     .footer-label {
         font-family: var(--font-primary);
         font-size: var(--type-caption-size);
@@ -208,6 +284,11 @@
         font-size: var(--type-caption-size);
         letter-spacing: normal;
         text-transform: none;
+    }
+
+    .footer-block--collapsed .footer-sources-btn {
+        width: auto;
+        justify-content: center;
     }
 
     .footer-sources-btn:hover {
