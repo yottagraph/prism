@@ -104,6 +104,25 @@ function inferEventSource(category: string, title: string): string {
     return 'SEC';
 }
 
+function inferEventSeverity(title: string): 'low' | 'medium' | 'high' {
+    if (/bankrupt|default|fraud|regulator|litig|delist|non.relian/i.test(title)) return 'high';
+    if (/departure|officer|director|auditor|impair|trigger/i.test(title)) return 'medium';
+    return 'low';
+}
+
+function readEventDate(
+    properties: Record<string, { value?: unknown; ref?: string }> | undefined
+): string {
+    const raw = properties?.event_date?.value ?? properties?.date?.value;
+    return raw == null ? '' : String(raw);
+}
+
+function toTimestamp(date: string): number | null {
+    if (!date) return null;
+    const parsed = Date.parse(date);
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
 /**
  * Build a one-line status summary from the scored entity for the Overview card.
  */
@@ -131,6 +150,15 @@ export async function getEntityProfile(
     if (cached) return cached;
 
     const name = await getEntityName(neid, event).catch(() => neid);
+    const now = new Date();
+    const threeMonthsAgo = new Date(now);
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    const threeMonthsAgoMs = threeMonthsAgo.getTime();
+
+    const oneYearAgo = new Date(now);
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    const oneYearAgoMs = oneYearAgo.getTime();
+    const oneYearAgoIsoDate = oneYearAgo.toISOString().slice(0, 10);
 
     // Fetch entity snapshot + descriptive properties
     const entitySnapshot = await callMcpTool(
@@ -207,8 +235,9 @@ export async function getEntityProfile(
         'elemental_get_events',
         {
             entity_id: { id_type: 'neid', id: neid },
-            limit: 100,
+            limit: 300,
             include_participants: false,
+            time_range: { after: oneYearAgoIsoDate },
         },
         event
     ).catch(() => null);
@@ -261,10 +290,9 @@ export async function getEntityProfile(
         // Include scored monitor data so the entity page can read lens sub-objects
         monitor: scored?.monitor ?? null,
         events: eventRows
-            .slice(0, 100)
             .map((eventRow) => {
                 const category = String(eventRow?.properties?.category?.value || 'Event');
-                const date = String(eventRow?.properties?.date?.value || '');
+                const date = readEventDate(eventRow?.properties);
                 const title = String(
                     eventRow?.properties?.description?.value ||
                         eventRow?.name ||
@@ -277,41 +305,45 @@ export async function getEntityProfile(
                 const citations = refs
                     .map((ref) => eventCitationMap.get(ref))
                     .filter((citation): citation is NonNullable<typeof citation> => !!citation);
+                const severity = inferEventSeverity(title);
+                const source = inferEventSource(category, title);
+                const timestampMs = toTimestamp(date);
+                const isSecCritical =
+                    severity === 'high' || /critical/i.test(`${category} ${title}`);
                 return {
                     date,
                     category,
                     title,
-                    severity: /bankrupt|default|fraud|regulator|litig|delist|non.relian/i.test(
-                        title
-                    )
-                        ? ('high' as const)
-                        : /departure|officer|director|auditor|impair|trigger/i.test(title)
-                          ? ('medium' as const)
-                          : ('low' as const),
-                    source: inferEventSource(category, title),
+                    severity,
+                    source,
+                    timestampMs,
+                    isSecCritical,
                     citations,
                 };
             })
+            .filter((eventItem) => {
+                if (eventItem.timestampMs == null) return false;
+                if (
+                    eventItem.source === 'NEWS' ||
+                    eventItem.source === 'STOCK' ||
+                    eventItem.source === 'POLY'
+                ) {
+                    return eventItem.timestampMs >= threeMonthsAgoMs;
+                }
+                if (eventItem.source === 'SEC') {
+                    return eventItem.isSecCritical && eventItem.timestampMs >= oneYearAgoMs;
+                }
+                return false;
+            })
             .sort((a, b) => {
-                if (!a.date && !b.date) return 0;
-                if (!a.date) return 1;
-                if (!b.date) return -1;
-                return b.date.localeCompare(a.date);
-            }) as Array<{
-            date: string;
-            category: string;
-            title: string;
-            severity: 'low' | 'medium' | 'high';
-            source: string;
-            citations: Array<{
-                ref?: string;
-                url?: string;
-                title?: string;
-                source?: string;
-                date?: string;
-                snippet?: string;
-            }>;
-        }>,
+                if (a.timestampMs == null && b.timestampMs == null) return 0;
+                if (a.timestampMs == null) return 1;
+                if (b.timestampMs == null) return -1;
+                if (a.timestampMs === b.timestampMs) return b.date.localeCompare(a.date);
+                return b.timestampMs - a.timestampMs;
+            })
+            .slice(0, 100)
+            .map(({ timestampMs: _timestampMs, isSecCritical: _isSecCritical, ...rest }) => rest),
         scores: scored?.scores ?? {
             solvency: 0,
             executive: 0,

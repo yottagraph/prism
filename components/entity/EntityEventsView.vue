@@ -113,10 +113,15 @@
     // Sort newest first
     const sortedEvents = computed(() =>
         [...props.events].sort((a, b) => {
-            if (!a.date && !b.date) return 0;
-            if (!a.date) return 1;
-            if (!b.date) return -1;
-            return b.date.localeCompare(a.date);
+            const aTs = a.date ? Date.parse(a.date) : Number.NaN;
+            const bTs = b.date ? Date.parse(b.date) : Number.NaN;
+            const aValid = Number.isFinite(aTs);
+            const bValid = Number.isFinite(bTs);
+            if (!aValid && !bValid) return 0;
+            if (!aValid) return 1;
+            if (!bValid) return -1;
+            if (aTs === bTs) return b.date.localeCompare(a.date);
+            return bTs - aTs;
         })
     );
 

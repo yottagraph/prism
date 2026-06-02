@@ -535,12 +535,12 @@
         const raw = data.value?.events ?? [];
         return raw.map((ev) => ({
             ...ev,
-            source: inferSource(ev.category),
+            source: ev.source ?? inferSource(ev.category, ev.title),
         }));
     });
 
-    function inferSource(category: string): string {
-        const upper = (category || '').toUpperCase();
+    function inferSource(category: string, title = ''): string {
+        const upper = `${category || ''} ${title || ''}`.toUpperCase();
         if (
             upper.includes('STOCK') ||
             upper.includes('PRICE') ||
