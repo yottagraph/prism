@@ -109,6 +109,89 @@
                             />
                         </span>
                     </template>
+                    <template #header.name="{ column }">
+                        <span class="d-inline-flex align-center">
+                            {{ column.title }}
+                            <HelpTooltip
+                                text="The issuer under review, with its resolved Elemental entity ID."
+                                :size="11"
+                            />
+                        </span>
+                    </template>
+                    <template #header.currentValue="{ column }">
+                        <span class="d-inline-flex align-center">
+                            {{ column.title }}
+                            <HelpTooltip
+                                text="Current market value of the position (cost basis shown beneath when available)."
+                                :size="11"
+                            />
+                        </span>
+                    </template>
+                    <template #header.holdingReturn="{ column }">
+                        <span class="d-inline-flex align-center">
+                            {{ column.title }}
+                            <HelpTooltip
+                                text="Total return on the position since entry, as a percentage."
+                                :size="11"
+                            />
+                        </span>
+                    </template>
+                    <template #header.cikVelocity="{ column }">
+                        <span class="d-inline-flex align-center">
+                            {{ column.title }}
+                            <HelpTooltip
+                                text="Quarter-over-quarter change in this entity's SEC filing mentions — a proxy for regulatory and disclosure activity."
+                                :size="11"
+                            />
+                        </span>
+                    </template>
+                    <template #header.newsSummary="{ column }">
+                        <span class="d-inline-flex align-center">
+                            {{ column.title }}
+                            <HelpTooltip
+                                text="AI-generated summary of the most material headlines from the last 24 hours."
+                                :size="11"
+                            />
+                        </span>
+                    </template>
+                    <template #header.stockChangePercent="{ column }">
+                        <span class="d-inline-flex align-center">
+                            {{ column.title }}
+                            <HelpTooltip
+                                title="10-day price change"
+                                text="Rate of change in the share price over the last 10 trading days, as a percentage."
+                                :size="11"
+                            />
+                        </span>
+                    </template>
+                    <template #header.stockChange30dPercent="{ column }">
+                        <span class="d-inline-flex align-center">
+                            {{ column.title }}
+                            <HelpTooltip
+                                title="30-day price change"
+                                text="Total return on the share price over the trailing ~30 days, as a percentage."
+                                :size="11"
+                            />
+                        </span>
+                    </template>
+                    <template #header.stockTrend="{ column }">
+                        <span class="d-inline-flex align-center">
+                            {{ column.title }}
+                            <HelpTooltip
+                                text="Overall price-trend signal (bullish / neutral / bearish) derived from moving averages, RSI, and MACD."
+                                :size="11"
+                            />
+                        </span>
+                    </template>
+                    <template #header.analyst="{ column }">
+                        <span class="d-inline-flex align-center">
+                            {{ column.title }}
+                            <HelpTooltip
+                                text="Your manual assessment tier for this issuer — overrides nothing, captured for the diligence record."
+                                :size="11"
+                            />
+                        </span>
+                    </template>
 
                     <template #item.rank="{ index }">
                         <span class="text-caption font-mono">#{{ index + 1 }}</span>
@@ -159,6 +242,26 @@
                     <template #item.newsActivity="{ item }"
                         ><NewsActivityChip :value="item.mentionRatioLabel"
                     /></template>
+                    <template #item.stockChangePercent="{ item }">
+                        <span
+                            v-if="item.stockChangePercent != null"
+                            class="font-weight-medium font-mono"
+                            :class="item.stockChangePercent >= 0 ? 'text-success' : 'text-error'"
+                        >
+                            {{ formatSignedPct(item.stockChangePercent * 100) }}
+                        </span>
+                        <span v-else class="text-medium-emphasis">—</span>
+                    </template>
+                    <template #item.stockChange30dPercent="{ item }">
+                        <span
+                            v-if="item.stockChange30dPercent != null"
+                            class="font-weight-medium font-mono"
+                            :class="item.stockChange30dPercent >= 0 ? 'text-success' : 'text-error'"
+                        >
+                            {{ formatSignedPct(item.stockChange30dPercent) }}
+                        </span>
+                        <span v-else class="text-medium-emphasis">—</span>
+                    </template>
                     <template #item.stockTrend="{ item }"
                         ><StockTrendChip :value="item.stockTrendSignal"
                     /></template>
@@ -242,6 +345,10 @@
         }).format(Math.round(value));
     }
 
+    function formatSignedPct(value: number): string {
+        return `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`;
+    }
+
     const headers = [
         { title: '#', key: 'rank', sortable: false, width: 50 },
         { title: 'Holding', key: 'name', sortable: true },
@@ -256,8 +363,8 @@
         { title: 'News (24h)', key: 'newsSummary', sortable: false, width: 240 },
         { title: 'Headline risk', key: 'newsActivity', sortable: true, width: 120 },
         // Stock lens
-        { title: '$', key: 'stockChangePercent', sortable: true, width: 70 },
-        { title: '30d', key: 'stockChange30dPercent', sortable: true, width: 70 },
+        { title: '10d', key: 'stockChangePercent', sortable: true, width: 80 },
+        { title: '30d', key: 'stockChange30dPercent', sortable: true, width: 80 },
         { title: 'Trend', key: 'stockTrend', sortable: true, width: 90 },
         // Polymarket lens
         { title: 'Markets', key: 'polymarket', sortable: true, width: 140 },
