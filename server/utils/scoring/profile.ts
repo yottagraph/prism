@@ -6,7 +6,41 @@ import { resolveRefs } from './citations';
 import { findEntities, getEntityName, getSchema, normalizePidMap } from './elemental';
 import { callMcpTool, extractMcpStructuredContent } from './mcpGateway';
 import { scoreEntity } from './scoreEntity';
-import type { ScoreComputationResult } from './types';
+import type { CitationRef, ScoreComputationResult } from './types';
+
+export interface EntityProfileEvent {
+    date: string;
+    category: string;
+    title: string;
+    severity: 'low' | 'medium' | 'high';
+    source: string;
+    citations: CitationRef[];
+}
+
+export interface EntityProfile {
+    neid: string;
+    name: string;
+    ticker: string | null;
+    cik: string | null;
+    sector: string | null;
+    entityType: string | null;
+    descriptive: {
+        headquarters: string | null;
+        founded: string | null;
+        employees: string | null;
+        marketCap: string | null;
+    };
+    statusSummary: string | null;
+    properties: Array<{ pid: string; name: string; value: string | number | null }>;
+    relationships: Awaited<ReturnType<typeof getRelationships>>;
+    monitor: NonNullable<ScoreComputationResult['monitor']> | null;
+    events: EntityProfileEvent[];
+    scores: ScoreComputationResult['scores'];
+    drivers: ScoreComputationResult['drivers'];
+    conflicts: ScoreComputationResult['conflicts'];
+    confidenceLevel: ScoreComputationResult['confidenceLevel'];
+    lensDetails: ScoreComputationResult['lensDetails'];
+}
 
 async function resolveNeighborNames(event: H3Event, eids: string[], limit = 10): Promise<string[]> {
     const trimmed = eids.slice(0, limit);
@@ -144,9 +178,9 @@ export async function getEntityProfile(
     portfolioId: string,
     neid: string,
     precomputedScoring?: ScoreComputationResult
-) {
+): Promise<EntityProfile> {
     const cacheKey = makeCacheKey(portfolioId, neid, 'profile');
-    const cached = await readScoringCache<any>(event, cacheKey);
+    const cached = await readScoringCache<EntityProfile>(event, cacheKey);
     if (cached) return cached;
 
     const name = await getEntityName(neid, event).catch(() => neid);
@@ -266,7 +300,7 @@ export async function getEntityProfile(
 
     const headquarters = headquartersRaw ?? headquartersFromRelationships;
 
-    const profile = {
+    const profile: EntityProfile = {
         neid,
         name,
         ticker:
