@@ -11,7 +11,7 @@ export async function traverseOwnershipGraph(
     ctx?: ContextPackage
 ): Promise<TraversedNode[]> {
     try {
-        const res = await ownershipTraversal([neid], maxDepth, 100);
+        const res = await ownershipTraversal([neid], maxDepth, 100, event);
         const seedRows = Array.isArray(res?.seeds) ? res.seeds : [];
         const seed = seedRows.find((row) => row.seed === neid) ?? seedRows[0];
         if (seed?.nodes?.length) {

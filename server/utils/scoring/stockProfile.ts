@@ -330,7 +330,7 @@ export async function getStockEntityProfile(
     if (!entityName) entityName = neid;
 
     try {
-        const stock = await stockBundle([neid], 500);
+        const stock = await stockBundle([neid], 500, event);
         const row = stock?.bundles?.find((b) => b.neid === neid) ?? stock?.bundles?.[0];
         if (row?.instrument) {
             const instrument = row.instrument;
@@ -383,7 +383,7 @@ export async function getStockEntityProfile(
                 {}
             );
 
-            const fundamentalsRes = await scanFundamentals([neid], 540).catch(() => null);
+            const fundamentalsRes = await scanFundamentals([neid], 540, event).catch(() => null);
             const fundamentals: Record<string, number> = {};
             const fundamentalRow =
                 (

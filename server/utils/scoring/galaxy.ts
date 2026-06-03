@@ -26,6 +26,30 @@ export interface GalaxyStats {
     flavor_counts?: Record<string, number>;
 }
 
+type DiagnosticCall = {
+    endpoint: string;
+    method: 'GET' | 'POST';
+    at: number;
+    details?: Record<string, unknown>;
+};
+
+function recordScanDiagnosticCall(
+    event: H3Event | undefined,
+    endpoint: string,
+    method: 'GET' | 'POST',
+    details?: Record<string, unknown>
+) {
+    const diagnostics = (event?.context as any)?.scanDiagnostics;
+    if (!diagnostics) return;
+    diagnostics.endpoints = diagnostics.endpoints || {};
+    diagnostics.endpoints[endpoint] = (diagnostics.endpoints[endpoint] || 0) + 1;
+    diagnostics.calls = diagnostics.calls || [];
+    if (diagnostics.calls.length < 400) {
+        const entry: DiagnosticCall = { endpoint, method, at: Date.now(), details };
+        diagnostics.calls.push(entry);
+    }
+}
+
 const BIG_INT_LITERAL_RE = /([:\[,]\s*)(-?\d{16,})(?=\s*[,\]}])/g;
 
 function parseBigIntSafe<T = unknown>(text: string): T {
@@ -108,11 +132,13 @@ export async function prismFetch<T = any>(options: {
     body?: Record<string, unknown>;
     caller: string;
     reqSummary?: Record<string, unknown>;
+    event?: H3Event;
 }): Promise<T> {
     const method = options.method ?? 'POST';
     const endpoint = options.path.replace(/^\//, '');
     const bodyText = options.body ? JSON.stringify(options.body) : undefined;
     const headers = authHeaders();
+    recordScanDiagnosticCall(options.event, endpoint, method, options.reqSummary);
 
     return elementalSemaphore.run(async () => {
         const logCtx = beginElementalLog({

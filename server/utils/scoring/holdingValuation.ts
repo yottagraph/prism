@@ -143,7 +143,7 @@ export async function valueHolding(
     // 3) Pull full OHLCV history from Prism so old purchase dates resolve.
     let closes: CloseRow[] = [];
     try {
-        const series = await ohlcvSeries([instrumentNeid], 3650);
+        const series = await ohlcvSeries([instrumentNeid], 3650, event);
         const instrumentSeries = series?.series?.find((r) => r.neid === instrumentNeid);
         const bars = Array.isArray(instrumentSeries?.bars) ? instrumentSeries.bars : [];
         closes = bars

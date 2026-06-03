@@ -237,11 +237,15 @@ export async function prefetchPortfolioContext(event: H3Event, neids: string[]):
     const store = requestPrefetchStore(event);
 
     const [fundamentalsRes, filingsRes, eventsRes, governanceRes, newsRes] = await Promise.all([
-        scanFundamentals(unique, 540).catch(() => ({ organizations: [] })),
-        scanFilings(unique, 730).catch(() => ({ records: [] })),
-        scanEvents(unique, 730).catch(() => ({ records: [] })),
-        scanGovernance(unique).catch(() => ({ organizations: [] })),
-        scanNews(unique, 90).catch(() => ({ relational: [], categorical: [], numerical: [] })),
+        scanFundamentals(unique, 540, event).catch(() => ({ organizations: [] })),
+        scanFilings(unique, 730, event).catch(() => ({ records: [] })),
+        scanEvents(unique, 730, event).catch(() => ({ records: [] })),
+        scanGovernance(unique, event).catch(() => ({ organizations: [] })),
+        scanNews(unique, 90, event).catch(() => ({
+            relational: [],
+            categorical: [],
+            numerical: [],
+        })),
     ]);
 
     const fundamentalsRows = Array.isArray(fundamentalsRes.organizations)

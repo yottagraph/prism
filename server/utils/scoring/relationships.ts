@@ -88,33 +88,49 @@ export async function buildRelationshipUniverse(
         const classes = [
             {
                 name: 'companies',
-                pindexes: await pidsFor(['subsidiary_of', 'compensation_peer_of']),
+                pindexes: await pidsFor(
+                    ['subsidiary_of', 'compensation_peer_of'],
+                    'relational',
+                    event
+                ),
                 direction: 'outgoing' as const,
             },
             {
                 name: 'people',
-                pindexes: await pidsFor(['is_officer', 'is_director', 'officer_of', 'director_of']),
+                pindexes: await pidsFor(
+                    ['is_officer', 'is_director', 'officer_of', 'director_of'],
+                    'relational',
+                    event
+                ),
                 direction: 'incoming' as const,
             },
             {
                 name: 'owners',
-                pindexes: await pidsFor(['is_beneficial_owner', 'beneficial_owner_of']),
+                pindexes: await pidsFor(
+                    ['is_beneficial_owner', 'beneficial_owner_of'],
+                    'relational',
+                    event
+                ),
                 direction: 'incoming' as const,
             },
             {
                 name: 'instruments',
-                pindexes: await pidsFor(['issued_by', 'lender_of', 'holds_position']),
+                pindexes: await pidsFor(
+                    ['issued_by', 'lender_of', 'holds_position'],
+                    'relational',
+                    event
+                ),
                 direction: 'incoming' as const,
             },
             {
                 name: 'locations',
-                pindexes: await pidsFor(['is_located_at', 'located_at']),
+                pindexes: await pidsFor(['is_located_at', 'located_at'], 'relational', event),
                 direction: 'outgoing' as const,
             },
         ].filter((c) => c.pindexes.length > 0);
 
         if (classes.length > 0) {
-            const rel = await relationshipUniverse(neids, classes);
+            const rel = await relationshipUniverse(neids, classes, event);
             const portfolioNodes: GraphNode[] = entities.map((e) => ({
                 id: `p-${e.neid}`,
                 label: e.name,

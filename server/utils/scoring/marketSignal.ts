@@ -128,7 +128,7 @@ export async function computeMarketSignalScore(
 
     if (!hasRealData) {
         try {
-            const bundle = await stockBundle([neid], 90);
+            const bundle = await stockBundle([neid], 90, event);
             const row = bundle?.bundles?.find((b) => b.neid === neid) ?? bundle?.bundles?.[0];
             const prices = Array.isArray(row?.ohlcv) ? row!.ohlcv : [];
             const closes = prices

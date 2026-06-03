@@ -54,7 +54,7 @@ export async function computeCikVelocity(
     };
 
     try {
-        const bundle = await cikVelocityBundle([neid], 16).catch(() => null);
+        const bundle = await cikVelocityBundle([neid], 16, event).catch(() => null);
         const first = bundle?.bundles?.[0];
         if (!first?.quarter_counts || Object.keys(first.quarter_counts).length === 0) {
             return empty;

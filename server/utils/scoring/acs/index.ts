@@ -129,7 +129,7 @@ async function fetchEntitySanctions(event: H3Event, neid: string): Promise<Sanct
         listIds: [],
     };
     try {
-        const bundle = await entitySanctions([neid]).catch(() => null);
+        const bundle = await entitySanctions([neid], event).catch(() => null);
         const row =
             bundle?.organizations?.find((r) => r.neid === neid) ?? bundle?.organizations?.[0];
         if (row) {
@@ -264,10 +264,10 @@ export async function computeAcsScore(
 
     const name = await getEntityName(neid, event);
     const screeningFindex =
-        (await findexFor('sanctioned_entity')) ??
-        (await findexFor('sanctions')) ??
-        (await findexFor('screening_list'));
-    const acs = await acsBundle([neid], 3, screeningFindex).catch(() => null);
+        (await findexFor('sanctioned_entity', event)) ??
+        (await findexFor('sanctions', event)) ??
+        (await findexFor('screening_list', event));
+    const acs = await acsBundle([neid], 3, screeningFindex, event).catch(() => null);
     const seed = acs?.per_seed?.find((row) => row.seed === neid) ?? acs?.per_seed?.[0];
     const traversed =
         seed?.traversal?.map((row) => ({
