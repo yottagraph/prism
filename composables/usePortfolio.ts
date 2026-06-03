@@ -1077,10 +1077,14 @@ export function usePortfolio(activeUserId?: globalThis.Ref<string | null>) {
                                     for (const entity of ents) {
                                         if (!entity.neid) continue;
                                         const blurb = summaries[entity.neid];
-                                        if (blurb !== undefined && entity.monitor) {
+                                        if (
+                                            typeof blurb === 'string' &&
+                                            blurb.trim() &&
+                                            entity.monitor
+                                        ) {
                                             entity.monitor = {
                                                 ...entity.monitor,
-                                                headlineSummary: blurb,
+                                                headlineSummary: blurb.trim(),
                                             };
                                             changed = true;
                                         }
