@@ -29,7 +29,6 @@ import {
     trendSignal,
     volumeRatio,
 } from './indicators';
-import { callMcpTool, extractMcpStructuredContent } from './mcpGateway';
 import { scanFundamentals, stockBundle } from './prism';
 import { buildStockNarrative } from './stockNarrative';
 import type { CitationRef } from './types';
@@ -264,29 +263,20 @@ function buildOhlcvSeries(values: {
 
 async function fetchInstruments(neid: string, event: H3Event): Promise<RelatedInstrument[]> {
     try {
-        const result = await callMcpTool(
-            'elemental',
-            'elemental_get_related',
-            {
-                entity_id: { id_type: 'neid', id: neid },
-                related_flavor: 'financial_instrument',
-                direction: 'both',
-                limit: 25,
-            },
-            event
-        );
-        const structured = extractMcpStructuredContent<{
-            relationships?: Array<{ neid?: string; name?: string; flavor?: string }>;
-        }>(result);
-        const rows = Array.isArray(structured?.relationships) ? structured.relationships : [];
-        return rows
-            .filter(
-                (row): row is { neid: string; name: string; flavor?: string } =>
-                    typeof row?.neid === 'string' && typeof row?.name === 'string'
-            )
-            .map((row) => ({ neid: row.neid, name: row.name, flavor: row.flavor }));
+        const bundle = await stockBundle([neid], 500, event);
+        const row = bundle?.bundles?.find((b) => b.neid === neid) ?? bundle?.bundles?.[0];
+        if (row?.instrument?.neid && row.instrument.name) {
+            return [
+                {
+                    neid: row.instrument.neid,
+                    name: row.instrument.name,
+                    flavor: 'financial_instrument',
+                },
+            ];
+        }
+        return [];
     } catch (error) {
-        console.warn('[stock profile] elemental_get_related failed', error);
+        console.warn('[stock profile] stock-bundle instrument fetch failed', error);
         return [];
     }
 }

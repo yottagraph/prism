@@ -11,7 +11,7 @@ import { scoreEntity } from '~/server/utils/scoring/scoreEntity';
 import { writeCoverage } from '~/server/utils/scoring/state';
 import { resetPolymarketLogging } from '~/server/utils/scoring/polymarketOutlook';
 import { resetMarketSignalDiagnostics } from '~/server/utils/scoring/marketSignal';
-import { prewarmStocks, resetMcpBreakers } from '~/server/utils/scoring/mcpGateway';
+import { resetMcpBreakers } from '~/server/utils/scoring/mcpGateway';
 import {
     getEntityName,
     searchEntitiesByName,
@@ -266,28 +266,6 @@ export default defineEventHandler(async (event) => {
                     message: `Resolved ${diagnostics.resolution.resolvedViaBatch}/${total} entities in batch lookup`,
                 });
 
-                // Warm the stocks MCP cache in the background. Cold symbols
-                // exceed the gateway's 30s timeout (the server takes ~60s),
-                // so these calls will mostly 502 on a cold cache — but they
-                // still warm the upstream cache, so the market-signal lookups
-                // below (and the next scan) resolve in seconds instead of
-                // timing out. Fire-and-forget; never blocks the scan.
-                // Cap at 15 names: the 5-slot stocks semaphore can't warm
-                // more in parallel anyway, and excess queued calls would
-                // compete with the live market-signal lens lookups.
-                const PREWARM_CAP = 15;
-                prewarmStocks(
-                    entities
-                        .slice(0, PREWARM_CAP)
-                        .map(
-                            (e) =>
-                                e.resolvedName ||
-                                batchResolutions.get(e.inputName.trim())?.resolvedName ||
-                                e.inputName
-                        ),
-                    event
-                );
-
                 // --- Fast-mode: batch-fetch a few key PIDs across all entities ---
                 const resolvedNeids = entities
                     .map((e) => {
@@ -310,7 +288,7 @@ export default defineEventHandler(async (event) => {
                 }
 
                 let cursor = 0;
-                // Per-server semaphores (elemental:10, stocks:5, polymarket:5)
+                // Per-server semaphores (elemental:10, polymarket:5)
                 // protect upstreams — more workers just reduces idle waves.
                 const workers = Math.min(6, Math.max(1, total));
                 await Promise.all(

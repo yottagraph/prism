@@ -3,8 +3,15 @@ import type { H3Event } from 'h3';
 import { makeCacheKey, readScoringCache, writeScoringCache } from './cache';
 import { confidence, detectConflicts } from './fuse';
 import { resolveRefs } from './citations';
-import { findEntities, getEntityName, getSchema, normalizePidMap } from './elemental';
-import { callMcpTool, extractMcpStructuredContent } from './mcpGateway';
+import { getContextPackage } from './contextPackage';
+import {
+    extractPropertyFacts,
+    findEntities,
+    getEntityName,
+    getPropertyValues,
+    getSchema,
+    normalizePidMap,
+} from './elemental';
 import { scoreEntity } from './scoreEntity';
 import type { CitationRef, ScoreComputationResult } from './types';
 
@@ -144,13 +151,6 @@ function inferEventSeverity(title: string): 'low' | 'medium' | 'high' {
     return 'low';
 }
 
-function readEventDate(
-    properties: Record<string, { value?: unknown; ref?: string }> | undefined
-): string {
-    const raw = properties?.event_date?.value ?? properties?.date?.value;
-    return raw == null ? '' : String(raw);
-}
-
 function toTimestamp(date: string): number | null {
     if (!date) return null;
     const parsed = Date.parse(date);
@@ -192,102 +192,6 @@ export async function getEntityProfile(
     const oneYearAgo = new Date(now);
     oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
     const oneYearAgoMs = oneYearAgo.getTime();
-    const oneYearAgoIsoDate = oneYearAgo.toISOString().slice(0, 10);
-
-    // Fetch entity snapshot + descriptive properties
-    const entitySnapshot = await callMcpTool(
-        'elemental',
-        'elemental_get_entity',
-        {
-            entity_id: { id_type: 'neid', id: neid },
-            properties: [
-                'ticker_symbol',
-                'company_cik',
-                'industry',
-                'address',
-                'headquarters',
-                'founded_date',
-                'inception_date',
-                'num_employees',
-                'total_employees',
-                'market_cap',
-                'market_capitalization',
-            ],
-        },
-        event
-    ).catch(() => null);
-    const entityData = extractMcpStructuredContent<{
-        entity?: {
-            flavor?: string;
-            properties?: Record<string, { value?: unknown }>;
-        };
-    }>(entitySnapshot);
-
-    const props = entityData?.entity?.properties ?? {};
-    const strProp = (key: string): string | null => {
-        const v = props[key]?.value;
-        return typeof v === 'string' && v.trim() ? v.trim() : null;
-    };
-
-    // Descriptive fields — try multiple aliases per concept
-    const headquartersRaw = strProp('headquarters') ?? strProp('address') ?? null;
-    const foundedRaw = strProp('founded_date') ?? strProp('inception_date') ?? null;
-    const employeesRaw =
-        strProp('num_employees') ??
-        strProp('total_employees') ??
-        (props['num_employees']?.value != null ? String(props['num_employees'].value) : null) ??
-        null;
-    const marketCapRaw = strProp('market_cap') ?? strProp('market_capitalization') ?? null;
-
-    // Location fallback from relationships (locations bucket)
-    let headquartersFromRelationships: string | null = null;
-    if (!headquartersRaw) {
-        try {
-            const relResult = await callMcpTool(
-                'elemental',
-                'elemental_get_related',
-                {
-                    entity_id: { id_type: 'neid', id: neid },
-                    related_flavor: 'location',
-                    relationship_types: ['is_located_at', 'headquartered_at'],
-                    direction: 'outgoing',
-                    limit: 1,
-                },
-                event
-            );
-            const relData = extractMcpStructuredContent<{
-                relationships?: Array<{ name?: string }>;
-            }>(relResult);
-            headquartersFromRelationships = relData?.relationships?.[0]?.name ?? null;
-        } catch {
-            // Location lookup is best-effort
-        }
-    }
-
-    const eventsResult = await callMcpTool(
-        'elemental',
-        'elemental_get_events',
-        {
-            entity_id: { id_type: 'neid', id: neid },
-            limit: 300,
-            include_participants: false,
-            time_range: { after: oneYearAgoIsoDate },
-        },
-        event
-    ).catch(() => null);
-    const eventRows =
-        extractMcpStructuredContent<{
-            events?: Array<{
-                name?: string;
-                properties?: Record<string, { value?: unknown; ref?: string }>;
-            }>;
-        }>(eventsResult)?.events ?? [];
-    const eventRefs = eventRows.flatMap((eventRow) =>
-        Object.values(eventRow.properties || {})
-            .map((property) => property?.ref)
-            .filter((ref): ref is string => typeof ref === 'string')
-    );
-    const eventCitationMap = await resolveRefs(eventRefs, event).catch(() => new Map());
 
     const relationships = await getRelationships(event, neid).catch(() => ({
         companies: [],
@@ -295,6 +199,65 @@ export async function getEntityProfile(
         instruments: [],
         locations: [],
     }));
+    const ctx = await getContextPackage(event, neid).catch(() => null);
+
+    const schema = await getSchema(event).catch(() => ({ flavors: [], properties: [] }));
+    const pid = normalizePidMap(schema);
+    const wantedProps = [
+        'ticker_symbol',
+        'company_cik',
+        'industry',
+        'address',
+        'headquarters',
+        'founded_date',
+        'inception_date',
+        'num_employees',
+        'total_employees',
+        'market_cap',
+        'market_capitalization',
+    ];
+    const wantedPids = wantedProps
+        .map((key) => pid[key])
+        .filter((value): value is string => Boolean(value));
+    const entityValues =
+        wantedPids.length > 0
+            ? await getPropertyValues([neid], wantedPids, true, event).catch(() => [])
+            : [];
+
+    const latestString = (...keys: string[]): string | null => {
+        for (const key of keys) {
+            const propertyPid = pid[key];
+            if (!propertyPid) continue;
+            const facts = extractPropertyFacts(entityValues, propertyPid);
+            if (!facts.length) continue;
+            const sorted = [...facts].sort((a, b) => {
+                const ad = a.date ? Date.parse(a.date) : 0;
+                const bd = b.date ? Date.parse(b.date) : 0;
+                return bd - ad;
+            });
+            const value = sorted.find((fact) => fact.value != null)?.value;
+            if (typeof value === 'string' && value.trim()) return value.trim();
+            if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+        }
+        return null;
+    };
+
+    // Descriptive fields — try multiple aliases per concept.
+    const headquartersRaw = latestString('headquarters', 'address');
+    const foundedRaw = latestString('founded_date', 'inception_date');
+    const employeesRaw = latestString('num_employees', 'total_employees');
+    const marketCapRaw = latestString('market_cap', 'market_capitalization');
+    const tickerRaw = latestString('ticker_symbol');
+    const cikRaw = latestString('company_cik');
+    const sectorRaw = latestString('industry');
+
+    const headquartersFromRelationships = relationships.locations[0]?.name ?? null;
+    const contextEvents = ctx?.events ?? [];
+    const eventRefs = contextEvents
+        .map((eventRow) => eventRow.ref)
+        .filter((ref): ref is string => typeof ref === 'string' && ref.length > 0);
+    const eventCitationMap = await resolveRefs(eventRefs, event).catch(() => new Map());
+
     const scored =
         precomputedScoring ?? (await scoreEntity(event, portfolioId, neid).catch(() => null));
 
@@ -303,15 +266,10 @@ export async function getEntityProfile(
     const profile: EntityProfile = {
         neid,
         name,
-        ticker:
-            (entityData?.entity?.properties?.ticker_symbol?.value as string | null | undefined) ??
-            null,
-        cik:
-            (entityData?.entity?.properties?.company_cik?.value as string | null | undefined) ??
-            null,
-        sector:
-            (entityData?.entity?.properties?.industry?.value as string | null | undefined) ?? null,
-        entityType: (entityData?.entity?.flavor as string | null | undefined) ?? null,
+        ticker: tickerRaw,
+        cik: cikRaw,
+        sector: sectorRaw,
+        entityType: null,
         descriptive: {
             headquarters,
             founded: foundedRaw,
@@ -323,22 +281,22 @@ export async function getEntityProfile(
         relationships,
         // Include scored monitor data so the entity page can read lens sub-objects
         monitor: scored?.monitor ?? null,
-        events: eventRows
+        events: contextEvents
             .map((eventRow) => {
-                const category = String(eventRow?.properties?.category?.value || 'Event');
-                const date = readEventDate(eventRow?.properties);
+                const category = String(eventRow.category || eventRow.eventType || 'Event');
+                const date = eventRow.date ?? '';
                 const title = String(
-                    eventRow?.properties?.description?.value ||
-                        eventRow?.name ||
+                    eventRow.description ||
+                        eventRow.snippet ||
+                        eventRow.eventType ||
                         category ||
                         'Event'
                 );
-                const refs = Object.values(eventRow?.properties || {})
-                    .map((property) => property?.ref)
-                    .filter((ref): ref is string => typeof ref === 'string');
-                const citations = refs
-                    .map((ref) => eventCitationMap.get(ref))
-                    .filter((citation): citation is NonNullable<typeof citation> => !!citation);
+                const citations = eventRow.ref
+                    ? [eventCitationMap.get(eventRow.ref)].filter(
+                          (citation): citation is NonNullable<typeof citation> => !!citation
+                      )
+                    : [];
                 const severity = inferEventSeverity(title);
                 const source = inferEventSource(category, title);
                 const timestampMs = toTimestamp(date);

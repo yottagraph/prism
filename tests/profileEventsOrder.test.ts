@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getEntityProfile } from '../server/utils/scoring/profile';
 
 const callMcpToolMock = vi.fn();
+const getContextPackageMock = vi.fn();
 
 vi.mock('../server/utils/scoring/cache', () => ({
     makeCacheKey: vi.fn(() => 'test-cache-key'),
@@ -24,6 +25,10 @@ vi.mock('../server/utils/scoring/elemental', () => ({
 vi.mock('../server/utils/scoring/mcpGateway', () => ({
     callMcpTool: (...args: unknown[]) => callMcpToolMock(...args),
     extractMcpStructuredContent: (value: unknown) => value,
+}));
+
+vi.mock('../server/utils/scoring/contextPackage', () => ({
+    getContextPackage: (...args: unknown[]) => getContextPackageMock(...args),
 }));
 
 vi.mock('../server/utils/scoring/scoreEntity', () => ({
@@ -60,119 +65,89 @@ describe('getEntityProfile event ordering and windows', () => {
     });
 
     it('applies source windows and sorts by parsed event date', async () => {
-        callMcpToolMock.mockImplementation(async (_server: string, tool: string) => {
-            if (tool === 'elemental_get_entity') {
-                return {
-                    entity: {
-                        flavor: 'company',
-                        properties: {
-                            ticker_symbol: { value: 'TST' },
-                            industry: { value: 'Software' },
-                            headquarters: { value: 'Boston' },
-                        },
-                    },
-                };
-            }
-            if (tool === 'elemental_get_events') {
-                return {
-                    events: [
-                        // Keep: SEC critical + within 1y
-                        {
-                            name: 'Default event',
-                            properties: {
-                                category: { value: 'Filing' },
-                                description: { value: 'Company defaulted on debt covenant' },
-                                date: { value: '2026-05-30' },
-                            },
-                        },
-                        // Keep: NEWS + within 3m
-                        {
-                            name: 'Media event',
-                            properties: {
-                                category: { value: 'Media' },
-                                description: { value: 'News coverage of product launch' },
-                                date: { value: '2026-05-15' },
-                            },
-                        },
-                        // Keep: POLY + within 3m
-                        {
-                            name: 'Prediction market',
-                            properties: {
-                                category: { value: 'Prediction_Market' },
-                                description: { value: 'Polymarket odds jump after guidance' },
-                                date: { value: '2026-04-20' },
-                            },
-                        },
-                        // Keep: STOCK + within 3m
-                        {
-                            name: 'Stock move',
-                            properties: {
-                                category: { value: 'Stock Price' },
-                                description: { value: 'Stock spikes after earnings' },
-                                date: { value: '2026-03-10' },
-                            },
-                        },
-                        // Keep: event_date fallback + SEC critical + within 1y
-                        {
-                            name: 'Critical enforcement',
-                            properties: {
-                                category: { value: 'Regulatory' },
-                                description: { value: 'Critical enforcement action announced' },
-                                event_date: { value: '2026-02-01' },
-                            },
-                        },
-                        // Drop: SEC medium (not critical/high)
-                        {
-                            name: 'Officer departure',
-                            properties: {
-                                category: { value: 'Corporate' },
-                                description: { value: 'Director departure noted' },
-                                date: { value: '2026-05-28' },
-                            },
-                        },
-                        // Drop: NEWS older than 3m
-                        {
-                            name: 'Old article',
-                            properties: {
-                                category: { value: 'News' },
-                                description: { value: 'Old press item' },
-                                date: { value: '2026-01-15' },
-                            },
-                        },
-                        // Drop: STOCK older than 3m
-                        {
-                            name: 'Old stock move',
-                            properties: {
-                                category: { value: 'Market' },
-                                description: { value: 'Old trading move' },
-                                date: { value: '2025-12-20' },
-                            },
-                        },
-                        // Drop: SEC high but older than 1y
-                        {
-                            name: 'Ancient fraud',
-                            properties: {
-                                category: { value: 'Filing' },
-                                description: { value: 'Fraud allegations from long ago' },
-                                date: { value: '2025-05-15' },
-                            },
-                        },
-                        // Drop: invalid date
-                        {
-                            name: 'Invalid timestamp event',
-                            properties: {
-                                category: { value: 'News' },
-                                description: { value: 'Malformed date input' },
-                                date: { value: 'not-a-date' },
-                            },
-                        },
-                    ],
-                };
-            }
-            if (tool === 'elemental_get_related') {
-                return { relationships: [] };
-            }
-            return {};
+        getContextPackageMock.mockResolvedValue({
+            events: [
+                // Keep: SEC critical + within 1y
+                {
+                    category: 'Filing',
+                    description: 'Company defaulted on debt covenant',
+                    date: '2026-05-30',
+                    eventType: 'Default event',
+                    ref: null,
+                },
+                // Keep: NEWS + within 3m
+                {
+                    category: 'Media',
+                    description: 'News coverage of product launch',
+                    date: '2026-05-15',
+                    eventType: 'Media event',
+                    ref: null,
+                },
+                // Keep: POLY + within 3m
+                {
+                    category: 'Prediction_Market',
+                    description: 'Polymarket odds jump after guidance',
+                    date: '2026-04-20',
+                    eventType: 'Prediction market',
+                    ref: null,
+                },
+                // Keep: STOCK + within 3m
+                {
+                    category: 'Stock Price',
+                    description: 'Stock spikes after earnings',
+                    date: '2026-03-10',
+                    eventType: 'Stock move',
+                    ref: null,
+                },
+                // Keep: event_date fallback equivalent + SEC critical + within 1y
+                {
+                    category: 'Regulatory',
+                    description: 'Critical enforcement action announced',
+                    date: '2026-02-01',
+                    eventType: 'Critical enforcement',
+                    ref: null,
+                },
+                // Drop: SEC medium (not critical/high)
+                {
+                    category: 'Corporate',
+                    description: 'Director departure noted',
+                    date: '2026-05-28',
+                    eventType: 'Officer departure',
+                    ref: null,
+                },
+                // Drop: NEWS older than 3m
+                {
+                    category: 'News',
+                    description: 'Old press item',
+                    date: '2026-01-15',
+                    eventType: 'Old article',
+                    ref: null,
+                },
+                // Drop: STOCK older than 3m
+                {
+                    category: 'Market',
+                    description: 'Old trading move',
+                    date: '2025-12-20',
+                    eventType: 'Old stock move',
+                    ref: null,
+                },
+                // Drop: SEC high but older than 1y
+                {
+                    category: 'Filing',
+                    description: 'Fraud allegations from long ago',
+                    date: '2025-05-15',
+                    eventType: 'Ancient fraud',
+                    ref: null,
+                },
+                // Drop: invalid date
+                {
+                    category: 'News',
+                    description: 'Malformed date input',
+                    date: 'not-a-date',
+                    eventType: 'Invalid timestamp event',
+                    ref: null,
+                },
+            ],
         });
 
         const profile = await getEntityProfile(
