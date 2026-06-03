@@ -2,7 +2,16 @@ import type { H3Event } from 'h3';
 
 import type { ContextArticle, ContextEvent, ContextRelationship } from './contextPackage';
 import type { ElementalPropertyFact } from './elemental';
-import { scanEvents, scanFilings, scanFundamentals, scanGovernance, scanNews } from './prism';
+import {
+    scanEvents,
+    scanFilings,
+    scanFundamentals,
+    scanGovernance,
+    scanNews,
+    type PrismScanFundamentalsResponse,
+    type PrismScanGovernanceResponse,
+    type PrismScanNewsResponse,
+} from './prism';
 
 export interface PrefetchedContextSlice {
     neid: string;
@@ -360,7 +369,7 @@ function extractNewsQuads(
                 pushFact(slice, 'sentiment', fact(meta.sentiment, publishedDate));
             slice.articles.push({
                 headline: meta?.headline ?? null,
-                source: meta?.source,
+                source: meta?.source ?? null,
                 publishedDate,
                 sentiment: meta?.sentiment ?? null,
                 url: null,
@@ -380,15 +389,21 @@ export async function prefetchPortfolioContext(event: H3Event, neids: string[]):
     const store = requestPrefetchStore(event);
 
     const [fundamentalsRes, filingsRes, eventsRes, governanceRes, newsRes] = await Promise.all([
-        scanFundamentals(unique, 540, event).catch(() => ({ organizations: [] })),
+        scanFundamentals(unique, 540, event).catch(
+            (): PrismScanFundamentalsResponse => ({ organizations: [] })
+        ),
         scanFilings(unique, 730, event).catch(() => ({ records: [] })),
         scanEvents(unique, 730, event).catch(() => ({ records: [] })),
-        scanGovernance(unique, event).catch(() => ({ organizations: [] })),
-        scanNews(unique, 90, event).catch(() => ({
-            relational: [],
-            categorical: [],
-            numerical: [],
-        })),
+        scanGovernance(unique, event).catch(
+            (): PrismScanGovernanceResponse => ({ organizations: [] })
+        ),
+        scanNews(unique, 90, event).catch(
+            (): PrismScanNewsResponse => ({
+                relational: [],
+                categorical: [],
+                numerical: [],
+            })
+        ),
     ]);
 
     const fundamentalsRows = [

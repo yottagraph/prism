@@ -60,6 +60,18 @@ function parseBigIntSafe<T = unknown>(text: string): T {
     return JSON.parse(sanitised) as T;
 }
 
+const PRISM_RETRY_STATUS_CODES = new Set([429, 502, 503, 504]);
+const PRISM_RETRY_DELAYS_MS = [1_000, 5_000, 15_000];
+
+function sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isPrismRetryable(error: unknown): boolean {
+    const status = (error as any)?.statusCode ?? (error as any)?.status;
+    return typeof status === 'number' && PRISM_RETRY_STATUS_CODES.has(status);
+}
+
 function getGatewayConfig() {
     const { public: config } = useRuntimeConfig();
     return {
@@ -150,37 +162,60 @@ export async function prismFetch<T = any>(options: {
             reqSummary: options.reqSummary,
             reqBody: bodyText,
         });
-        try {
-            const response = await fetch(buildGalaxyUrl(endpoint), {
-                method,
-                headers,
-                body: bodyText,
-            });
-            const text = await response.text();
-            if (!response.ok) {
+        let attempt = 0;
+        let lastError: unknown;
+        while (attempt <= PRISM_RETRY_DELAYS_MS.length) {
+            try {
+                const response = await fetch(buildGalaxyUrl(endpoint), {
+                    method,
+                    headers,
+                    body: bodyText,
+                });
+                const text = await response.text();
+                if (!response.ok) {
+                    throw createError({
+                        statusCode: response.status,
+                        statusMessage: text || `Prism request failed (${response.status})`,
+                        data: text,
+                    });
+                }
+                if (!text) {
+                    logCtx.finish({
+                        status: response.status,
+                        ok: true,
+                        resBytes: 0,
+                        resSummary: { attempt },
+                    });
+                    return undefined as unknown as T;
+                }
+                const data = parseBigIntSafe<T>(text);
                 logCtx.finish({
                     status: response.status,
-                    ok: false,
+                    ok: true,
                     resBytes: text.length,
-                    error: text,
-                    resBody: text,
+                    resSummary: { attempt },
                 });
-                throw createError({
-                    statusCode: response.status,
-                    statusMessage: text || `Prism request failed (${response.status})`,
-                });
+                return data;
+            } catch (error) {
+                lastError = error;
+                if (!isPrismRetryable(error) || attempt >= PRISM_RETRY_DELAYS_MS.length) {
+                    const status = (error as any)?.statusCode ?? (error as any)?.status ?? 0;
+                    const body = (error as any)?.data;
+                    logCtx.finish({
+                        status,
+                        ok: false,
+                        error,
+                        resBytes: typeof body === 'string' ? body.length : undefined,
+                        resBody: typeof body === 'string' ? body : undefined,
+                        resSummary: { attempt },
+                    });
+                    throw error;
+                }
+                await sleep(PRISM_RETRY_DELAYS_MS[attempt]);
+                attempt += 1;
             }
-            if (!text) {
-                logCtx.finish({ status: response.status, ok: true, resBytes: 0 });
-                return undefined as unknown as T;
-            }
-            const data = parseBigIntSafe<T>(text);
-            logCtx.finish({ status: response.status, ok: true, resBytes: text.length });
-            return data;
-        } catch (error) {
-            logCtx.finish({ status: (error as any)?.statusCode ?? 0, ok: false, error });
-            throw error;
         }
+        throw lastError;
     });
 }
 
