@@ -194,8 +194,9 @@
                             <SourceFusionBar
                                 v-if="active && scanCompletedAt"
                                 :total="active.entities.length"
-                                :coverage="lastScanCoverage"
-                                :coverage-detail="lastScanCoverageDetail"
+                                :coverage="workspaceCoverage"
+                                :coverage-detail="workspaceCoverageDetail"
+                                :fred-macro="fredMacroCoverage"
                                 :scanning="scanning"
                             />
                             <div
@@ -402,13 +403,14 @@
     import {
         INSTITUTIONAL_OWNER,
         type PortfolioEntity,
+        type PortfolioCoverageDetail,
         type ResolvedEntityInput,
         type MandateMeta,
     } from '~/composables/usePortfolio';
     import { usePortfolio } from '~/composables/usePortfolio';
     import { useScoringSettings, type MandateId } from '~/composables/useScoringSettings';
     import { useAgentPipeline } from '~/composables/useAgentPipeline';
-    import { useRelationships } from '~/composables/useRelationships';
+    import { useFredMacroContext, useRelationships } from '~/composables/useRelationships';
     import type { GraphNode } from '~/composables/useRelationships';
 
     const router = useRouter();
@@ -542,6 +544,120 @@
 
     const selectedNode = ref<GraphNode | null>(null);
 
+    // FRED is portfolio-level macro context (GDP, inflation, rates), not
+    // per-issuer coverage. The workspace coverage card needs this explicitly.
+    const { signals: fredMacroSignals, refresh: refreshFredMacro } = useFredMacroContext({
+        autoRefresh: false,
+    });
+    const fredMacroCoverage = computed(() => {
+        const signals = fredMacroSignals.value;
+        const latest = signals
+            .map((signal) => signal.historyEnd)
+            .filter((date): date is string => Boolean(date))
+            .sort()
+            .pop();
+        return {
+            live: signals.length,
+            total: Math.max(signals.length, 5),
+            earliest: null,
+            latest: latest ?? null,
+        };
+    });
+
+    function emptyCoverageDetail(): PortfolioCoverageDetail {
+        return {
+            sec: { entities: 0, filings: 0, earliest: null, latest: null },
+            news: { entities: 0, articles: 0, events: 0, earliest: null, latest: null },
+            stock: { entities: 0, readings: 0, instruments: 0, earliest: null, latest: null },
+            poly: { entities: 0, markets: 0, active: 0 },
+            fred: { entities: 0, series: 0, earliest: null, latest: null },
+            acs: 0,
+            eventPressure: 0,
+            velocity: 0,
+            sanctions: 0,
+            ownership: { entities: 0, links: 0 },
+            fdic: 0,
+        };
+    }
+
+    function minDate(a: string | null, b: string | null) {
+        if (!a) return b;
+        if (!b) return a;
+        return a < b ? a : b;
+    }
+
+    function maxDate(a: string | null, b: string | null) {
+        if (!a) return b;
+        if (!b) return a;
+        return a > b ? a : b;
+    }
+
+    const workspaceCoverage = computed(() => {
+        const entities = active.value?.entities ?? [];
+        const scored = entities.filter((entity) => entity.scores);
+        if (scored.length === 0) return lastScanCoverage.value;
+        return {
+            sec: scored.filter((entity) => entity.coverage?.sec).length,
+            news: scored.filter((entity) => entity.coverage?.news).length,
+            stock: scored.filter((entity) => entity.coverage?.stock).length,
+            poly: scored.filter((entity) => entity.coverage?.poly || entity.coverage?.polymarket)
+                .length,
+        };
+    });
+
+    const workspaceCoverageDetail = computed<PortfolioCoverageDetail>(() => {
+        const entities = active.value?.entities ?? [];
+        const scored = entities.filter((entity) => entity.scores);
+        if (scored.length === 0) return lastScanCoverageDetail.value;
+
+        const detail = emptyCoverageDetail();
+        for (const entity of scored) {
+            const cd = entity.coverageDetail;
+            if (!cd) continue;
+            if (cd.sec.filings > 0 || entity.coverage?.sec) {
+                detail.sec.entities += 1;
+                detail.sec.filings += cd.sec.filings;
+                detail.sec.earliest = minDate(detail.sec.earliest, cd.sec.earliest);
+                detail.sec.latest = maxDate(detail.sec.latest, cd.sec.latest);
+            }
+            if (cd.news.articles > 0 || cd.news.events > 0 || entity.coverage?.news) {
+                detail.news.entities += 1;
+                detail.news.articles += cd.news.articles;
+                detail.news.events += cd.news.events;
+                detail.news.earliest = minDate(detail.news.earliest, cd.news.earliest);
+                detail.news.latest = maxDate(detail.news.latest, cd.news.latest);
+            }
+            detail.stock.instruments += cd.stock.instruments;
+            if (cd.stock.readings > 0 || entity.coverage?.stock) {
+                detail.stock.entities += 1;
+                detail.stock.readings += cd.stock.readings;
+                detail.stock.earliest = minDate(detail.stock.earliest, cd.stock.earliest);
+                detail.stock.latest = maxDate(detail.stock.latest, cd.stock.latest);
+            }
+            if (cd.poly.markets > 0 || entity.coverage?.poly || entity.coverage?.polymarket) {
+                detail.poly.entities += 1;
+                detail.poly.markets += cd.poly.markets;
+                detail.poly.active += cd.poly.active;
+            }
+            if (cd.fred.series > 0) {
+                detail.fred.entities += 1;
+                detail.fred.series += cd.fred.series;
+                detail.fred.earliest = minDate(detail.fred.earliest, cd.fred.earliest);
+                detail.fred.latest = maxDate(detail.fred.latest, cd.fred.latest);
+            }
+            if (cd.acs) detail.acs += 1;
+            if (cd.eventPressure) detail.eventPressure += 1;
+            if (cd.velocity) detail.velocity += 1;
+            if (cd.sanctions) detail.sanctions += 1;
+            if (cd.ownership > 0) {
+                detail.ownership.entities += 1;
+                detail.ownership.links += cd.ownership;
+            }
+            if (cd.fdic) detail.fdic += 1;
+        }
+        return detail;
+    });
+
     // ── Active render tab ────────────────────────────────────────────
     const activeRender = ref<'table' | 'brief' | 'network' | 'chat'>('table');
 
@@ -573,6 +689,7 @@
         pushActivity('Monitoring Agent', active.value.name, 'Analysis triggered from Workspace');
         await Promise.all([
             scanPortfolio(active.value.id, { force: true }),
+            refreshFredMacro(),
             runPipeline({
                 trigger: active.value.name,
                 entityCount: active.value.entities.length,
