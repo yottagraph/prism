@@ -10,6 +10,7 @@ import {
     normalizePidMap,
 } from '../elemental';
 import { getFlavorEntities } from '../galaxy';
+import { acsBundle, entitySanctions, findexFor } from '../prism';
 import type { AcsThresholds, EvidenceItem, LensDetail } from '../types';
 import { computeAcsComposite } from './composite';
 import { runDirectScreening, type ScreeningListEntry } from './directScreening';
@@ -128,6 +129,21 @@ async function fetchEntitySanctions(event: H3Event, neid: string): Promise<Sanct
         listIds: [],
     };
     try {
+        const bundle = await entitySanctions([neid]).catch(() => null);
+        const row =
+            bundle?.organizations?.find((r) => r.neid === neid) ?? bundle?.organizations?.[0];
+        if (row) {
+            return {
+                sanctioned: true,
+                programs: row.programs ?? [],
+                topics: row.topics ?? [],
+                sectors: row.sectors ?? [],
+                startDate: row.start_date ?? null,
+                sourceUrls: [],
+                listIds: row.list_ids ?? [],
+            };
+        }
+
         const schema = await getSchema(event);
         const pid = normalizePidMap(schema);
         const flagPids = ['sanctioned', 'sanctions_topic', 'sanctions_id', 'sanction_program']
@@ -246,18 +262,35 @@ export async function computeAcsScore(
     const cached = await readScoringCache<AcsResult>(event, cacheKey);
     if (cached) return cached;
 
-    const screeningList = await loadScreeningListFromElemental(event);
+    const name = await getEntityName(neid, event);
+    const screeningFindex =
+        (await findexFor('sanctioned_entity')) ??
+        (await findexFor('sanctions')) ??
+        (await findexFor('screening_list'));
+    const acs = await acsBundle([neid], 3, screeningFindex).catch(() => null);
+    const seed = acs?.per_seed?.find((row) => row.seed === neid) ?? acs?.per_seed?.[0];
+    const traversed =
+        seed?.traversal?.map((row) => ({
+            neid: row.neid,
+            name: row.name || row.neid,
+            hopDistance: row.hop ?? 1,
+            relationshipType: 'ownership',
+            ownershipPercentage: row.ownership_percent ?? null,
+            jurisdiction: row.jurisdiction ?? null,
+        })) ?? (await traverseOwnershipGraph(event, neid, 3, ctx));
+    const screeningList =
+        acs?.screening_list_neids?.map((n) => ({
+            name: n,
+            listSource: (acs?.screening_list_source as any) || 'custom',
+        })) ?? (await loadScreeningListFromElemental(event));
     const screeningSourceEmpty = screeningList.length === 0;
 
-    const name = await getEntityName(neid, event);
-    const [traversed, sanctions] = await Promise.all([
-        traverseOwnershipGraph(event, neid, 3, ctx),
-        fetchEntitySanctions(event, neid),
-    ]);
+    const sanctions = await fetchEntitySanctions(event, neid);
     const directMatches = runDirectScreening(name, [], screeningList);
-    const pathMatches = traversed.flatMap((node) =>
-        runDirectScreening(node.name, [], screeningList)
-    );
+    const pathMatches = traversed.flatMap((node) => [
+        ...runDirectScreening(node.name, [], screeningList),
+        ...runDirectScreening(node.neid, [], screeningList),
+    ]);
     const jurisdictionContributions = evaluateJurisdictionExposure(traversed);
     const foci = evaluateFoci(traversed);
     const composite = computeAcsComposite(

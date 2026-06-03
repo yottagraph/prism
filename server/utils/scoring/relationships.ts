@@ -1,7 +1,7 @@
 import type { H3Event } from 'h3';
 
-import { findEntities, getEntityName, getSchema, normalizePidMap } from './elemental';
-import { getEntityQuads, getEntityInfo, type GalaxyQuad } from './galaxy';
+import type { GalaxyQuad } from './galaxy';
+import { pidsFor, relationshipUniverse } from './prism';
 
 export interface PortfolioEntitySeed {
     neid: string;
@@ -39,66 +39,6 @@ export interface PortfolioPattern {
 
 type NodeKind = 'company' | 'person' | 'instrument' | 'location';
 
-function flavorToKind(flavor: string): NodeKind | null {
-    const f = flavor.toLowerCase();
-    if (f.includes('organization') || f === 'org' || f.includes('company')) return 'company';
-    if (f.includes('person')) return 'person';
-    if (f.includes('financial_instrument') || f.includes('instrument')) return 'instrument';
-    if (f.includes('location')) return 'location';
-    return null;
-}
-
-/**
- * When getEntityInfo returns an unrecognised flavor, use the quad property name
- * as a fallback hint for classification. This is a hint only — all relational
- * quads are included regardless of their property name.
- */
-function propertyKindHint(property: string): NodeKind | null {
-    const p = property.toLowerCase();
-    if (
-        p.includes('officer') ||
-        p.includes('director') ||
-        p.includes('board') ||
-        p.includes('executive') ||
-        p.includes('employ') ||
-        p.includes('trustee')
-    )
-        return 'person';
-    if (
-        p.includes('subsidiary') ||
-        p.includes('owned_by') ||
-        p.includes('beneficial_owner') ||
-        p.includes('affiliated') ||
-        p.includes('acqui') ||
-        p.includes('controls') ||
-        p.includes('traded_on') ||
-        p.includes('listed') ||
-        p.includes('exchange') ||
-        p.includes('shareholder') ||
-        p.includes('investor') ||
-        p.includes('owns')
-    )
-        return 'company';
-    if (
-        p.includes('issued_by') ||
-        p.includes('lender') ||
-        p.includes('bond') ||
-        p.includes('loan') ||
-        p.includes('credit') ||
-        p.includes('debt')
-    )
-        return 'instrument';
-    if (
-        p.includes('located_at') ||
-        p.includes('location') ||
-        p.includes('headquarter') ||
-        p.includes('registered_in') ||
-        p.includes('address')
-    )
-        return 'location';
-    return null;
-}
-
 function kindPrefix(kind: NodeKind): string {
     switch (kind) {
         case 'company':
@@ -112,147 +52,6 @@ function kindPrefix(kind: NodeKind): string {
     }
 }
 
-async function buildFromGalaxy(
-    event: H3Event,
-    entities: PortfolioEntitySeed[],
-    preloadedQuads?: Map<string, GalaxyQuad[]>
-): Promise<ReturnType<typeof assembleUniverse>> {
-    const portfolioNodes: GraphNode[] = entities.map((e) => ({
-        id: `p-${e.neid}`,
-        label: e.name,
-        kind: 'portfolio',
-        connectsTo: [],
-        neid: e.neid,
-    }));
-    const portfolioIds = new Set(portfolioNodes.map((n) => n.id));
-
-    const edges: GraphEdge[] = [];
-
-    // neighbour NEID → { sourcePortfolioNodeIds, relationships }
-    const neighbourPortfolios = new Map<
-        string,
-        { portfolioIds: string[]; relationships: string[] }
-    >();
-
-    const portfolioNeidSet = new Set(entities.map((e) => e.neid));
-
-    // Fetch all entity quads in parallel — use preloaded quads from scan context when
-    // available to avoid redundant Galaxy calls after scoring has already fetched them.
-    const quadsPerEntity = await Promise.all(
-        entities.map(async (entity) => {
-            const quads =
-                preloadedQuads?.get(entity.neid) ??
-                (await getEntityQuads(entity.neid).catch(() => []));
-            return { entity, quads };
-        })
-    );
-
-    for (const { entity, quads } of quadsPerEntity) {
-        const portfolioNodeId = `p-${entity.neid}`;
-
-        for (const quad of quads) {
-            if (quad.dest_type !== 'relational') continue;
-
-            const destNeid = quad.destination;
-            if (destNeid === entity.neid || portfolioNeidSet.has(destNeid)) continue;
-
-            const existing = neighbourPortfolios.get(destNeid);
-            if (existing) {
-                if (!existing.portfolioIds.includes(portfolioNodeId)) {
-                    existing.portfolioIds.push(portfolioNodeId);
-                }
-                if (!existing.relationships.includes(quad.property)) {
-                    existing.relationships.push(quad.property);
-                }
-            } else {
-                neighbourPortfolios.set(destNeid, {
-                    portfolioIds: [portfolioNodeId],
-                    relationships: [quad.property],
-                });
-            }
-        }
-    }
-
-    // Sort neighbours so those shared across more portfolio entities come first,
-    // then cap at 1000 to keep getEntityInfo calls bounded.
-    const neighbourNeids = [...neighbourPortfolios.entries()]
-        .sort((a, b) => b[1].portfolioIds.length - a[1].portfolioIds.length)
-        .slice(0, 1000)
-        .map(([neid]) => neid);
-
-    // Resolve all unique neighbour NEIDs in parallel (getEntityInfo is already semaphore-gated)
-    const infoResults = await Promise.all(
-        neighbourNeids.map((neid) => getEntityInfo(neid).catch(() => null))
-    );
-
-    const companyMap = new Map<string, GraphNode>();
-    const personMap = new Map<string, GraphNode>();
-    const instrumentMap = new Map<string, GraphNode>();
-    const locationMap = new Map<string, GraphNode>();
-
-    for (let i = 0; i < neighbourNeids.length; i++) {
-        const neid = neighbourNeids[i];
-        const info = infoResults[i];
-        if (!info) continue;
-
-        // Use flavor as primary classifier; fall back to property-name hint when
-        // the flavor is unknown (e.g. a person entity whose flavor isn't recognised).
-        const rels = neighbourPortfolios.get(neid)!.relationships;
-        const kind = flavorToKind(info.flavor) ?? propertyKindHint(rels[0] ?? '');
-        if (!kind) continue;
-
-        const id = `${kindPrefix(kind)}-${neid}`;
-        const portIds = neighbourPortfolios.get(neid)!.portfolioIds;
-        const relLabel = rels[0] ?? kind;
-
-        const targetMap = {
-            company: companyMap,
-            person: personMap,
-            instrument: instrumentMap,
-            location: locationMap,
-        }[kind];
-
-        if (!targetMap.has(id)) {
-            targetMap.set(id, { id, label: info.name, kind, connectsTo: [...portIds], neid });
-        } else {
-            const node = targetMap.get(id)!;
-            for (const pid of portIds) {
-                if (!node.connectsTo.includes(pid)) node.connectsTo.push(pid);
-            }
-        }
-
-        for (const portId of portIds) {
-            edges.push({ source: portId, target: id, relationship: relLabel });
-        }
-    }
-
-    // For location nodes, attempt to resolve lat/lng from their quads
-    for (const [, node] of locationMap) {
-        if (!node.neid) continue;
-        const locQuads = await getEntityQuads(node.neid).catch(() => []);
-        for (const q of locQuads) {
-            if (q.dest_type === 'numerical') {
-                const prop = q.property.toLowerCase();
-                const val = parseFloat(q.destination);
-                if (!isNaN(val)) {
-                    if (prop === 'latitude' || prop === 'lat') node.lat = val;
-                    if (prop === 'longitude' || prop === 'lng' || prop === 'lon') node.lng = val;
-                }
-            }
-        }
-    }
-
-    return assembleUniverse(
-        portfolioNodes,
-        edges,
-        companyMap,
-        personMap,
-        instrumentMap,
-        locationMap,
-        portfolioIds
-    );
-}
-
 function assembleUniverse(
     portfolioNodes: GraphNode[],
     edges: GraphEdge[],
@@ -260,7 +59,7 @@ function assembleUniverse(
     personMap: Map<string, GraphNode>,
     instrumentMap: Map<string, GraphNode>,
     locationMap: Map<string, GraphNode>,
-    portfolioIds: Set<string>
+    _portfolioIds: Set<string>
 ) {
     const allNodes = [
         ...portfolioNodes,
@@ -279,197 +78,133 @@ function assembleUniverse(
     };
 }
 
-// ─── Elemental fallback ────────────────────────────────────────────────────────
-
-// EDGAR accession numbers look like 0001209191-20-032244. They resolve as valid
-// entity names but represent SEC filing documents, not meaningful graph nodes.
-const EDGAR_ACCESSION_RE = /^\d{10}-\d{2}-\d{6}/;
-
-async function resolveNames(event: H3Event, eids: string[], limit = 40) {
-    const trimmed = eids.slice(0, limit);
-    const results = await Promise.all(
-        trimmed.map(async (eid) => {
-            try {
-                const name = await getEntityName(eid, event);
-                // getEntityName returns the NEID itself when lookup fails — treat
-                // that as a fallback and show a short truncated form.
-                if (name === eid && eid.length > 12) {
-                    return { eid, name: `…${eid.slice(-6)}` };
-                }
-                return { eid, name };
-            } catch {
-                return { eid, name: `…${eid.slice(-6)}` };
-            }
-        })
-    );
-    // Drop SEC filing accession numbers — they aren't useful graph nodes.
-    return results.filter((r) => !EDGAR_ACCESSION_RE.test(r.name));
-}
-
-async function linked(
-    event: H3Event,
-    centerEid: string,
-    pid?: string,
-    direction: 'incoming' | 'outgoing' = 'outgoing'
-) {
-    if (!pid) return [] as string[];
-    try {
-        return await findEntities(
-            {
-                type: 'linked',
-                linked: {
-                    to_entity: centerEid,
-                    distance: 1,
-                    pids: [pid],
-                    direction,
-                },
-            },
-            30,
-            event
-        );
-    } catch {
-        return [];
-    }
-}
-
-async function buildFromElemental(event: H3Event, entities: PortfolioEntitySeed[]) {
-    const portfolioNodes: GraphNode[] = entities.map((entity) => ({
-        id: `p-${entity.neid}`,
-        label: entity.name,
-        kind: 'portfolio',
-        connectsTo: [],
-        neid: entity.neid,
-    }));
-    const portfolioIds = new Set(portfolioNodes.map((n) => n.id));
-    const edges: GraphEdge[] = [];
-
-    const companyMap = new Map<string, GraphNode>();
-    const personMap = new Map<string, GraphNode>();
-    const instrumentMap = new Map<string, GraphNode>();
-    const locationMap = new Map<string, GraphNode>();
-
-    const schema = await getSchema(event).catch(() => ({ flavors: [], properties: [] }));
-    const pid = normalizePidMap(schema);
-    // Collect all company-related PIDs we know about; query each in both
-    // directions so we get subsidiaries, parents, peers, and affiliates.
-    const companyPids = [
-        pid.subsidiary_of,
-        pid.compensation_peer_of,
-        pid.affiliate_of,
-        pid.parent_of,
-        pid.investor_in,
-    ].filter((p): p is string => Boolean(p));
-
-    const pids = {
-        people: pid.is_officer ?? pid.is_director ?? pid.officer_of ?? pid.director_of,
-        owner: pid.is_beneficial_owner ?? pid.beneficial_owner_of,
-        instrument: pid.issued_by ?? pid.lender_of ?? pid.holds_position,
-        location: pid.is_located_at ?? pid.located_at,
-    };
-
-    for (const entity of entities) {
-        // Query each company PID in both directions and deduplicate
-        const companyIdSet = new Set<string>();
-        await Promise.all(
-            companyPids.flatMap((cpid) => [
-                linked(event, entity.neid, cpid, 'outgoing').then((ids) =>
-                    ids.forEach((id) => companyIdSet.add(id))
-                ),
-                linked(event, entity.neid, cpid, 'incoming').then((ids) =>
-                    ids.forEach((id) => companyIdSet.add(id))
-                ),
-            ])
-        );
-        // Remove the entity itself from its own company connections
-        companyIdSet.delete(entity.neid);
-
-        const [personIds, ownerIds, instrumentIds, locationIds] = await Promise.all([
-            linked(event, entity.neid, pids.people, 'incoming'),
-            linked(event, entity.neid, pids.owner, 'incoming'),
-            linked(event, entity.neid, pids.instrument, 'incoming'),
-            linked(event, entity.neid, pids.location, 'outgoing'),
-        ]);
-
-        const companies = await resolveNames(event, [...companyIdSet]);
-        const people = await resolveNames(event, [...personIds, ...ownerIds]);
-        const instruments = await resolveNames(event, instrumentIds);
-        const locations = await resolveNames(event, locationIds);
-
-        for (const row of companies) {
-            const id = `co-${row.eid}`;
-            if (!companyMap.has(id))
-                companyMap.set(id, {
-                    id,
-                    label: row.name,
-                    kind: 'company',
-                    connectsTo: [],
-                    neid: row.eid,
-                });
-            companyMap.get(id)!.connectsTo.push(`p-${entity.neid}`);
-            edges.push({ source: `p-${entity.neid}`, target: id, relationship: 'related_company' });
-        }
-        for (const row of people) {
-            const id = `pp-${row.eid}`;
-            if (!personMap.has(id))
-                personMap.set(id, {
-                    id,
-                    label: row.name,
-                    kind: 'person',
-                    connectsTo: [],
-                    neid: row.eid,
-                });
-            personMap.get(id)!.connectsTo.push(`p-${entity.neid}`);
-            edges.push({ source: `p-${entity.neid}`, target: id, relationship: 'officer_of' });
-        }
-        for (const row of instruments) {
-            const id = `ix-${row.eid}`;
-            if (!instrumentMap.has(id)) {
-                instrumentMap.set(id, {
-                    id,
-                    label: row.name,
-                    kind: 'instrument',
-                    connectsTo: [],
-                    neid: row.eid,
-                });
-            }
-            instrumentMap.get(id)!.connectsTo.push(`p-${entity.neid}`);
-            edges.push({ source: `p-${entity.neid}`, target: id, relationship: 'lender_of' });
-        }
-        for (const row of locations) {
-            const id = `lc-${row.eid}`;
-            if (!locationMap.has(id)) {
-                locationMap.set(id, {
-                    id,
-                    label: row.name,
-                    kind: 'location',
-                    connectsTo: [],
-                    neid: row.eid,
-                });
-            }
-            locationMap.get(id)!.connectsTo.push(`p-${entity.neid}`);
-            edges.push({ source: `p-${entity.neid}`, target: id, relationship: 'located_at' });
-        }
-    }
-
-    return assembleUniverse(
-        portfolioNodes,
-        edges,
-        companyMap,
-        personMap,
-        instrumentMap,
-        locationMap,
-        portfolioIds
-    );
-}
-
-// ─── Public API ───────────────────────────────────────────────────────────────
-
 export async function buildRelationshipUniverse(
     event: H3Event,
     entities: PortfolioEntitySeed[],
-    preloadedQuads?: Map<string, GalaxyQuad[]>
+    _preloadedQuads?: Map<string, GalaxyQuad[]>
 ): Promise<ReturnType<typeof assembleUniverse>> {
-    return buildFromGalaxy(event, entities, preloadedQuads);
+    try {
+        const neids = entities.map((e) => e.neid);
+        const classes = [
+            {
+                name: 'companies',
+                pindexes: await pidsFor(['subsidiary_of', 'compensation_peer_of']),
+                direction: 'outgoing' as const,
+            },
+            {
+                name: 'people',
+                pindexes: await pidsFor(['is_officer', 'is_director', 'officer_of', 'director_of']),
+                direction: 'incoming' as const,
+            },
+            {
+                name: 'owners',
+                pindexes: await pidsFor(['is_beneficial_owner', 'beneficial_owner_of']),
+                direction: 'incoming' as const,
+            },
+            {
+                name: 'instruments',
+                pindexes: await pidsFor(['issued_by', 'lender_of', 'holds_position']),
+                direction: 'incoming' as const,
+            },
+            {
+                name: 'locations',
+                pindexes: await pidsFor(['is_located_at', 'located_at']),
+                direction: 'outgoing' as const,
+            },
+        ].filter((c) => c.pindexes.length > 0);
+
+        if (classes.length > 0) {
+            const rel = await relationshipUniverse(neids, classes);
+            const portfolioNodes: GraphNode[] = entities.map((e) => ({
+                id: `p-${e.neid}`,
+                label: e.name,
+                kind: 'portfolio',
+                connectsTo: [],
+                neid: e.neid,
+            }));
+            const portfolioIds = new Set(portfolioNodes.map((n) => n.id));
+            const companyMap = new Map<string, GraphNode>();
+            const personMap = new Map<string, GraphNode>();
+            const instrumentMap = new Map<string, GraphNode>();
+            const locationMap = new Map<string, GraphNode>();
+            const edges: GraphEdge[] = [];
+
+            const classRows = Array.isArray(rel?.classes) ? rel.classes : [];
+            for (const cls of classRows) {
+                const kind: NodeKind =
+                    cls.name === 'companies' || cls.name === 'owners'
+                        ? 'company'
+                        : cls.name === 'people'
+                          ? 'person'
+                          : cls.name === 'instruments'
+                            ? 'instrument'
+                            : 'location';
+                const targetMap = {
+                    company: companyMap,
+                    person: personMap,
+                    instrument: instrumentMap,
+                    location: locationMap,
+                }[kind];
+                const nodes = Array.isArray(cls.nodes) ? cls.nodes : [];
+                for (const row of nodes) {
+                    const neid = row.neid;
+                    if (!neid) continue;
+                    const id = `${kindPrefix(kind)}-${neid}`;
+                    const connects = row.connects_to ?? row.connectsTo ?? [];
+                    const connectIds = connects.map((seed) => `p-${seed}`);
+                    targetMap.set(id, {
+                        id,
+                        label: row.name || neid,
+                        kind,
+                        connectsTo: connectIds,
+                        neid,
+                    });
+                }
+            }
+
+            const edgeRows = Array.isArray(rel?.edges) ? rel.edges : [];
+            for (const edge of edgeRows) {
+                const source = `p-${edge.source}`;
+                let target = '';
+                if (companyMap.has(`co-${edge.target}`)) target = `co-${edge.target}`;
+                else if (personMap.has(`pp-${edge.target}`)) target = `pp-${edge.target}`;
+                else if (instrumentMap.has(`ix-${edge.target}`)) target = `ix-${edge.target}`;
+                else if (locationMap.has(`lc-${edge.target}`)) target = `lc-${edge.target}`;
+                if (!target) continue;
+                if (!portfolioIds.has(source)) continue;
+                edges.push({ source, target, relationship: edge.relationship || 'related_to' });
+            }
+
+            return assembleUniverse(
+                portfolioNodes,
+                edges,
+                companyMap,
+                personMap,
+                instrumentMap,
+                locationMap,
+                portfolioIds
+            );
+        }
+    } catch (error) {
+        console.warn('[relationships] prism relationship-universe failed', error);
+    }
+
+    const portfolioNodes: GraphNode[] = entities.map((e) => ({
+        id: `p-${e.neid}`,
+        label: e.name,
+        kind: 'portfolio',
+        connectsTo: [],
+        neid: e.neid,
+    }));
+    return assembleUniverse(
+        portfolioNodes,
+        [],
+        new Map(),
+        new Map(),
+        new Map(),
+        new Map(),
+        new Set(portfolioNodes.map((n) => n.id))
+    );
 }
 
 export function detectPatterns(

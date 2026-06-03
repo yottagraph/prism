@@ -2,7 +2,6 @@ import type { H3Event } from 'h3';
 
 import { makeCacheKey, readScoringCache, writeScoringCache } from './cache';
 import type { ContextPackage } from './contextPackage';
-import { callMcpTool, extractMcpStructuredContent } from './mcpGateway';
 import type { LensDetail } from './types';
 
 type ActivityLabel =
@@ -96,62 +95,11 @@ export async function computeNewsSummary24h(
             sentiment: number | null;
         }
 
-        let articleRows: ArticleRow[] = [];
-
-        // Galaxy article quads only carry a timestamp (no headline/sentiment).
-        // Use them as a first pass; if they yield no usable headline data, fall
-        // through to the Elemental MCP call which returns rich article metadata.
-        if (ctx) {
-            const ctxRows = ctx.articles.map((a) => ({
-                publishedDate: a.publishedDate,
-                headline: a.headline,
-                sentiment: a.sentiment,
-            }));
-            const hasHeadlines = ctxRows.some((r) => r.headline?.trim());
-            if (hasHeadlines) {
-                articleRows = ctxRows;
-            }
-        }
-
-        if (articleRows.length === 0) {
-            // Either no ctx (legacy mode) or Galaxy ctx had no article headlines —
-            // fetch rich article metadata from Elemental.
-            const relatedResult = await callMcpTool(
-                'elemental',
-                'elemental_get_related',
-                {
-                    entity_id: { id_type: 'neid', id: neid },
-                    related_flavor: 'article',
-                    related_properties: ['headline', 'published_date', 'sentiment', 'source'],
-                    direction: 'both',
-                    limit: 120,
-                },
-                event
-            );
-            const structured = extractMcpStructuredContent<{
-                relationships?: Array<{ properties?: Record<string, { value?: unknown }> }>;
-            }>(relatedResult);
-            const rows = Array.isArray(structured?.relationships) ? structured.relationships : [];
-            articleRows = rows.map((row) => {
-                const sentimentValue = row?.properties?.sentiment?.value;
-                let sentiment: number | null = null;
-                if (typeof sentimentValue === 'number' && Number.isFinite(sentimentValue)) {
-                    sentiment = sentimentValue;
-                } else if (typeof sentimentValue === 'string') {
-                    const p = Number(sentimentValue);
-                    if (Number.isFinite(p)) sentiment = p;
-                }
-                return {
-                    publishedDate: row?.properties?.published_date?.value
-                        ? String(row.properties.published_date.value)
-                        : null,
-                    headline: row?.properties?.headline?.value
-                        ? String(row.properties.headline.value)
-                        : null,
-                    sentiment,
-                };
-            });
-        }
+        const articleRows: ArticleRow[] = (ctx?.articles ?? []).map((a) => ({
+            publishedDate: a.publishedDate,
+            headline: a.headline,
+            sentiment: a.sentiment,
+        }));
 
         if (articleRows.length > 0) {
             hasRealData = true;

@@ -1,8 +1,8 @@
 import type { H3Event } from 'h3';
 
 import { makeCacheKey, readScoringCache, writeScoringCache } from './cache';
-import type { ContextEvent, ContextPackage } from './contextPackage';
-import { callMcpTool, extractMcpStructuredContent } from './mcpGateway';
+import type { ContextPackage } from './contextPackage';
+import { cikVelocityBundle } from './prism';
 import type { LensDetail } from './types';
 
 export interface CikVelocityResult {
@@ -20,11 +20,6 @@ export interface CikVelocityResult {
     detail: LensDetail;
 }
 
-function quarterKey(date: Date): string {
-    const quarter = Math.floor(date.getUTCMonth() / 3) + 1;
-    return `${date.getUTCFullYear()}-Q${quarter}`;
-}
-
 function classifyTrend(qoqPct: number | null, latest: number): CikVelocityResult['trend'] {
     if (latest === 0) return 'inactive';
     if (qoqPct == null) return latest > 0 ? 'new' : 'inactive';
@@ -37,7 +32,7 @@ export async function computeCikVelocity(
     event: H3Event,
     portfolioId: string,
     neid: string,
-    ctx?: ContextPackage
+    _ctx?: ContextPackage
 ): Promise<CikVelocityResult> {
     const cacheKey = makeCacheKey(portfolioId, neid, 'cik-velocity');
     const cached = await readScoringCache<CikVelocityResult>(event, cacheKey);
@@ -59,51 +54,24 @@ export async function computeCikVelocity(
     };
 
     try {
-        let contextEvents: ContextEvent[];
-        if (ctx) {
-            contextEvents = ctx.events;
-        } else {
-            const eventsResult = await callMcpTool(
-                'elemental',
-                'elemental_get_events',
-                { entity_id: { id_type: 'neid', id: neid }, limit: 500 },
-                event
-            );
-            const structured = extractMcpStructuredContent<{
-                events?: Array<{ properties?: Record<string, { value?: unknown }> }>;
-            }>(eventsResult);
-            const rawEvents = Array.isArray(structured?.events) ? structured.events : [];
-            contextEvents = rawEvents.map((row) => ({
-                eventType: '',
-                date: row?.properties?.event_date?.value
-                    ? String(row.properties.event_date.value)
-                    : row?.properties?.date?.value
-                      ? String(row.properties.date.value)
-                      : null,
-                description: null,
-                snippet: null,
-                category: null,
-                ref: null,
-                raw: row as unknown as Record<string, unknown>,
-            }));
-        }
-        if (contextEvents.length === 0) return empty;
-
-        const counts = new Map<string, number>();
-        for (const ev of contextEvents) {
-            const dateValue = ev.date ?? '';
-            if (!dateValue) continue;
-            const ts = Date.parse(dateValue);
-            if (!Number.isFinite(ts)) continue;
-            const key = quarterKey(new Date(ts));
-            counts.set(key, (counts.get(key) || 0) + 1);
+        const bundle = await cikVelocityBundle([neid], 16).catch(() => null);
+        const first = bundle?.bundles?.[0];
+        if (!first?.quarter_counts || Object.keys(first.quarter_counts).length === 0) {
+            return empty;
         }
 
-        const orderedQuarters = [...counts.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-        const latest = orderedQuarters[orderedQuarters.length - 1];
-        const prev = orderedQuarters[orderedQuarters.length - 2];
-        const latestMentions = latest?.[1] ?? 0;
-        const prevMentions = prev?.[1] ?? 0;
+        const orderedQuarters = Object.entries(first.quarter_counts).sort((a, b) =>
+            a[0].localeCompare(b[0])
+        );
+        const latestKey = first.latest_quarter ?? orderedQuarters[orderedQuarters.length - 1]?.[0];
+        const latestIdx = orderedQuarters.findIndex((row) => row[0] === latestKey);
+        const prevKey =
+            first.prev_quarter ??
+            (latestIdx > 0 ? orderedQuarters[latestIdx - 1]?.[0] : undefined) ??
+            orderedQuarters[orderedQuarters.length - 2]?.[0];
+
+        const latestMentions = latestKey ? (first.quarter_counts[latestKey] ?? 0) : 0;
+        const prevMentions = prevKey ? (first.quarter_counts[prevKey] ?? 0) : 0;
         const qoqPct =
             prevMentions > 0 ? ((latestMentions - prevMentions) / prevMentions) * 100 : null;
         const avgMentions =
@@ -129,9 +97,9 @@ export async function computeCikVelocity(
             trend,
             qoqPct,
             latestMentions,
-            prevMentions: prev?.[1] ?? null,
-            latestQuarter: latest?.[0] ?? null,
-            prevQuarter: prev?.[0] ?? null,
+            prevMentions,
+            latestQuarter: latestKey ?? null,
+            prevQuarter: prevKey ?? null,
             avgMentions,
             avgDiffPct,
             divergenceScore,

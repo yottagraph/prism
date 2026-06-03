@@ -7,8 +7,6 @@ import type {
 import { requireAuth } from '~/server/utils/requireAuth';
 import { DEFAULT_SCORING_SETTINGS } from '~/server/utils/scoring/types';
 import { pushActivity } from '~/server/utils/scoring/activity';
-import { isGalaxyEnabled, getPropertyQuadsForEntities } from '~/server/utils/scoring/galaxy';
-import { getSchema, normalizePidMap } from '~/server/utils/scoring/elemental';
 import { scoreEntity } from '~/server/utils/scoring/scoreEntity';
 import { writeCoverage } from '~/server/utils/scoring/state';
 import { resetPolymarketLogging } from '~/server/utils/scoring/polymarketOutlook';
@@ -22,6 +20,7 @@ import {
 import { buildRelationshipUniverse } from '~/server/utils/scoring/relationships';
 import type { GalaxyQuad } from '~/server/utils/scoring/galaxy';
 import { getEntityProfile } from '~/server/utils/scoring/profile';
+import { prefetchPortfolioContext } from '~/server/utils/scoring/prefetch';
 
 interface ScanEntityInput {
     inputName: string;
@@ -298,68 +297,15 @@ export default defineEventHandler(async (event) => {
                     })
                     .filter((n): n is string => Boolean(n));
 
-                const galaxyAvailable = await isGalaxyEnabled(event);
-                if (galaxyAvailable && resolvedNeids.length > 0) {
+                if (resolvedNeids.length > 0) {
                     try {
-                        const schema = await getSchema(event);
-                        const pidMap = normalizePidMap(schema);
-                        const fastPids: Record<string, string | undefined> = {
-                            liabilities: pidMap.total_liabilities ?? pidMap.liabilities,
-                            equity: pidMap.stockholders_equity ?? pidMap.shareholders_equity,
-                            filingDate: pidMap.filing_date ?? pidMap.report_date,
-                        };
-
-                        const fastResults: Record<
-                            string,
-                            Record<string, string | number | null>
-                        > = {};
-                        const pidEntries = Object.entries(fastPids).filter(
-                            (e): e is [string, string] => Boolean(e[1])
-                        );
-
-                        const FAST_BATCH_SIZE = 50;
-                        for (const [label, pid] of pidEntries) {
-                            for (let i = 0; i < resolvedNeids.length; i += FAST_BATCH_SIZE) {
-                                const chunk = resolvedNeids.slice(i, i + FAST_BATCH_SIZE);
-                                try {
-                                    const quads = await getPropertyQuadsForEntities(pid, chunk);
-                                    for (const q of quads) {
-                                        if (!fastResults[q.source]) fastResults[q.source] = {};
-                                        fastResults[q.source][label] = q.destination;
-                                    }
-                                } catch {
-                                    // Non-critical — full scoring will fill in
-                                }
-                            }
-                        }
-
-                        entities.forEach((entity, idx) => {
-                            const neid =
-                                entity.neid ?? batchResolutions.get(entity.inputName.trim())?.neid;
-                            if (!neid) return;
-                            const fast = fastResults[neid];
-                            const resolvedName =
-                                entity.resolvedName ||
-                                batchResolutions.get(entity.inputName.trim())?.resolvedName ||
-                                entity.inputName;
-                            emit('fast-row', {
-                                index: idx,
-                                neid,
-                                resolvedName,
-                                inputName: entity.inputName,
-                                fast: fast ?? {},
-                            });
-                        });
-
                         emit('status', {
-                            phase: 'fast-mode',
-                            message: `Fast-mode batch complete for ${resolvedNeids.length} entities`,
+                            phase: 'prefetch',
+                            message: `Prefetching Prism lenses for ${resolvedNeids.length} entities`,
                         });
-                    } catch (err) {
-                        console.warn(
-                            '[scan] fast-mode batch failed, continuing with full scan',
-                            err
-                        );
+                        await prefetchPortfolioContext(event, resolvedNeids);
+                    } catch (error) {
+                        console.warn('[scan] prism prefetch failed', error);
                     }
                 }
 

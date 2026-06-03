@@ -2,14 +2,8 @@ import type { H3Event } from 'h3';
 
 import { makeCacheKey, readScoringCache, writeScoringCache } from './cache';
 import type { ContextPackage } from './contextPackage';
-import { callMcpTool, extractMcpStructuredContent } from './mcpGateway';
-import {
-    extractNumeric,
-    getEntityName,
-    getPropertyValues,
-    getSchema,
-    normalizePidMap,
-} from './elemental';
+import { stockBundle } from './prism';
+import { extractNumeric, getSchema, normalizePidMap } from './elemental';
 import { clampScore } from './hash';
 import type { EvidenceItem, LensDetail } from './types';
 
@@ -134,49 +128,13 @@ export async function computeMarketSignalScore(
 
     if (!hasRealData) {
         try {
-            const companyName = await getEntityName(neid, event);
-            // Cap the stocks MCP call at 4s so a cold-cache upstream doesn't
-            // consume the outer withTimeout budget before Path C (Elemental
-            // close_price) has a chance to run. On a warm cache this resolves
-            // in 2-3s; on a cold cache it throws and we fall through cleanly.
-            const stocksTimeout = new Promise<never>((_, reject) =>
-                setTimeout(() => reject(new Error('stocks MCP fast-timeout')), 4_000)
-            );
-            const result = await Promise.race([
-                callMcpTool(
-                    'stocks',
-                    'get_daily_stock_prices',
-                    {
-                        company_name: companyName,
-                        lookback_days: 45,
-                    },
-                    event
-                ),
-                stocksTimeout,
-            ]);
-            const structured = extractMcpStructuredContent<{
-                found?: boolean;
-                ticker_info?: { ticker?: string };
-                prices?: Array<{ close?: number; date?: string }>;
-            }>(result);
-            const prices = Array.isArray(structured?.prices) ? structured!.prices : [];
+            const bundle = await stockBundle([neid], 90);
+            const row = bundle?.bundles?.find((b) => b.neid === neid) ?? bundle?.bundles?.[0];
+            const prices = Array.isArray(row?.ohlcv) ? row!.ohlcv : [];
             const closes = prices
-                .map((row) => row?.close)
-                .filter(
-                    (value): value is number => typeof value === 'number' && Number.isFinite(value)
-                );
-
-            if ((structured?.found ?? false) && closes.length >= 5) {
-                const priceDates = prices
-                    .map((row) => row?.date)
-                    .filter((d): d is string => typeof d === 'string' && d.length > 0)
-                    .sort();
-                priceCount = prices.length;
-                if (priceDates.length > 0) {
-                    earliestPriceDate = priceDates[0];
-                    latestPriceDate = priceDates[priceDates.length - 1];
-                }
-
+                .map((p) => p.close)
+                .filter((v): v is number => typeof v === 'number' && Number.isFinite(v));
+            if (closes.length >= 5) {
                 const first = closes[0];
                 const last = closes[closes.length - 1];
                 const returnPct = first ? ((last - first) / first) * 100 : 0;
@@ -196,143 +154,26 @@ export async function computeMarketSignalScore(
                           dayReturns.length
                         : 0;
                 const annualizedVolPct = Math.sqrt(variance) * Math.sqrt(252) * 100;
-                resolvedAnnualizedVolPct = annualizedVolPct;
-
                 hasRealData = true;
+                resolvedAnnualizedVolPct = annualizedVolPct;
+                resolvedTicker = row?.instrument?.ticker ?? null;
+                priceCount = closes.length;
+                earliestPriceDate = prices[0]?.date ?? null;
+                latestPriceDate = prices[prices.length - 1]?.date ?? null;
                 score = clampScore(
                     35 + Math.max(0, -returnPct) * 1.4 + Math.max(0, annualizedVolPct - 22)
                 );
-                metrics.push({ label: '30-45d return', value: `${returnPct.toFixed(1)}%` });
+                metrics.push({ label: '30-90d return', value: `${returnPct.toFixed(1)}%` });
                 metrics.push({ label: 'Annualized vol', value: `${annualizedVolPct.toFixed(1)}%` });
-                if (structured?.ticker_info?.ticker) {
-                    metrics.push({ label: 'Ticker', value: structured.ticker_info.ticker });
-                }
-                const firstDate = prices[0]?.date;
-                const lastDate = prices[prices.length - 1]?.date;
-                const ticker = structured?.ticker_info?.ticker ?? null;
-                if (ticker) resolvedTicker = ticker;
-                const tickerUrl = ticker ? `https://finance.yahoo.com/quote/${ticker}` : undefined;
+                if (resolvedTicker) metrics.push({ label: 'Ticker', value: resolvedTicker });
                 findings.push({
-                    text: `${ticker || companyName} closed at $${last.toFixed(2)}${
-                        lastDate ? ` on ${lastDate}` : ''
-                    }, ${returnPct >= 0 ? 'up' : 'down'} ${Math.abs(returnPct).toFixed(
-                        1
-                    )}% over the observed window${firstDate ? ` since ${firstDate}` : ''}. Annualized volatility is ${annualizedVolPct.toFixed(
-                        1
-                    )}%.`,
-                    date: lastDate || undefined,
-                    citations: [
-                        {
-                            source: 'stocks-mcp',
-                            date: lastDate || undefined,
-                            url: tickerUrl,
-                            title: ticker
-                                ? `${ticker} price history`
-                                : `${companyName} price history`,
-                        },
-                    ],
+                    text: `${resolvedTicker || neid} market series returned ${closes.length} bars with ${returnPct >= 0 ? 'gain' : 'drawdown'} ${Math.abs(returnPct).toFixed(1)}%.`,
+                    date: latestPriceDate || undefined,
+                    citations: [],
                 });
             }
         } catch (error) {
-            console.warn('[market signal] stocks MCP fallback failed', error);
-        }
-    }
-
-    // Path C: Elemental financial_instrument OHLCV — mirrors the entity stock
-    // tab resolution so that coverage.stock reflects the same data source.
-    if (!hasRealData) {
-        try {
-            const schema = await getSchema(event);
-            const pidMap = normalizePidMap(schema);
-            const closePid = pidMap.close_price;
-            if (closePid) {
-                const relResult = await callMcpTool(
-                    'elemental',
-                    'elemental_get_related',
-                    {
-                        entity_id: { id_type: 'neid', id: neid },
-                        related_flavor: 'financial_instrument',
-                        direction: 'both',
-                        limit: 15,
-                    },
-                    event
-                );
-                const structured = extractMcpStructuredContent<{
-                    relationships?: Array<{ neid?: string; name?: string }>;
-                }>(relResult);
-                const rels = Array.isArray(structured?.relationships)
-                    ? (structured!.relationships as Array<{ neid?: string; name?: string }>)
-                    : [];
-
-                // Equity candidate filters (same regexes as stockProfile.ts)
-                const PREFIXED = /^(NYSE|NASDAQ|AMEX|NYSEARCA|BATS|OTC):\s*([A-Z][A-Z0-9\-\.]*)/i;
-                const BARE = /^\$?[A-Z]{1,5}(?:[.\-][A-Z]{1,2})?$/;
-                const ISIN = /^[A-Z]{2}[A-Z0-9]{9}\d$/;
-                const equities = rels.filter((r) => {
-                    if (!r.name || !r.neid) return false;
-                    if (ISIN.test(r.name)) return false;
-                    return PREFIXED.test(r.name) || BARE.test(r.name);
-                });
-
-                if (equities.length > 0) {
-                    const equityNeids = equities
-                        .slice(0, 8)
-                        .map((r) => r.neid)
-                        .filter((n): n is string => Boolean(n));
-                    const priceRows = await getPropertyValues(
-                        equityNeids,
-                        [closePid],
-                        false,
-                        event
-                    );
-                    const instrCount = new Map<string, number>();
-                    for (const row of priceRows) {
-                        if (
-                            row.eid &&
-                            String(row.pid) === closePid &&
-                            typeof row.value === 'number'
-                        ) {
-                            instrCount.set(row.eid, (instrCount.get(row.eid) || 0) + 1);
-                        }
-                    }
-                    const maxCount = instrCount.size > 0 ? Math.max(...instrCount.values()) : 0;
-                    if (maxCount >= 5) {
-                        hasRealData = true;
-                        priceCount = maxCount;
-                        const bestEid = [...instrCount.entries()].sort(
-                            (a, b) => b[1] - a[1]
-                        )[0]?.[0];
-                        const bestInstr = equities.find((r) => r.neid === bestEid);
-                        if (!resolvedTicker && bestInstr?.name) {
-                            // Extract ticker from instrument name (e.g. "NASDAQ:GME" → "GME", "GME" → "GME")
-                            const prefixedMatch = bestInstr.name.match(
-                                /^(?:NYSE|NASDAQ|AMEX|NYSEARCA|BATS|OTC):\s*([A-Z][A-Z0-9\-\.]*)/i
-                            );
-                            const bareMatch = /^\$?([A-Z]{1,5}(?:[.\-][A-Z]{1,2})?)$/.exec(
-                                bestInstr.name
-                            );
-                            const instrTicker = prefixedMatch
-                                ? prefixedMatch[1].toUpperCase()
-                                : bareMatch
-                                  ? bareMatch[1].toUpperCase()
-                                  : null;
-                            if (instrTicker) resolvedTicker = instrTicker;
-                        }
-                        metrics.push({
-                            label: 'Price rows (Elemental)',
-                            value: String(maxCount),
-                        });
-                        findings.push({
-                            text: `Market price data available via Elemental instrument${
-                                bestInstr?.name ? ` ${bestInstr.name}` : ''
-                            } (${maxCount} close price observations).`,
-                            citations: [],
-                        });
-                    }
-                }
-            }
-        } catch (error) {
-            console.warn('[market signal] Elemental instrument fallback (Path C) failed', error);
+            console.warn('[market signal] stock-bundle path failed', error);
         }
     }
 

@@ -2,8 +2,6 @@ import type { H3Event } from 'h3';
 
 import { resolveRefs } from '../citations';
 import type { ContextPackage } from '../contextPackage';
-import { extractPropertyFacts, getPropertyValues, getSchema, normalizePidMap } from '../elemental';
-import { callMcpTool, extractMcpStructuredContent } from '../mcpGateway';
 import type { EvidenceItem } from '../types';
 import type { FhsSignal, FhsTierResult } from './types';
 
@@ -50,21 +48,6 @@ export async function computeTier3Behavioral(
                 );
                 filingRef = latest.ref;
             }
-        } else {
-            const schema = await getSchema(event);
-            const pidMap = normalizePidMap(schema);
-            const filingPid = pidMap.filing_date ?? pidMap.report_date;
-            if (filingPid) {
-                const values = await getPropertyValues([neid], [filingPid], true, event);
-                const filingFacts = extractPropertyFacts(values, filingPid);
-                const latest = filingFacts[0];
-                if (latest) {
-                    filingGapDays = recencyDays(
-                        latest.date ?? (typeof latest.value === 'string' ? latest.value : undefined)
-                    );
-                    filingRef = latest.ref;
-                }
-            }
         }
 
         if (filingGapDays != null) {
@@ -102,38 +85,6 @@ export async function computeTier3Behavioral(
             allPeople.forEach((p) => {
                 if (p.ref) refs.push(p.ref);
             });
-        } else {
-            const related = await callMcpTool(
-                'elemental',
-                'elemental_get_related',
-                {
-                    entity_id: { id_type: 'neid', id: neid },
-                    related_flavor: 'person',
-                    relationship_types: ['is_officer', 'is_director', 'board_member_of'],
-                    related_properties: ['title', 'end_date'],
-                    direction: 'incoming',
-                    limit: 120,
-                },
-                event
-            );
-            const relatedStructured = extractMcpStructuredContent<{
-                relationships?: Array<{
-                    properties?: Record<string, { value?: unknown; ref?: string }>;
-                }>;
-            }>(related);
-            const relationships = Array.isArray(relatedStructured?.relationships)
-                ? relatedStructured.relationships
-                : [];
-            const departures90 = relationships.filter((row) => {
-                const endDate = String(row?.properties?.end_date?.value || '');
-                const days = recencyDays(endDate);
-                return days != null && days <= 90;
-            });
-            departures90Count = departures90.length;
-            departures90.forEach((row) => {
-                const ref = row?.properties?.end_date?.ref || row?.properties?.title?.ref;
-                if (ref) refs.push(ref);
-            });
         }
 
         const officerSignal = severityFromThresholds(departures90Count, [
@@ -162,34 +113,6 @@ export async function computeTier3Behavioral(
             ).length;
             ctx.events.forEach((e) => {
                 if (e.ref && e.eventType.toUpperCase().includes('AUDITOR')) refs.push(e.ref);
-            });
-        } else {
-            const eventsResult = await callMcpTool(
-                'elemental',
-                'elemental_get_events',
-                {
-                    entity_id: { id_type: 'neid', id: neid },
-                    categories: ['Accounting', 'Auditor Change'],
-                    limit: 30,
-                },
-                event
-            );
-            const eventsStructured = extractMcpStructuredContent<{
-                events?: Array<{
-                    name?: string;
-                    properties?: Record<string, { value?: unknown; ref?: string }>;
-                }>;
-            }>(eventsResult);
-            const events = Array.isArray(eventsStructured?.events) ? eventsStructured.events : [];
-            const auditorChanges = events.filter((row) =>
-                String(row?.properties?.event_type?.value ?? row?.name ?? '')
-                    .toUpperCase()
-                    .includes('AUDITOR')
-            );
-            auditorChangeCount = auditorChanges.length;
-            auditorChanges.forEach((row) => {
-                const ref = row?.properties?.description?.ref || row?.properties?.event_type?.ref;
-                if (ref) refs.push(ref);
             });
         }
 

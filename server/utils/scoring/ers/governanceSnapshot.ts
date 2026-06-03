@@ -1,7 +1,6 @@
 import type { H3Event } from 'h3';
 
 import type { ContextPackage } from '../contextPackage';
-import { callMcpTool, extractMcpStructuredContent } from '../mcpGateway';
 import type { GovernanceSnapshot } from './types';
 
 const C_SUITE_TERMS = [
@@ -58,89 +57,6 @@ export async function buildGovernanceSnapshot(
         ctx.events.forEach((e) => {
             if (e.ref) references.push(e.ref);
         });
-    } else {
-        try {
-            const relatedResult = await callMcpTool(
-                'elemental',
-                'elemental_get_related',
-                {
-                    entity_id: { id_type: 'neid', id: neid },
-                    related_flavor: 'person',
-                    relationship_types: ['is_officer', 'is_director', 'board_member_of'],
-                    related_properties: ['title', 'start_date', 'end_date'],
-                    direction: 'incoming',
-                    limit: 200,
-                },
-                event
-            );
-            const related = extractMcpStructuredContent<{
-                relationships?: Array<{
-                    relationship_types?: string[];
-                    properties?: Record<string, { value?: unknown; ref?: string }>;
-                }>;
-            }>(relatedResult);
-            const relationships = Array.isArray(related?.relationships)
-                ? related.relationships
-                : [];
-            for (const row of relationships) {
-                const types = (row.relationship_types || []).map((value) =>
-                    String(value).toLowerCase()
-                );
-                const title = String(row?.properties?.title?.value || '').toUpperCase();
-                if (types.some((value) => value.includes('officer'))) officerCount += 1;
-                if (types.some((value) => value.includes('director') || value.includes('board')))
-                    directorCount += 1;
-                if (C_SUITE_TERMS.some((term) => title.includes(term)))
-                    cSuiteRoles.add(title || 'C-SUITE');
-                const endDate = String(row?.properties?.end_date?.value || '');
-                const days = parseDaysFromDate(endDate);
-                if (days != null) {
-                    if (days <= 90) departures90d += 1;
-                    if (days <= 365) departures12m += 1;
-                }
-                const rowRefs = Object.values(row.properties || {})
-                    .map((property) => property?.ref)
-                    .filter((ref): ref is string => Boolean(ref));
-                references.push(...rowRefs);
-            }
-        } catch (error) {
-            console.warn('[ers] failed to load governance relationships', error);
-        }
-
-        try {
-            const eventsResult = await callMcpTool(
-                'elemental',
-                'elemental_get_events',
-                {
-                    entity_id: { id_type: 'neid', id: neid },
-                    categories: ['Auditor Change', 'Officer Change', 'Director Change'],
-                    limit: 50,
-                },
-                event
-            );
-            const eventsData = extractMcpStructuredContent<{
-                events?: Array<{
-                    name?: string;
-                    properties?: Record<string, { value?: unknown; ref?: string }>;
-                }>;
-            }>(eventsResult);
-            const events = Array.isArray(eventsData?.events) ? eventsData.events : [];
-            for (const row of events) {
-                const eventType = String(
-                    row?.properties?.event_type?.value ??
-                        row?.properties?.category?.value ??
-                        row?.name ??
-                        ''
-                ).toUpperCase();
-                if (eventType.includes('AUDITOR')) auditorChanges12m += 1;
-                const eventRefs = Object.values(row?.properties || {})
-                    .map((property) => property?.ref)
-                    .filter((ref): ref is string => Boolean(ref));
-                references.push(...eventRefs);
-            }
-        } catch (error) {
-            console.warn('[ers] failed to load governance events', error);
-        }
     }
 
     return {

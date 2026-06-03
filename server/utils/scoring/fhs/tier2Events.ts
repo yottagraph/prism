@@ -2,7 +2,6 @@ import type { H3Event } from 'h3';
 
 import { resolveRefs } from '../citations';
 import type { ContextEvent, ContextPackage } from '../contextPackage';
-import { callMcpTool, extractMcpStructuredContent } from '../mcpGateway';
 import type { DistressEventConfig, EvidenceItem } from '../types';
 import { DEFAULT_SCORING_SETTINGS } from '../types';
 import type { FhsSignal, FhsTierResult } from './types';
@@ -120,53 +119,7 @@ export async function computeTier2Events(
         const refs: string[] = [];
 
         const resolvedDistress = distress ?? DEFAULT_SCORING_SETTINGS.fhs.distressEvents;
-        if (ctx) {
-            processEvents(ctx.events, nowMs, signals, refs, resolvedDistress);
-        } else {
-            const result = await callMcpTool(
-                'elemental',
-                'elemental_get_events',
-                {
-                    entity_id: { id_type: 'neid', id: neid },
-                    limit: 100,
-                },
-                event
-            );
-            const structured = extractMcpStructuredContent<{
-                events?: Array<{
-                    name?: string;
-                    properties?: Record<string, { value?: unknown; ref?: string }>;
-                }>;
-            }>(result);
-            const rawEvents = Array.isArray(structured?.events) ? structured.events : [];
-            const contextEvents: ContextEvent[] = rawEvents.map((row) => ({
-                eventType: String(
-                    row?.properties?.event_type?.value ??
-                        row?.properties?.category?.value ??
-                        row?.name ??
-                        ''
-                ),
-                date: row?.properties?.event_date?.value
-                    ? String(row.properties.event_date.value)
-                    : row?.properties?.date?.value
-                      ? String(row.properties.date.value)
-                      : null,
-                description: row?.properties?.description?.value
-                    ? String(row.properties.description.value)
-                    : (row?.name ?? null),
-                snippet: null,
-                category: row?.properties?.category?.value
-                    ? String(row.properties.category.value)
-                    : null,
-                ref:
-                    (row?.properties?.description?.ref ||
-                        row?.properties?.event_type?.ref ||
-                        row?.properties?.date?.ref) ??
-                    null,
-                raw: row as unknown as Record<string, unknown>,
-            }));
-            processEvents(contextEvents, nowMs, signals, refs, resolvedDistress);
-        }
+        processEvents(ctx?.events ?? [], nowMs, signals, refs, resolvedDistress);
 
         const citationMap = await resolveRefs(refs, event, ctx);
         signals.forEach((signal) => {

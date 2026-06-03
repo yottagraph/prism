@@ -27,6 +27,7 @@ import {
     normalizePidMap,
     searchEntitiesByName,
 } from './elemental';
+import { ohlcvSeries } from './prism';
 import { getStockEntityProfile } from './stockProfile';
 
 export interface HoldingValuationInput {
@@ -139,28 +140,19 @@ export async function valueHolding(
         });
     }
 
-    // 3) Pull the full close_price history for the chosen instrument so the
-    //    backdated cost basis resolves even beyond the profile's price window.
+    // 3) Pull full OHLCV history from Prism so old purchase dates resolve.
     let closes: CloseRow[] = [];
     try {
-        const schema = await getSchema(event);
-        const pid = normalizePidMap(schema);
-        if (pid.close_price) {
-            const values = await getPropertyValues(
-                [instrumentNeid],
-                [pid.close_price],
-                true,
-                event
-            );
-            closes = extractPropertyFacts(values, pid.close_price)
-                .map((fact) => {
-                    const close = typeof fact.value === 'number' ? fact.value : Number(fact.value);
-                    const date = fact.date ? String(fact.date).slice(0, 10) : '';
-                    return { date, close };
-                })
-                .filter((row) => row.date && Number.isFinite(row.close) && row.close > 0)
-                .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
-        }
+        const series = await ohlcvSeries([instrumentNeid], 3650);
+        const instrumentSeries = series?.series?.find((r) => r.neid === instrumentNeid);
+        const bars = Array.isArray(instrumentSeries?.bars) ? instrumentSeries.bars : [];
+        closes = bars
+            .map((bar) => ({
+                date: String(bar.date || '').slice(0, 10),
+                close: typeof bar.close === 'number' ? bar.close : Number(bar.close),
+            }))
+            .filter((row) => row.date && Number.isFinite(row.close) && row.close > 0)
+            .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
     } catch {
         closes = [];
     }

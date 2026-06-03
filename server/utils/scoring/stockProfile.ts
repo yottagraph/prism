@@ -30,6 +30,7 @@ import {
     volumeRatio,
 } from './indicators';
 import { callMcpTool, extractMcpStructuredContent } from './mcpGateway';
+import { scanFundamentals, stockBundle } from './prism';
 import { buildStockNarrative } from './stockNarrative';
 import type { CitationRef } from './types';
 import {
@@ -204,6 +205,29 @@ interface OhlcvRow {
     volume?: number;
 }
 
+function toOhlcvRows(
+    rows: Array<{
+        date: string;
+        open?: number;
+        high?: number;
+        low?: number;
+        close: number;
+        volume?: number;
+    }>
+): OhlcvRow[] {
+    return rows
+        .filter((r) => typeof r.close === 'number' && Number.isFinite(r.close) && r.close > 0)
+        .map((r) => ({
+            date: r.date,
+            open: r.open,
+            high: r.high,
+            low: r.low,
+            close: r.close,
+            volume: r.volume,
+        }))
+        .sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
+}
+
 function buildOhlcvSeries(values: {
     closes: ElementalPropertyFact[];
     opens: ElementalPropertyFact[];
@@ -304,6 +328,137 @@ export async function getStockEntityProfile(
     }
     if (!entityName && nameHint) entityName = nameHint;
     if (!entityName) entityName = neid;
+
+    try {
+        const stock = await stockBundle([neid], 500);
+        const row = stock?.bundles?.find((b) => b.neid === neid) ?? stock?.bundles?.[0];
+        if (row?.instrument) {
+            const instrument = row.instrument;
+            const series = toOhlcvRows(row.ohlcv ?? []).slice(-500);
+            const closes = series.map((r) => r.close);
+            const latestClose = closes.length ? closes[closes.length - 1] : null;
+            const firstClose = closes.length ? closes[0] : null;
+            const latestDate = series.length ? series[series.length - 1].date : null;
+            const returnPct =
+                firstClose && latestClose
+                    ? ((latestClose - firstClose) / Math.max(firstClose, 1e-6)) * 100
+                    : null;
+            const rsi14 = rsi(closes, 14);
+            const macdLatest = macd(closes);
+            const bollingerLatest = bollinger(closes, 20, 2);
+            const sma20 = sma(closes, 20);
+            const sma50 = sma(closes, 50);
+            const sma200 = sma(closes, 200);
+            const ema12 = ema(closes, 12);
+            const ema26 = ema(closes, 26);
+            const crosses = goldenDeathCross(closes);
+            const atr14 = atr(series, 14);
+            const roc10 = roc(closes, 10);
+            const annualisedVol20d = annualisedVol(closes, 20);
+            const volumeRatio20d = volumeRatio(series, 20);
+            const fiftyTwoWeek = fiftyTwoWeekHighLow(series, latestDate);
+            const trend = trendSignal({
+                latestClose,
+                sma50,
+                sma200,
+                rsi14,
+                macd: macdLatest,
+            });
+            const periodHigh = closes.length ? Math.max(...closes) : null;
+            const periodLow = closes.length ? Math.min(...closes) : null;
+            const annualizedVolPct = annualisedVol(
+                closes,
+                Math.min(20, Math.max(2, closes.length - 1))
+            );
+            const narrative = buildStockNarrative(
+                instrument.ticker ?? null,
+                {
+                    rsi14,
+                    trend,
+                    macd: macdLatest,
+                    annualisedVol20d,
+                    volumeRatio20d,
+                    fiftyTwoWeek,
+                },
+                {}
+            );
+
+            const fundamentalsRes = await scanFundamentals([neid], 540).catch(() => null);
+            const fundamentals: Record<string, number> = {};
+            const fundamentalRow =
+                (
+                    fundamentalsRes?.organizations as Array<Record<string, unknown>> | undefined
+                )?.[0] ?? null;
+            if (fundamentalRow && typeof fundamentalRow === 'object') {
+                const values = (fundamentalRow.values ?? fundamentalRow.fundamentals) as
+                    | Record<string, unknown>
+                    | undefined;
+                if (values && typeof values === 'object') {
+                    for (const [k, v] of Object.entries(values)) {
+                        if (typeof v === 'number' && Number.isFinite(v)) fundamentals[k] = v;
+                    }
+                }
+            }
+
+            const profile: StockEntityProfile = {
+                neid,
+                canonicalNeid: null,
+                entityName,
+                instrumentNeid: instrument.neid,
+                instrumentName: instrument.name ?? null,
+                ticker: instrument.ticker ?? null,
+                exchange: instrument.exchange ?? null,
+                currency: instrument.currency ?? null,
+                sector: instrument.sector ?? null,
+                industry: instrument.industry ?? null,
+                latestClose,
+                latestDate,
+                returnPct,
+                annualizedVolPct,
+                periodHigh,
+                periodLow,
+                samples: closes.length,
+                analytics: {
+                    rsi14,
+                    macd: macdLatest,
+                    bollinger: bollingerLatest,
+                    movingAverages: { sma20, sma50, sma200, ema12, ema26 },
+                    goldenCross: crosses.goldenCross,
+                    deathCross: crosses.deathCross,
+                    atr14,
+                    roc10,
+                    annualisedVol20d,
+                    volumeRatio20d,
+                    fiftyTwoWeek,
+                    trend,
+                    latestAnomaly: null,
+                    recentAnomalies: [],
+                    narrative,
+                },
+                fundamentals: {
+                    ...fundamentals,
+                    citations: [],
+                },
+                prices: series.map((r) => ({
+                    date: r.date,
+                    close: r.close,
+                    open: r.open,
+                    high: r.high,
+                    low: r.low,
+                    volume: r.volume,
+                })),
+                technical: [],
+                keyMetrics: [],
+                relatedInstruments: [],
+                dataGaps: [],
+                citations: [],
+            };
+            await writeScoringCache(event, cacheKey, profile);
+            return profile;
+        }
+    } catch (error) {
+        console.warn('[stock profile] stock-bundle fast path failed', error);
+    }
 
     // 2) Try to fetch related instruments using the stored NEID first.
     let activeNeid = neid;

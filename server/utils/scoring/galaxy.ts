@@ -102,6 +102,62 @@ async function galaxyFetch<T = any>(
     });
 }
 
+export async function prismFetch<T = any>(options: {
+    path: string;
+    method?: 'GET' | 'POST';
+    body?: Record<string, unknown>;
+    caller: string;
+    reqSummary?: Record<string, unknown>;
+}): Promise<T> {
+    const method = options.method ?? 'POST';
+    const endpoint = options.path.replace(/^\//, '');
+    const bodyText = options.body ? JSON.stringify(options.body) : undefined;
+    const headers = authHeaders();
+
+    return elementalSemaphore.run(async () => {
+        const logCtx = beginElementalLog({
+            surface: 'qs-rest',
+            method,
+            endpoint,
+            caller: options.caller,
+            reqBytes: bodyText?.length ?? 0,
+            reqSummary: options.reqSummary,
+            reqBody: bodyText,
+        });
+        try {
+            const response = await fetch(buildGalaxyUrl(endpoint), {
+                method,
+                headers,
+                body: bodyText,
+            });
+            const text = await response.text();
+            if (!response.ok) {
+                logCtx.finish({
+                    status: response.status,
+                    ok: false,
+                    resBytes: text.length,
+                    error: text,
+                    resBody: text,
+                });
+                throw createError({
+                    statusCode: response.status,
+                    statusMessage: text || `Prism request failed (${response.status})`,
+                });
+            }
+            if (!text) {
+                logCtx.finish({ status: response.status, ok: true, resBytes: 0 });
+                return undefined as unknown as T;
+            }
+            const data = parseBigIntSafe<T>(text);
+            logCtx.finish({ status: response.status, ok: true, resBytes: text.length });
+            return data;
+        } catch (error) {
+            logCtx.finish({ status: (error as any)?.statusCode ?? 0, ok: false, error });
+            throw error;
+        }
+    });
+}
+
 let galaxyEnabledCache: { value: boolean; expiresAt: number } | null = null;
 const GALAXY_PROBE_TTL_MS = 5 * 60_000;
 

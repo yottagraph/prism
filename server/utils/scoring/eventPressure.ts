@@ -3,7 +3,6 @@ import type { H3Event } from 'h3';
 import { makeCacheKey, readScoringCache, writeScoringCache } from './cache';
 import { resolveRefs } from './citations';
 import type { ContextEvent, ContextPackage } from './contextPackage';
-import { callMcpTool, extractMcpStructuredContent } from './mcpGateway';
 import { clampScore } from './hash';
 import type { EventPressureSettings, EvidenceItem, LensDetail } from './types';
 import { DEFAULT_SCORING_SETTINGS, EVENT_SEVERITY_WEIGHTS } from './types';
@@ -74,48 +73,7 @@ export async function computeEventPressureScore(
     const findings: EvidenceItem[] = [];
 
     try {
-        let contextEvents: ContextEvent[];
-        if (ctx) {
-            contextEvents = ctx.events;
-        } else {
-            const eventsResult = await callMcpTool(
-                'elemental',
-                'elemental_get_events',
-                { entity_id: { id_type: 'neid', id: neid }, limit: 120 },
-                event
-            );
-            const structured = extractMcpStructuredContent<{
-                events?: Array<{
-                    name?: string;
-                    properties?: Record<string, { value?: unknown; ref?: string }>;
-                }>;
-            }>(eventsResult);
-            const rawEvents = Array.isArray(structured?.events) ? structured.events : [];
-            contextEvents = rawEvents.map((row) => ({
-                eventType: String(
-                    row?.properties?.event_type?.value ??
-                        row?.properties?.category?.value ??
-                        row?.name ??
-                        ''
-                ),
-                date: row?.properties?.event_date?.value
-                    ? String(row.properties.event_date.value)
-                    : row?.properties?.date?.value
-                      ? String(row.properties.date.value)
-                      : null,
-                description: row?.properties?.description?.value
-                    ? String(row.properties.description.value)
-                    : (row?.name ?? null),
-                snippet: null,
-                category: null,
-                ref:
-                    (row?.properties?.description?.ref ||
-                        row?.properties?.event_type?.ref ||
-                        row?.properties?.date?.ref) ??
-                    null,
-                raw: row as unknown as Record<string, unknown>,
-            }));
-        }
+        const contextEvents: ContextEvent[] = ctx?.events ?? [];
         const ep = settings ?? DEFAULT_SCORING_SETTINGS.events;
         if (contextEvents.length > 0) {
             hasRealData = true;
