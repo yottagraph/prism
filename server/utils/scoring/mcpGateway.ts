@@ -8,7 +8,6 @@ const mcpSessionIds = new Map<string, string>();
  * ------------------------------------------------------------------- */
 
 const SERVER_CONCURRENCY_CAPS: Record<string, number> = {
-    stocks: 5,
     polymarket: 5,
     elemental: 10,
 };
@@ -54,11 +53,7 @@ function getSemaphore(serverName: string): Semaphore {
  * ------------------------------------------------------------------- */
 
 // 429 = rate limited (always worth a backoff retry).
-// 502/504 = the portal gateway gave up waiting on a slow upstream (this is
-// what the `stocks` MCP returns on a cold symbol, where the server takes
-// ~60s but the gateway caps at 30s). Retrying those inline rarely lands
-// inside the request window and just multiplies latency, so they are NOT
-// retried for "slow" servers (see SLOW_UPSTREAM_SERVERS).
+// 502/504 = the portal gateway gave up waiting on a slow upstream.
 const RETRIABLE_STATUS_CODES = new Set([429, 502, 503, 504]);
 const MAX_ATTEMPTS = 3;
 const BASE_DELAY_MS = 500;
@@ -67,24 +62,15 @@ const BASE_DELAY_MS = 500;
 // ~30s; this is a defensive ceiling so a hung socket can never pin a
 // semaphore slot indefinitely.
 const CALL_TIMEOUT_MS: Record<string, number> = {
-    stocks: 32_000,
     polymarket: 20_000,
     elemental: 20_000,
 };
 const DEFAULT_CALL_TIMEOUT_MS = 20_000;
 
-// Servers whose upstream is known to be slow (cold computations exceed the
-// gateway's 30s ceiling). For these we do not retry gateway-timeout codes
-// (502/504) and we guard them with a circuit breaker.
-const SLOW_UPSTREAM_SERVERS = new Set(['stocks']);
-
 function isRetriable(error: any, serverName: string): boolean {
     const code = error?.statusCode ?? error?.status;
     if (typeof code !== 'number') return false;
     if (code === 429) return true;
-    // Don't retry gateway-timeout codes for slow upstreams — it never helps
-    // inside the request window and triples the wall-clock cost.
-    if (SLOW_UPSTREAM_SERVERS.has(serverName)) return false;
     return RETRIABLE_STATUS_CODES.has(code);
 }
 
@@ -107,13 +93,11 @@ function isBreakerTrippingStatus(code: number | undefined): boolean {
 }
 
 function breakerOpen(serverName: string): boolean {
-    if (!SLOW_UPSTREAM_SERVERS.has(serverName)) return false;
     const state = breakers.get(serverName);
     return !!state && state.openUntil > Date.now();
 }
 
 function recordBreakerResult(serverName: string, trippingFailure: boolean): void {
-    if (!SLOW_UPSTREAM_SERVERS.has(serverName)) return;
     let state = breakers.get(serverName);
     if (!state) {
         state = { failures: 0, openUntil: 0 };
@@ -126,8 +110,7 @@ function recordBreakerResult(serverName: string, trippingFailure: boolean): void
             state.failures = 0;
             console.warn(
                 `[mcpGateway] circuit opened for "${serverName}" after ${BREAKER_THRESHOLD} ` +
-                    `consecutive upstream timeouts; skipping calls for ${BREAKER_COOLDOWN_MS / 1000}s. ` +
-                    `(Cold symbols warm the server cache as a side effect, so subsequent loads recover.)`
+                    `consecutive upstream timeouts; skipping calls for ${BREAKER_COOLDOWN_MS / 1000}s.`
             );
         }
     } else {
@@ -492,36 +475,6 @@ export async function callMcpTool(
         throw error;
     } finally {
         if (!opts.bypassSemaphore) sem.release();
-    }
-}
-
-/**
- * Fire-and-forget warm-up for the `stocks` MCP. Cold symbols take ~60s for
- * the upstream to compute, which exceeds the gateway's 30s timeout — so the
- * first request 502s but the server still finishes and caches the result.
- * Kicking these off early (and ignoring the inevitable cold-call 502s) means
- * the actual market-signal lookups (and the next page load) hit a warm cache
- * and return in seconds instead of timing out. Bounded concurrency keeps us
- * within the stocks semaphore. Bypasses the circuit breaker on purpose: its
- * whole job is to keep warming while the breaker protects the scoring path.
- */
-export function prewarmStocks(companyNames: string[], event?: H3Event): void {
-    const unique = Array.from(
-        new Set(
-            companyNames
-                .map((n) => (typeof n === 'string' ? n.trim() : ''))
-                .filter((n) => n.length > 0)
-        )
-    );
-    for (const name of unique) {
-        // Detached on purpose — never await, never throw into the caller.
-        callMcpTool(
-            'stocks',
-            'get_daily_stock_prices',
-            { company_name: name, lookback_days: 45 },
-            event,
-            { bypassBreaker: true, silentBreaker: true, bypassSemaphore: true }
-        ).catch(() => undefined);
     }
 }
 

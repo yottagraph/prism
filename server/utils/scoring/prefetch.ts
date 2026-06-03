@@ -97,6 +97,25 @@ function pushFact(slice: PrefetchedContextSlice, key: string, next: ElementalPro
 }
 
 function extractFundamentalsRow(slice: PrefetchedContextSlice, row: AnyRow) {
+    for (const [groupKey, raw] of Object.entries(row)) {
+        if (groupKey === 'neid' || !Array.isArray(raw)) continue;
+        for (const item of raw) {
+            if (!item || typeof item !== 'object') continue;
+            const r = item as AnyRow;
+            const property = asString(r.property) ?? groupKey;
+            const date = asString(r.time) ?? asString(r.date) ?? asString(r.recorded_at);
+            const n = asNumber(r.value);
+            const s = asString(r.value);
+            if (n != null) {
+                pushFact(slice, property, fact(n, date));
+                if (property !== groupKey) pushFact(slice, groupKey, fact(n, date));
+            } else if (s) {
+                pushFact(slice, property, fact(s, date));
+                if (property !== groupKey) pushFact(slice, groupKey, fact(s, date));
+            }
+        }
+    }
+
     const values = (row.values ?? row.fundamentals ?? row.metrics) as unknown;
     if (values && typeof values === 'object' && !Array.isArray(values)) {
         for (const [key, raw] of Object.entries(values as Record<string, unknown>)) {
@@ -127,6 +146,18 @@ function extractFundamentalsRow(slice: PrefetchedContextSlice, row: AnyRow) {
             if (n != null) pushFact(slice, key, fact(n));
             else if (s) pushFact(slice, key, fact(s));
         }
+    }
+}
+
+function sortFacts(slice: PrefetchedContextSlice) {
+    for (const [key, arr] of Object.entries(slice.financials)) {
+        arr.sort((a, b) => {
+            const ad = a.date ? Date.parse(a.date) : 0;
+            const bd = b.date ? Date.parse(b.date) : 0;
+            return bd - ad;
+        });
+        slice.seriesByPid[key] = arr;
+        slice.latestByPid[key] = arr[0] ?? null;
     }
 }
 
@@ -198,6 +229,34 @@ function extractGovernance(rows: AnyRow[], store: Map<string, PrefetchedContextS
     }
 }
 
+function extractGovernanceRecords(rows: AnyRow[], store: Map<string, PrefetchedContextSlice>) {
+    for (const row of rows) {
+        const orgNeid = rowNeid(row);
+        if (!orgNeid) continue;
+        const role = (asString(row.role) ?? '').toLowerCase();
+        if (role !== 'officer' && role !== 'director') continue;
+        const slice = ensureSlice(store, orgNeid);
+        const status = (asString(row.status) ?? '').toLowerCase();
+        const title = asString(row.title);
+        const personNeid = asString(row.person) ?? '';
+        const seenAt = asString(row.latest_seen) ?? asString(row.time) ?? asString(row.date);
+        const person: ContextRelationship = {
+            neid: personNeid,
+            name: asString(row.person_name) ?? asString(row.person) ?? 'Unknown',
+            relationshipType: role,
+            title,
+            startDate: asString(row.first_seen),
+            endDate: status === 'departed' ? seenAt : null,
+            ownershipPercentage: null,
+            jurisdiction: null,
+            ref: null,
+            raw: row,
+        };
+        if (role === 'officer') slice.officers.push(person);
+        else slice.directors.push(person);
+    }
+}
+
 function extractNews(rows: AnyRow[], store: Map<string, PrefetchedContextSlice>) {
     for (const row of rows) {
         const neid = rowNeid(row);
@@ -231,6 +290,90 @@ function extractNews(rows: AnyRow[], store: Map<string, PrefetchedContextSlice>)
     }
 }
 
+function extractNewsQuads(
+    relationalRows: AnyRow[],
+    categoricalRows: AnyRow[],
+    numericalRows: AnyRow[],
+    store: Map<string, PrefetchedContextSlice>
+) {
+    const articleByEntity = new Map<string, Map<string, string | null>>();
+    for (const row of relationalRows) {
+        const entityNeid = asString(row.source);
+        const articleNeid = asString(row.destination);
+        if (!entityNeid || !articleNeid) continue;
+        if ((asString(row.property) ?? '') !== 'appears_in') continue;
+        const articles = articleByEntity.get(entityNeid) ?? new Map<string, string | null>();
+        articles.set(articleNeid, asString(row.time) ?? asString(row.date));
+        articleByEntity.set(entityNeid, articles);
+    }
+
+    const articleMeta = new Map<
+        string,
+        {
+            headline: string | null;
+            source: string | null;
+            publishedDate: string | null;
+            sentiment: number | null;
+        }
+    >();
+    const ensureArticle = (articleNeid: string) => {
+        const existing = articleMeta.get(articleNeid);
+        if (existing) return existing;
+        const created = { headline: null, source: null, publishedDate: null, sentiment: null };
+        articleMeta.set(articleNeid, created);
+        return created;
+    };
+
+    for (const row of categoricalRows) {
+        const articleNeid = asString(row.source);
+        if (!articleNeid) continue;
+        const property = asString(row.property) ?? '';
+        const value = asString(row.value);
+        const meta = ensureArticle(articleNeid);
+        if ((property === 'headline' || property === 'title') && value) {
+            meta.headline = value;
+            meta.publishedDate = meta.publishedDate ?? asString(row.time) ?? asString(row.date);
+        }
+        if ((property === 'source' || property === 'source_name') && value) meta.source = value;
+        if ((property === 'published_date' || property === 'publication_date') && value) {
+            meta.publishedDate = value;
+        }
+    }
+
+    for (const row of numericalRows) {
+        const articleNeid = asString(row.source);
+        if (!articleNeid) continue;
+        const property = asString(row.property) ?? '';
+        const value = asNumber(row.value);
+        if (property === 'sentiment' && value != null) ensureArticle(articleNeid).sentiment = value;
+    }
+
+    for (const [entityNeid, articles] of articleByEntity) {
+        const slice = ensureSlice(store, entityNeid);
+        let latestDate: string | null = null;
+        for (const [articleNeid, relationDate] of articles) {
+            const meta = articleMeta.get(articleNeid);
+            const publishedDate = meta?.publishedDate ?? relationDate;
+            if (publishedDate && (!latestDate || publishedDate > latestDate))
+                latestDate = publishedDate;
+            if (meta?.sentiment != null)
+                pushFact(slice, 'sentiment', fact(meta.sentiment, publishedDate));
+            slice.articles.push({
+                headline: meta?.headline ?? null,
+                source: meta?.source,
+                publishedDate,
+                sentiment: meta?.sentiment ?? null,
+                url: null,
+                ref: null,
+            });
+        }
+        const countDate = latestDate ?? undefined;
+        pushFact(slice, 'article_count', fact(articles.size, countDate));
+        pushFact(slice, 'news_count', fact(articles.size, countDate));
+        pushFact(slice, 'mentions_30d', fact(articles.size, countDate));
+    }
+}
+
 export async function prefetchPortfolioContext(event: H3Event, neids: string[]): Promise<void> {
     const unique = Array.from(new Set(neids.filter(Boolean)));
     if (!unique.length) return;
@@ -248,9 +391,12 @@ export async function prefetchPortfolioContext(event: H3Event, neids: string[]):
         })),
     ]);
 
-    const fundamentalsRows = Array.isArray(fundamentalsRes.organizations)
-        ? (fundamentalsRes.organizations as AnyRow[])
-        : [];
+    const fundamentalsRows = [
+        ...(Array.isArray(fundamentalsRes.organizations)
+            ? (fundamentalsRes.organizations as AnyRow[])
+            : []),
+        ...(Array.isArray(fundamentalsRes.per_org) ? (fundamentalsRes.per_org as AnyRow[]) : []),
+    ];
     for (const row of fundamentalsRows) {
         const neid = rowNeid(row);
         if (!neid) continue;
@@ -263,20 +409,31 @@ export async function prefetchPortfolioContext(event: H3Event, neids: string[]):
         store
     );
     extractEvents(Array.isArray(eventsRes.records) ? (eventsRes.records as AnyRow[]) : [], store);
-    extractGovernance(
-        Array.isArray(governanceRes.organizations) ? (governanceRes.organizations as AnyRow[]) : [],
-        store
-    );
-    extractNews(
-        [
-            ...(Array.isArray(newsRes.relational) ? (newsRes.relational as AnyRow[]) : []),
-            ...(Array.isArray(newsRes.categorical) ? (newsRes.categorical as AnyRow[]) : []),
-            ...(Array.isArray(newsRes.numerical) ? (newsRes.numerical as AnyRow[]) : []),
-        ],
+    const governanceOrganizations = Array.isArray(governanceRes.organizations)
+        ? (governanceRes.organizations as AnyRow[])
+        : [];
+    if (governanceOrganizations.length > 0) {
+        extractGovernance(governanceOrganizations, store);
+    } else {
+        extractGovernanceRecords(
+            Array.isArray(governanceRes.records) ? (governanceRes.records as AnyRow[]) : [],
+            store
+        );
+    }
+    const legacyNewsRows = [
+        ...(Array.isArray(newsRes.relational) ? (newsRes.relational as AnyRow[]) : []),
+        ...(Array.isArray(newsRes.categorical) ? (newsRes.categorical as AnyRow[]) : []),
+        ...(Array.isArray(newsRes.numerical) ? (newsRes.numerical as AnyRow[]) : []),
+    ];
+    extractNews(legacyNewsRows, store);
+    extractNewsQuads(
+        Array.isArray(newsRes.relational_quads) ? (newsRes.relational_quads as AnyRow[]) : [],
+        Array.isArray(newsRes.categorical_quads) ? (newsRes.categorical_quads as AnyRow[]) : [],
+        Array.isArray(newsRes.numerical_quads) ? (newsRes.numerical_quads as AnyRow[]) : [],
         store
     );
 
-    for (const neid of unique) ensureSlice(store, neid);
+    for (const neid of unique) sortFacts(ensureSlice(store, neid));
 }
 
 export function getPrefetchedContextSlice(

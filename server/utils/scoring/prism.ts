@@ -61,6 +61,7 @@ export async function getEntityNames(
 
 export interface PrismScanFundamentalsResponse {
     organizations?: Array<Record<string, unknown>>;
+    per_org?: Array<Record<string, unknown>>;
 }
 
 export async function scanFundamentals(neids: string[], windowDays?: number, event?: H3Event) {
@@ -108,6 +109,7 @@ export async function scanEvents(neids: string[], windowDays?: number, event?: H
 
 export interface PrismScanGovernanceResponse {
     organizations?: Array<Record<string, unknown>>;
+    records?: Array<Record<string, unknown>>;
 }
 
 export async function scanGovernance(neids: string[], event?: H3Event) {
@@ -125,6 +127,9 @@ export interface PrismScanNewsResponse {
     relational?: Array<Record<string, unknown>>;
     categorical?: Array<Record<string, unknown>>;
     numerical?: Array<Record<string, unknown>>;
+    relational_quads?: Array<Record<string, unknown>>;
+    categorical_quads?: Array<Record<string, unknown>>;
+    numerical_quads?: Array<Record<string, unknown>>;
 }
 
 export async function scanNews(neids: string[], windowDays?: number, event?: H3Event) {
