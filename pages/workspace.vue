@@ -158,110 +158,130 @@
                                     : 'Analyzing…'
                             }}
                         </v-chip>
+                        <v-btn
+                            variant="text"
+                            size="x-small"
+                            :prepend-icon="
+                                contextDashboardExpanded ? 'mdi-chevron-up' : 'mdi-chevron-down'
+                            "
+                            @click="contextDashboardExpanded = !contextDashboardExpanded"
+                        >
+                            {{ contextDashboardExpanded ? 'Hide dashboard' : 'Show dashboard' }}
+                        </v-btn>
                     </div>
 
-                    <!-- Live scan status / error surfacing -->
-                    <div
-                        v-if="scanning && scanStatusMessage && scanStatusMessage !== 'Idle'"
-                        class="px-3 pb-2 text-caption text-medium-emphasis d-flex align-center"
-                        style="gap: 6px"
-                    >
-                        <v-icon size="x-small">mdi-information-outline</v-icon>
-                        {{ scanStatusMessage }}
-                    </div>
-                    <div
-                        v-if="scanning && scanWatchdog"
-                        class="px-3 pb-2 text-caption text-warning d-flex align-center"
-                        style="gap: 6px"
-                    >
-                        <v-icon size="x-small" color="warning">mdi-clock-alert-outline</v-icon>
-                        {{ scanWatchdog }}
-                    </div>
-                    <v-alert
-                        v-if="lastScanError && !scanning"
-                        type="error"
-                        density="compact"
-                        variant="tonal"
-                        class="mx-3 mb-3"
-                        :text="lastScanError"
-                    />
-
-                    <v-divider />
-
-                    <div class="pa-3 d-flex flex-wrap" style="gap: 16px">
-                        <!-- Coverage (SourceFusionBar) -->
-                        <div class="flex-grow-1" style="min-width: 340px">
-                            <SourceFusionBar
-                                v-if="active && scanCompletedAt"
-                                :total="active.entities.length"
-                                :coverage="workspaceCoverage"
-                                :coverage-detail="workspaceCoverageDetail"
-                                :fred-macro="fredMacroCoverage"
-                                :scanning="scanning"
-                            />
+                    <v-expand-transition>
+                        <div v-show="contextDashboardExpanded">
+                            <!-- Live scan status / error surfacing -->
                             <div
-                                v-else
-                                class="text-caption text-medium-emphasis d-flex align-center"
-                                style="min-height: 40px"
-                            >
-                                <v-icon size="small" class="mr-2">mdi-circle-outline</v-icon>
-                                Source coverage will appear after the first analysis run.
-                            </div>
-                        </div>
-
-                        <!-- Agent pipeline -->
-                        <div class="flex-shrink-0" style="min-width: 280px">
-                            <div class="text-caption text-medium-emphasis mb-2 font-weight-medium">
-                                Agent pipeline
-                            </div>
-                            <div
-                                class="pipeline-inline d-flex align-center flex-wrap"
+                                v-if="scanning && scanStatusMessage && scanStatusMessage !== 'Idle'"
+                                class="px-3 pb-2 text-caption text-medium-emphasis d-flex align-center"
                                 style="gap: 6px"
                             >
-                                <div
-                                    v-for="(step, i) in currentPipeline"
-                                    :key="step.name"
-                                    class="d-flex align-center"
-                                    style="gap: 6px"
+                                <v-icon size="x-small">mdi-information-outline</v-icon>
+                                {{ scanStatusMessage }}
+                            </div>
+                            <div
+                                v-if="scanning && scanWatchdog"
+                                class="px-3 pb-2 text-caption text-warning d-flex align-center"
+                                style="gap: 6px"
+                            >
+                                <v-icon size="x-small" color="warning"
+                                    >mdi-clock-alert-outline</v-icon
                                 >
+                                {{ scanWatchdog }}
+                            </div>
+                            <v-alert
+                                v-if="lastScanError && !scanning"
+                                type="error"
+                                density="compact"
+                                variant="tonal"
+                                class="mx-3 mb-3"
+                                :text="lastScanError"
+                            />
+
+                            <v-divider />
+
+                            <div class="pa-3 d-flex flex-wrap" style="gap: 16px">
+                                <!-- Coverage (SourceFusionBar) -->
+                                <div class="flex-grow-1" style="min-width: 340px">
+                                    <SourceFusionBar
+                                        v-if="active && scanCompletedAt"
+                                        :total="active.entities.length"
+                                        :coverage="workspaceCoverage"
+                                        :coverage-detail="workspaceCoverageDetail"
+                                        :fred-macro="fredMacroCoverage"
+                                        :scanning="scanning"
+                                    />
                                     <div
-                                        class="pipeline-step-chip d-flex align-center"
-                                        :class="`pipeline-step-${step.status}`"
-                                        style="
-                                            gap: 4px;
-                                            padding: 2px 8px;
-                                            border-radius: 12px;
-                                            font-size: 11px;
-                                        "
+                                        v-else
+                                        class="text-caption text-medium-emphasis d-flex align-center"
+                                        style="min-height: 40px"
                                     >
-                                        <v-progress-circular
-                                            v-if="step.status === 'working'"
-                                            indeterminate
-                                            size="10"
-                                            width="2"
-                                            color="primary"
-                                        />
-                                        <v-icon
-                                            v-else-if="step.status === 'completed'"
-                                            size="10"
-                                            color="success"
-                                            >mdi-check</v-icon
-                                        >
-                                        <v-icon v-else size="10" color="medium-emphasis"
+                                        <v-icon size="small" class="mr-2"
                                             >mdi-circle-outline</v-icon
                                         >
-                                        {{ step.label }}
+                                        Source coverage will appear after the first analysis run.
                                     </div>
-                                    <v-icon
-                                        v-if="i < currentPipeline.length - 1"
-                                        size="12"
-                                        color="medium-emphasis"
-                                        >mdi-chevron-right</v-icon
+                                </div>
+
+                                <!-- Agent pipeline -->
+                                <div class="flex-shrink-0" style="min-width: 280px">
+                                    <div
+                                        class="text-caption text-medium-emphasis mb-2 font-weight-medium"
                                     >
+                                        Agent pipeline
+                                    </div>
+                                    <div
+                                        class="pipeline-inline d-flex align-center flex-wrap"
+                                        style="gap: 6px"
+                                    >
+                                        <div
+                                            v-for="(step, i) in currentPipeline"
+                                            :key="step.name"
+                                            class="d-flex align-center"
+                                            style="gap: 6px"
+                                        >
+                                            <div
+                                                class="pipeline-step-chip d-flex align-center"
+                                                :class="`pipeline-step-${step.status}`"
+                                                style="
+                                                    gap: 4px;
+                                                    padding: 2px 8px;
+                                                    border-radius: 12px;
+                                                    font-size: 11px;
+                                                "
+                                            >
+                                                <v-progress-circular
+                                                    v-if="step.status === 'working'"
+                                                    indeterminate
+                                                    size="10"
+                                                    width="2"
+                                                    color="primary"
+                                                />
+                                                <v-icon
+                                                    v-else-if="step.status === 'completed'"
+                                                    size="10"
+                                                    color="success"
+                                                    >mdi-check</v-icon
+                                                >
+                                                <v-icon v-else size="10" color="medium-emphasis"
+                                                    >mdi-circle-outline</v-icon
+                                                >
+                                                {{ step.label }}
+                                            </div>
+                                            <v-icon
+                                                v-if="i < currentPipeline.length - 1"
+                                                size="12"
+                                                color="medium-emphasis"
+                                                >mdi-chevron-right</v-icon
+                                            >
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </v-expand-transition>
                 </v-card>
 
                 <!-- ── Four renders (tabbed) ─────────────────────────── -->
@@ -660,6 +680,7 @@
 
     // ── Active render tab ────────────────────────────────────────────
     const activeRender = ref<'table' | 'brief' | 'network' | 'chat'>('table');
+    const contextDashboardExpanded = ref(false);
 
     // ── Analysis ────────────────────────────────────────────────────
     // Client-side watchdog: the server now bounds every Elemental call, but as

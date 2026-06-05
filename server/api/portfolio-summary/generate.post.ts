@@ -149,6 +149,25 @@ function formatTier(tier: string): string {
     return tier.toUpperCase();
 }
 
+function hasInternalNewsMetricLanguage(text: string): boolean {
+    return /\b(mention velocity|article count|articles? in the active window|average sentiment|sentiment average|mentions?\/|source coverage|coverage metadata)\b/i.test(
+        text
+    );
+}
+
+function isMeaningfulHeadlineSummary(summary: string | null | undefined): summary is string {
+    if (!summary?.trim()) return false;
+    return !/^(No recent news coverage|Summarizing 24h headlines with Gemini)/i.test(
+        summary.trim()
+    );
+}
+
+function sourceLabelForPrompt(driver: RiskDriver): string {
+    if (driver.lens.toUpperCase() === 'NEWS') return 'News';
+    if (driver.source === 'Elemental') return driver.lens.toUpperCase();
+    return `${driver.lens.toUpperCase()} / ${driver.source}`;
+}
+
 function buildEntityBlock(e: EntityInput, idx: number): string {
     if (!e.scores) return `${idx + 1}. ${e.resolvedName} — no scan data`;
     const lines: string[] = [];
@@ -167,9 +186,19 @@ function buildEntityBlock(e: EntityInput, idx: number): string {
     if (subScores.length) lines.push(`Sub-scores: ${subScores.join(' | ')}`);
 
     if (e.monitor?.signalSummary) lines.push(`Signal: ${e.monitor.signalSummary}`);
-    if (e.monitor?.headlineSummary) lines.push(`News: ${e.monitor.headlineSummary}`);
+    if (isMeaningfulHeadlineSummary(e.monitor?.headlineSummary)) {
+        lines.push(`Recent news context: ${e.monitor.headlineSummary}`);
+    }
 
-    const topDrivers = (e.drivers ?? []).slice(0, 4);
+    const topDrivers = (e.drivers ?? [])
+        .filter((d) => {
+            if (d.lens.toUpperCase() !== 'NEWS') return true;
+            // The NEWS score can be driven by internal activity metrics. Those
+            // are useful for scoring, but the briefing should only see
+            // ground-truth headline context.
+            return !hasInternalNewsMetricLanguage(d.finding.text);
+        })
+        .slice(0, 4);
     if (topDrivers.length) {
         lines.push('Key findings:');
         for (const d of topDrivers) {
@@ -188,9 +217,7 @@ function buildEntityBlock(e: EntityInput, idx: number): string {
             }
             const cite = citeParts.length ? ` *(${citeParts.join('; ')})*` : '';
             const dateTag = d.finding.date ? ` [${d.finding.date}]` : '';
-            lines.push(
-                `  - [${d.lens.toUpperCase()} / ${d.source}]${dateTag} ${d.finding.text}${cite}`
-            );
+            lines.push(`  - [${sourceLabelForPrompt(d)}]${dateTag} ${d.finding.text}${cite}`);
         }
     }
 
@@ -329,12 +356,20 @@ ${TONE_INSTRUCTIONS[config.tone] || TONE_INSTRUCTIONS.formal}
 LEAD WITH WHAT HAPPENED, not scores:
 - Name specific events with dates: e.g. "disclosed a $2.1B export restriction in its Q3 10-K"
 - Name specific people: executives, board members, regulators mentioned in the findings above
-- Use exact headlines and news signals from the entity data above
+- Use exact headlines and external news context from the entity data above
 - Use exact numbers from FRED/macro data where relevant
 - For each finding, explain WHY it matters for this specific portfolio${goalBlock ? ' and its stated goal' : ''}
 
+NEWS RULES:
+- Treat internal news analytics (mention velocity, article counts, source counts, sentiment averages, source coverage, "active window") as invisible scaffolding. NEVER mention them in the briefing.
+- Do not write that a company has "high volume of news mentions", "public scrutiny", or "significant ongoing developments" unless you can name the actual headline/event causing it.
+- When discussing news, summarize the ground-truth development first: who did what, what changed, and which outlet/source reported it if provided.
+- Only include news that is relevant to the entity's financial health, business outlook, governance risk, creditworthiness, litigation/regulatory exposure, or customer/brand demand.
+- After the news fact, explain why it matters to "${portfolioName}" in portfolio language: cash flows, leverage, refinancing risk, revenue durability, margin pressure, valuation risk, brand risk, or suitability for the goal/time horizon.
+
 STYLE RULES:
 - NEVER write "fused score X.X" or "risk tier HIGH" — these are internal scores, not investor language
+- NEVER write "mention velocity", "average sentiment", "article count", "coverage", "NEWS / NEWS", or any other internal data-source/scoring label
 - Instead say: "the most pressing concern is [specific event or finding]"
 - NEVER open a bullet with a company name followed by a generic score summary
 - Every bullet must anchor to a specific event, filing, headline, or signal — not an aggregated number
@@ -370,9 +405,11 @@ Write 2-3 sentences on the current state of these investments and how they are d
 Write 5-8 bullet points. Each bullet MUST:
 1. Start with the specific event, headline, or finding — not the entity name or a score
 2. Name the specific entity involved after establishing the context
-3. End with a source citation in the format above
+3. Explain the financial-health or portfolio relevance in plain English
+4. End with a source citation in the format above
 
 Example of WRONG format: "Microsoft Corporation exhibits high compliance risk (fused score 75.0)..."
+Example of WRONG news format: "Procter & Gamble has 100 articles, mention velocity of 100.0, and average sentiment of 0.27..."
 Example of RIGHT format: "A $2.1B China export restriction disclosed in Q3 filings now directly threatens NVIDIA's data-center revenue pipeline — a core holding in this ${goalBlock ? (body.goal!.purpose ?? 'portfolio') : 'portfolio'}. *(SEC Filing, Nov 2024)*"
 
 ## Priority Watch List
