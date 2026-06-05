@@ -79,7 +79,6 @@ export async function computeNewsSummary24h(
 
     let hasRealData = false;
     let mentionCount24h = 0;
-    let headlineCount7d = 0;
     let mentions30d = 0;
     let sentimentAvg30d: number | null = null;
     let mentionDailyAvg30d: number | null = null;
@@ -105,7 +104,6 @@ export async function computeNewsSummary24h(
             hasRealData = true;
             const nowMs = Date.now();
             const since24h = nowMs - 24 * 60 * 60 * 1000;
-            const since7d = nowMs - 7 * 24 * 60 * 60 * 1000;
             const since30d = nowMs - 30 * 24 * 60 * 60 * 1000;
             articleRows.forEach((row) => {
                 const normalized = normalizeArticleDate(row.publishedDate);
@@ -115,15 +113,9 @@ export async function computeNewsSummary24h(
                     mentions30d += 1;
                     if (row.sentiment != null) scores.push(row.sentiment);
                 }
-                // Headlines are collected over a 7-day window so the News cell
-                // stays populated; the mention ratio/velocity below still uses
-                // the 24h count to keep its spike thresholds meaningful.
-                if (ts >= since7d) {
-                    headlineCount7d += 1;
-                    if (row.headline?.trim()) headlines.push(row.headline.trim());
-                }
                 if (ts >= since24h) {
                     mentionCount24h += 1;
+                    if (row.headline?.trim()) headlines.push(row.headline.trim());
                 }
             });
 
@@ -162,10 +154,10 @@ export async function computeNewsSummary24h(
     // /api/news-summary/generate endpoint (fire-and-forget from the client),
     // mirroring how the portfolio briefing is generated.
     let headlineSummary: string | null = null;
-    if (hasRealData && headlineCount7d > 0 && headlines.length > 0) {
-        headlineSummary = `${headlineCount7d} article${headlineCount7d === 1 ? '' : 's'} in the last 7d. Top: ${headlines.slice(0, 2).join(' | ') || 'no headlines'}.`;
+    if (hasRealData && mentionCount24h > 0 && headlines.length > 0) {
+        headlineSummary = `${mentionCount24h} article${mentionCount24h === 1 ? '' : 's'} in the last 24h. Top: ${headlines.slice(0, 2).join(' | ') || 'no headlines'}.`;
     } else if (hasRealData) {
-        headlineSummary = 'No recent news coverage in the last 7 days.';
+        headlineSummary = 'No recent news coverage in the last 24 hours.';
     }
 
     const out: NewsSummary24hResult = {
@@ -179,7 +171,6 @@ export async function computeNewsSummary24h(
         hasRealData,
         detail: {
             metrics: [
-                { label: 'Mentions (7d)', value: `${headlineCount7d}` },
                 { label: 'Mentions (24h)', value: `${mentionCount24h}` },
                 {
                     label: 'Mentions daily avg (30d)',
@@ -199,7 +190,7 @@ export async function computeNewsSummary24h(
                 {
                     text:
                         headlineSummary ||
-                        'No 7d article summary was generated because related article data was unavailable.',
+                        'No 24h article summary was generated because related article data was unavailable.',
                     citations: [],
                 },
             ],

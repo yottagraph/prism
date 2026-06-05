@@ -28,6 +28,20 @@ interface GenerateRequest {
     entities: EntityInput[];
 }
 
+interface RecentHeadline {
+    headline: string;
+    publishedAt: number;
+}
+
+function buildFallbackSummary(headlines: string[], mentionCount: number): string {
+    const top = headlines.slice(0, 3);
+    if (top.length === 0) {
+        return 'No recent news coverage in the last 24 hours.';
+    }
+
+    return `${mentionCount} article${mentionCount === 1 ? '' : 's'} in the last 24h: ${top.join(' | ')}.`;
+}
+
 async function buildHeadlineSummary(neid: string, resolvedName: string): Promise<string | null> {
     try {
         const result = await callMcpTool('elemental', 'elemental_get_related', {
@@ -46,13 +60,14 @@ async function buildHeadlineSummary(neid: string, resolvedName: string): Promise
         const rows = Array.isArray(structured?.relationships) ? structured!.relationships : [];
 
         const nowMs = Date.now();
-        const since7d = nowMs - 7 * 24 * 60 * 60 * 1000;
+        const since24h = nowMs - 24 * 60 * 60 * 1000;
         const since30d = nowMs - 30 * 24 * 60 * 60 * 1000;
 
-        const headlines: string[] = [];
+        const recentHeadlines: RecentHeadline[] = [];
+        const seenHeadlines = new Set<string>();
         const sentimentScores: number[] = [];
         let mentions30d = 0;
-        let mentionCount7d = 0;
+        let mentionCount24h = 0;
 
         for (const row of rows) {
             const rawDate = row?.properties?.published_date?.value
@@ -74,19 +89,28 @@ async function buildHeadlineSummary(neid: string, resolvedName: string): Promise
                 if (s !== null) sentimentScores.push(s);
             }
 
-            if (ts >= since7d) {
-                mentionCount7d++;
+            if (ts >= since24h) {
+                mentionCount24h++;
                 const h = row?.properties?.headline?.value
                     ? String(row.properties.headline.value).trim()
                     : null;
-                if (h) headlines.push(h);
+                const normalizedHeadline = h?.replace(/\s+/g, ' ');
+                const key = normalizedHeadline?.toLowerCase();
+                if (normalizedHeadline && key && !seenHeadlines.has(key)) {
+                    seenHeadlines.add(key);
+                    recentHeadlines.push({ headline: normalizedHeadline, publishedAt: ts });
+                }
             }
         }
 
         if (mentions30d === 0) return null;
 
-        if (mentionCount7d === 0 || headlines.length === 0) {
-            return 'No recent news coverage in the last 7 days.';
+        const headlines = recentHeadlines
+            .sort((a, b) => b.publishedAt - a.publishedAt)
+            .map((item) => item.headline);
+
+        if (mentionCount24h === 0 || headlines.length === 0) {
+            return 'No recent news coverage in the last 24 hours.';
         }
 
         const sentimentAvg =
@@ -99,16 +123,17 @@ async function buildHeadlineSummary(neid: string, resolvedName: string): Promise
                 : '';
 
         const headlineList = headlines
-            .slice(0, 8)
+            .slice(0, 12)
             .map((h, i) => `${i + 1}. ${h}`)
             .join('\n');
 
         const prompt =
             `You are a financial risk analyst writing a brief for a risk dashboard table cell. ` +
-            `Write exactly 2-3 sentences (50-80 words) summarizing the key developments from ` +
-            `these ${mentionCount7d} news headlines about ${resolvedName} from the last 7 days. ` +
-            `Be direct and specific — lead with what happened, not with an article count. ` +
-            `Do not start with "Based on" or "According to" or "The headlines".` +
+            `Write exactly 2 concise sentences (45-75 words total) summarizing the concrete developments in ` +
+            `these ${mentionCount24h} news headlines about ${resolvedName} from the last 24 hours. ` +
+            `Group related headlines into themes, name the specific events or risks, and avoid generic phrases like "recent coverage". ` +
+            `Do not start with "Based on", "According to", or "The headlines". ` +
+            `If the headlines are unrelated, summarize the two most material items instead of forcing a single narrative.` +
             `${sentimentNote}\n\nHeadlines:\n${headlineList}`;
 
         const geminiResult = await callGemini({
@@ -123,7 +148,7 @@ async function buildHeadlineSummary(neid: string, resolvedName: string): Promise
             return geminiResult.text.trim().replace(/^["']|["']$/g, '');
         }
 
-        return `${mentionCount7d} article${mentionCount7d === 1 ? '' : 's'} in the last 7d. Top: ${headlines.slice(0, 2).join(' | ')}.`;
+        return buildFallbackSummary(headlines, mentionCount24h);
     } catch {
         return null;
     }

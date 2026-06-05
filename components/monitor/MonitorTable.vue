@@ -149,7 +149,7 @@
                         <span class="d-inline-flex align-center">
                             {{ column.title }}
                             <HelpTooltip
-                                text="AI-generated summary of the most material headlines from the last 7 days."
+                                text="AI-generated summary of the most material headlines from the last 24 hours."
                                 :size="11"
                             />
                         </span>
@@ -359,7 +359,7 @@
         { title: 'Leadership', key: 'executive', sortable: true, width: 120 },
         { title: 'Filing activity', key: 'cikVelocity', sortable: true, width: 120 },
         // News lens
-        { title: 'News (7d)', key: 'newsSummary', sortable: false, width: 440 },
+        { title: 'News (24h)', key: 'newsSummary', sortable: false, width: 440 },
         { title: 'Headline risk', key: 'newsActivity', sortable: true, width: 120 },
         // Stock lens
         { title: '10d', key: 'stockChangePercent', sortable: true, width: 80 },
