@@ -155,7 +155,7 @@ export async function computeNewsSummary24h(
     // mirroring how the portfolio briefing is generated.
     let headlineSummary: string | null = null;
     if (hasRealData && mentionCount24h > 0 && headlines.length > 0) {
-        headlineSummary = `${mentionCount24h} article${mentionCount24h === 1 ? '' : 's'} in the last 24h. Top: ${headlines.slice(0, 2).join(' | ') || 'no headlines'}.`;
+        headlineSummary = 'Summarizing 24h headlines with Gemini...';
     } else if (hasRealData) {
         headlineSummary = 'No recent news coverage in the last 24 hours.';
     }

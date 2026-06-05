@@ -51,7 +51,7 @@
                     :items-per-page="rowsPerPage"
                     density="comfortable"
                     hover
-                    style="min-width: 1360px"
+                    style="min-width: 1540px"
                     @click:row="onRowClick"
                 >
                     <!-- Custom header tooltips for key columns -->
@@ -357,9 +357,9 @@
         // SEC lens
         { title: 'Fin. strength', key: 'solvency', sortable: true, width: 120 },
         { title: 'Leadership', key: 'executive', sortable: true, width: 120 },
-        { title: 'Filing activity', key: 'cikVelocity', sortable: true, width: 120 },
+        { title: 'CIK velocity', key: 'cikVelocity', sortable: true, width: 120 },
         // News lens
-        { title: 'News (24h)', key: 'newsSummary', sortable: false, width: 440 },
+        { title: 'News (24h)', key: 'newsSummary', sortable: false, width: 620 },
         { title: 'Headline risk', key: 'newsActivity', sortable: true, width: 120 },
         // Stock lens
         { title: '10d', key: 'stockChangePercent', sortable: true, width: 80 },

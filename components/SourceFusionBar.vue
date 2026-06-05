@@ -344,7 +344,7 @@
         if (cd.eventPressure > 0)
             flags.push({ label: 'Material events', count: cd.eventPressure, color: 'deep-orange' });
         if (cd.velocity > 0)
-            flags.push({ label: 'Filing activity', count: cd.velocity, color: 'teal' });
+            flags.push({ label: 'CIK velocity', count: cd.velocity, color: 'teal' });
         return flags;
     });
 </script>

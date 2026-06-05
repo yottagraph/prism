@@ -12,8 +12,9 @@
     .summary {
         display: -webkit-box;
         overflow: hidden;
-        -webkit-line-clamp: 3;
+        -webkit-line-clamp: 4;
         -webkit-box-orient: vertical;
-        max-width: 360px;
+        min-width: 520px;
+        max-width: 600px;
     }
 </style>

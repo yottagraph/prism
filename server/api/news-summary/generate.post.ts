@@ -16,8 +16,10 @@
 
 import { requireAuth } from '~/server/utils/requireAuth';
 import { callMcpTool, extractMcpStructuredContent } from '~/server/utils/scoring/mcpGateway';
-import { callGemini, GEMINI_DEFAULT_MODEL } from '~/server/utils/gemini';
+import { callGemini } from '~/server/utils/gemini';
 import { normalizeArticleDate } from '~/server/utils/scoring/newsSummary24h';
+
+const NEWS_SUMMARY_MODEL = 'gemini-2.5-flash';
 
 interface EntityInput {
     neid: string;
@@ -33,13 +35,13 @@ interface RecentHeadline {
     publishedAt: number;
 }
 
-function buildFallbackSummary(headlines: string[], mentionCount: number): string {
+function buildFallbackSummary(headlines: string[]): string {
     const top = headlines.slice(0, 3);
     if (top.length === 0) {
         return 'No recent news coverage in the last 24 hours.';
     }
 
-    return `${mentionCount} article${mentionCount === 1 ? '' : 's'} in the last 24h: ${top.join(' | ')}.`;
+    return `Recent 24h headlines focus on: ${top.join(' | ')}.`;
 }
 
 async function buildHeadlineSummary(neid: string, resolvedName: string): Promise<string | null> {
@@ -130,25 +132,25 @@ async function buildHeadlineSummary(neid: string, resolvedName: string): Promise
         const prompt =
             `You are a financial risk analyst writing a brief for a risk dashboard table cell. ` +
             `Write exactly 2 concise sentences (45-75 words total) summarizing the concrete developments in ` +
-            `these ${mentionCount24h} news headlines about ${resolvedName} from the last 24 hours. ` +
+            `the following news headlines about ${resolvedName} from the last 24 hours. ` +
             `Group related headlines into themes, name the specific events or risks, and avoid generic phrases like "recent coverage". ` +
-            `Do not start with "Based on", "According to", or "The headlines". ` +
+            `Do not include article counts, and do not start with "Based on", "According to", or "The headlines". ` +
             `If the headlines are unrelated, summarize the two most material items instead of forcing a single narrative.` +
             `${sentimentNote}\n\nHeadlines:\n${headlineList}`;
 
         const geminiResult = await callGemini({
             prompt,
-            model: GEMINI_DEFAULT_MODEL,
-            maxTokens: 160,
+            model: NEWS_SUMMARY_MODEL,
+            maxTokens: 220,
             temperature: 0.2,
-            timeoutMs: 12_000,
+            timeoutMs: 20_000,
         });
 
         if (geminiResult.text?.trim()) {
             return geminiResult.text.trim().replace(/^["']|["']$/g, '');
         }
 
-        return buildFallbackSummary(headlines, mentionCount24h);
+        return buildFallbackSummary(headlines);
     } catch {
         return null;
     }
